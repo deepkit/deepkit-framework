@@ -7,12 +7,19 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BaseResponse, CollationMessage, Command, HintMessage, ReadPreferenceMessage, TransactionalMessage } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
+
 import type { MongoClientConfig } from '../config.js';
-import type { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
+import type { Host } from '../host.js';
+import {
+    BaseResponse,
+    CollationMessage,
+    Command,
+    HintMessage,
+    ReadPreferenceMessage,
+    TransactionalMessage,
+} from './command.js';
 
 interface CountResponse extends BaseResponse {
     n: number;
@@ -26,7 +33,8 @@ type CountSchema = {
     skip?: number;
     collation?: CollationMessage;
     hint?: HintMessage;
-} & TransactionalMessage & ReadPreferenceMessage;
+} & TransactionalMessage &
+    ReadPreferenceMessage;
 
 export class CountCommand<T extends ReflectionClass<any>> extends Command<number> {
     constructor(

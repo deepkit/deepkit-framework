@@ -1,6 +1,9 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
+
 import { typeOf } from '../../src/reflection/reflection';
-import { typeAnnotation } from '../../src/reflection/type';
+import { typeAnnotation } from '../../src/type-annotations.js';
 
 test('test', () => {
     type MyAnnotation = { __meta?: never & ['myAnnotation'] };

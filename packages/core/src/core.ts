@@ -7,10 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import dotProp from 'dot-prop';
-import { isArray, isClass, isClassInstance, isObject, isPlainObject, isSet } from './type-guards.js';
+
 import { pathDirectory } from './path.js';
+import { isArray, isClass, isClassInstance, isObject, isPlainObject, isSet } from './type-guards.js';
 
 /**
  * Makes sure the error once printed using console.log contains the actual class name.
@@ -39,7 +39,7 @@ export interface CustomError {
 }
 
 export interface ClassType<T = any> {
-    new(...args: any[]): T;
+    new (...args: any[]): T;
 }
 
 export type AbstractClassType<T = any> = abstract new (...args: any[]) => T;
@@ -62,7 +62,9 @@ export type ExtractClassType<T> = T extends AbstractClassType<infer K> ? K : nev
  */
 export function getClassName<T>(classTypeOrInstance: ClassType<T> | Object): string {
     if (!classTypeOrInstance) return 'undefined';
-    const proto = (classTypeOrInstance as any)['prototype'] ? (classTypeOrInstance as any)['prototype'] : classTypeOrInstance;
+    const proto = (classTypeOrInstance as any)['prototype']
+        ? (classTypeOrInstance as any)['prototype']
+        : classTypeOrInstance;
     return proto.constructor.name || 'anonymous class';
 }
 
@@ -89,7 +91,7 @@ export function applyDefaults<T>(classType: ClassType<T>, target: { [k: string]:
  * Tries to identify the object by normalised result of Object.toString(obj).
  */
 export function identifyType(obj: any) {
-    return ((({}).toString.call(obj).match(/\s([a-zA-Z]+)/) || [])[1] || '').toLowerCase();
+    return (({}.toString.call(obj).match(/\s([a-zA-Z]+)/) || [])[1] || '').toLowerCase();
 }
 
 /**
@@ -103,21 +105,178 @@ export function getClassTypeFromInstance<T>(target: T): ClassType<T> {
     return (target as any)['constructor'] as ClassType<T>;
 }
 
+const MAX_STRING_LENGTH = 50;
+const MAX_OBJECT_KEYS = 3;
+const MAX_ARRAY_ITEMS = 3;
+
+/**
+ * Stringify a primitive value for inclusion in object/array representations.
+ * Keeps output compact - no type prefix.
+ */
+function stringifyPrimitive(value: unknown): string {
+    if (value === null) return 'null';
+    if (value === undefined) return 'undefined';
+
+    const type = typeof value;
+
+    switch (type) {
+        case 'boolean':
+        case 'number':
+            return String(value);
+        case 'bigint':
+            return `${value}n`;
+        case 'string': {
+            const str = value as string;
+            if (str.length > 20) {
+                return `"${str.slice(0, 17)}..."`;
+            }
+            return `"${str}"`;
+        }
+        case 'symbol':
+            return String(value);
+        case 'function':
+            return '[function]';
+        case 'object':
+            if (isArray(value)) return `[...]`;
+            if (value instanceof Date) return value.toISOString();
+            return '{...}';
+        default:
+            return String(value);
+    }
+}
+
 /**
  * Returns a human-readable string representation from the given value.
+ *
+ * @example
+ * ```typescript
+ * stringifyValueWithType(true)           // "boolean true"
+ * stringifyValueWithType("hello")        // 'string "hello"'
+ * stringifyValueWithType({a:1, b:2})     // "object {a: 1, b: 2}"
+ * stringifyValueWithType([1,2,3,4,5,6])  // "array [1, 2, 3, ...] (6 items)"
+ * ```
  */
-export function stringifyValueWithType(value: any, depth: number = 0): string {
-    if ('string' === typeof value) return `string(${value})`;
-    if ('number' === typeof value) return `number(${value})`;
-    if ('boolean' === typeof value) return `boolean(${value})`;
-    if ('bigint' === typeof value) return `bigint(${value})`;
-    if (isPlainObject(value)) return `object ${depth < 2 ? prettyPrintObject(value, depth) : ''}`;
-    if (isArray(value)) return `Array`;
-    if (isClass(value)) return `${getClassName(value)}`;
-    if (isObject(value)) return `${getClassName(getClassTypeFromInstance(value))} ${depth < 2 ? prettyPrintObject(value, depth) : ''}`;
-    if ('function' === typeof value) return `function ${value.name}`;
-    if (null === value) return `null`;
-    return 'undefined';
+export function stringifyValueWithType(value: unknown, seen: WeakSet<object> = new WeakSet()): string {
+    if (value === null) return 'null';
+    if (value === undefined) return 'undefined';
+
+    const type = typeof value;
+
+    switch (type) {
+        case 'boolean':
+            return `boolean ${value}`;
+
+        case 'number':
+            return `number ${value}`;
+
+        case 'bigint':
+            return `bigint ${value}n`;
+
+        case 'string': {
+            const str = value as string;
+            if (str.length > MAX_STRING_LENGTH) {
+                return `string "${str.slice(0, MAX_STRING_LENGTH - 3)}..." (truncated)`;
+            }
+            return `string "${str}"`;
+        }
+
+        case 'symbol':
+            return `symbol ${String(value)}`;
+
+        case 'function':
+            return (value as Function).name ? `function ${(value as Function).name}` : 'function';
+
+        case 'object': {
+            const obj = value as object;
+
+            // Check for circular references
+            if (seen.has(obj)) {
+                return 'object [circular]';
+            }
+            seen.add(obj);
+
+            try {
+                // Handle special object types
+                if (isArray(obj)) {
+                    const len = obj.length;
+                    if (len === 0) return 'array []';
+                    const items = obj.slice(0, MAX_ARRAY_ITEMS).map(item => stringifyPrimitive(item));
+                    if (len <= MAX_ARRAY_ITEMS) {
+                        return `array [${items.join(', ')}]`;
+                    }
+                    return `array [${items.join(', ')}, ...] (${len} items)`;
+                }
+
+                if (obj instanceof Date) {
+                    return `Date ${obj.toISOString()}`;
+                }
+
+                if (obj instanceof Set) {
+                    return `Set (${obj.size} items)`;
+                }
+
+                if (obj instanceof Map) {
+                    return `Map (${obj.size} entries)`;
+                }
+
+                if (obj instanceof RegExp) {
+                    return `RegExp ${obj.toString()}`;
+                }
+
+                if (obj instanceof Error) {
+                    return `Error ${obj.name}: ${obj.message}`;
+                }
+
+                // Handle typed arrays and ArrayBuffer
+                if (ArrayBuffer.isView(obj)) {
+                    return `${obj.constructor.name} (${(obj as unknown as { length: number }).length || (obj as unknown as { byteLength: number }).byteLength} bytes)`;
+                }
+
+                if (obj instanceof ArrayBuffer) {
+                    return `ArrayBuffer (${obj.byteLength} bytes)`;
+                }
+
+                // Check if it's a class instance (not plain object)
+                if (isObject(obj) && !isPlainObject(obj)) {
+                    const className = getClassName(getClassTypeFromInstance(obj));
+                    const keys = Object.keys(obj);
+                    if (keys.length === 0) return `${className} {}`;
+                    const displayKeys = keys.slice(0, MAX_OBJECT_KEYS);
+                    const pairs = displayKeys.map(key => {
+                        const val = (obj as Record<string, unknown>)[key];
+                        return `${key}: ${stringifyPrimitive(val)}`;
+                    });
+                    if (keys.length <= MAX_OBJECT_KEYS) {
+                        return `${className} {${pairs.join(', ')}}`;
+                    }
+                    const remaining = keys.length - MAX_OBJECT_KEYS;
+                    return `${className} {${pairs.join(', ')}, ...} (${remaining} more keys)`;
+                }
+
+                // Plain object
+                const keys = Object.keys(obj);
+                if (keys.length === 0) return 'object {}';
+
+                const displayKeys = keys.slice(0, MAX_OBJECT_KEYS);
+                const pairs = displayKeys.map(key => {
+                    const val = (obj as Record<string, unknown>)[key];
+                    return `${key}: ${stringifyPrimitive(val)}`;
+                });
+
+                if (keys.length <= MAX_OBJECT_KEYS) {
+                    return `object {${pairs.join(', ')}}`;
+                }
+                const remaining = keys.length - MAX_OBJECT_KEYS;
+                return `object {${pairs.join(', ')}, ...} (${remaining} more keys)`;
+            } catch {
+                // Fallback for any object that throws during inspection
+                return 'object [unreadable]';
+            }
+        }
+
+        default:
+            return String(type);
+    }
 }
 
 /**
@@ -146,11 +305,10 @@ export function changeClass<T>(value: object, newClass: ClassType<T>): T {
 export function prettyPrintObject(object: object, depth: number = 0): string {
     const res: string[] = [];
     for (const i in object) {
-        res.push(i + ': ' + stringifyValueWithType((object as any)[i], depth + 1));
+        res.push(i + ': ' + stringifyPrimitive((object as any)[i]));
     }
-    return '{' + res.join(',') + '}';
+    return '{' + res.join(', ') + '}';
 }
-
 
 export function indexOf<T>(array: T[], item: T): number {
     if (!array) {
@@ -302,7 +460,9 @@ export function appendObject(origin: { [k: string]: any }, extend: { [k: string]
  *
  * @reflection never
  */
-export async function asyncOperation<T>(executor: (resolve: (value: T) => void, reject: (error: any) => void) => void | Promise<void>): Promise<T> {
+export async function asyncOperation<T>(
+    executor: (resolve: (value: T) => void, reject: (error: any) => void) => void | Promise<void>,
+): Promise<T> {
     try {
         return await new Promise<T>(async (resolve, reject) => {
             try {
@@ -333,10 +493,12 @@ export function fixAsyncOperation<T>(promise: Promise<T>): Promise<T> {
 
 export function mergePromiseStack<T>(promise: Promise<T>, stack?: string): Promise<T> {
     stack = stack || createStack();
-    promise.then(() => {
-    }, (error) => {
-        mergeStack(error, stack || '');
-    });
+    promise.then(
+        () => {},
+        error => {
+            mergeStack(error, stack || '');
+        },
+    );
     return promise;
 }
 
@@ -457,21 +619,25 @@ export function getParentClass(classType: ClassType): ClassType | undefined {
 export function getInheritanceChain(classType: ClassType): ClassType[] {
     const chain: ClassType[] = [classType];
     let current = classType;
-    while (current = getParentClass(current) as ClassType) {
+    while ((current = getParentClass(current) as ClassType)) {
         chain.push(current);
     }
     return chain;
 }
 
 declare var v8debug: any;
-declare var process: {
-    execArgv: string[];
-    platform: string;
-} | undefined;
+declare var process:
+    | {
+          execArgv: string[];
+          platform: string;
+      }
+    | undefined;
 
 export function inDebugMode() {
-    return typeof v8debug === 'object' ||
-        (typeof process !== 'undefined' && /--debug|--inspect/.test(process.execArgv.join(' ')));
+    return (
+        typeof v8debug === 'object' ||
+        (typeof process !== 'undefined' && /--debug|--inspect/.test(process.execArgv.join(' ')))
+    );
 }
 
 /**
@@ -495,7 +661,7 @@ export function iterableSize(value: Array<unknown> | Set<unknown> | Map<unknown,
  * Returns __filename, works in both cjs and esm.
  */
 export function getCurrentFileName(offset: number = 0): string {
-    const e = new Error;
+    const e = new Error();
     const initiator = e.stack!.split('\n').slice(2 + offset, 3 + offset)[0];
     let path = /(?<path>[^(\s]+):[0-9]+:[0-9]+/.exec(initiator)!.groups!.path;
     if (path.indexOf('file') >= 0) {
@@ -558,9 +724,9 @@ export function rangeArray(startOrLength: number, stop: number = 0, step: number
 export function zip<T extends (readonly unknown[])[]>(
     ...args: T
 ): { [K in keyof T]: T[K] extends (infer V)[] ? V : never }[] {
-    const minLength = Math.min(...args.map((arr) => arr.length));
+    const minLength = Math.min(...args.map(arr => arr.length));
     //@ts-ignore
-    return Array.from({ length: minLength }).map((_, i) => args.map((arr) => arr[i]));
+    return Array.from({ length: minLength }).map((_, i) => args.map(arr => arr[i]));
 }
 
 /**
@@ -625,9 +791,11 @@ export function formatError(error: any, withStack: boolean = false): string {
 /**
  * Asserts that the given object is an instance of the given class.
  */
-export function assertInstanceOf<T>(object: any, constructor: { new(...args: any[]): T }): asserts object is T {
+export function assertInstanceOf<T>(object: any, constructor: { new (...args: any[]): T }): asserts object is T {
     if (!(object instanceof constructor)) {
-        throw new Error(`Object ${getClassName(object)} is not an instance of the expected class ${getClassName(constructor)}`);
+        throw new Error(
+            `Object ${getClassName(object)} is not an instance of the expected class ${getClassName(constructor)}`,
+        );
     }
 }
 

@@ -4,7 +4,8 @@ import {
     CompilerOptions,
     ExportDeclaration,
     Expression,
-    ImportDeclaration, JSDocImportTag,
+    ImportDeclaration,
+    JSDocImportTag,
     ResolvedModule,
     SourceFile,
     StringLiteral,
@@ -35,7 +36,10 @@ export class Resolver {
         protected sourceFiles: { [fileName: string]: SourceFile },
     ) {}
 
-    resolve(from: SourceFile, importOrExportNode: ExportDeclaration | ImportDeclaration | JSDocImportTag): SourceFile | undefined {
+    resolve(
+        from: SourceFile,
+        importOrExportNode: ExportDeclaration | ImportDeclaration | JSDocImportTag,
+    ): SourceFile | undefined {
         const moduleSpecifier: Expression | undefined = importOrExportNode.moduleSpecifier;
         if (!moduleSpecifier) return;
         if (!isStringLiteral(moduleSpecifier)) return;
@@ -81,9 +85,11 @@ export class Resolver {
         if (!result) return;
 
         // only .ts, .tsx and .d.ts files are supported
-        if (!result.resolvedFileName.endsWith('.ts')
-            && !result.resolvedFileName.endsWith('.tsx')
-            && !result.resolvedFileName.endsWith('.d.ts')) {
+        if (
+            !result.resolvedFileName.endsWith('.ts') &&
+            !result.resolvedFileName.endsWith('.tsx') &&
+            !result.resolvedFileName.endsWith('.d.ts')
+        ) {
             return;
         }
 

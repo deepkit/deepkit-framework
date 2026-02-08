@@ -7,10 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { SqlError } from '../error.js';
+import { DefaultPlatform } from '../platform/default-platform.js';
 import { Column, DatabaseModel } from '../schema/table.js';
 import { SQLConnection } from '../sql-adapter.js';
-import { DefaultPlatform } from '../platform/default-platform.js';
 
 const type3Regex = /^([^(]+)\(\s*(\d+)\s*,\s*(\d+)\s*\)$/;
 const type2Regex = /^([^(]+)\(\s*(\d+)\s*\)$/;
@@ -32,18 +32,16 @@ export function parseType(column: Column, type: string) {
         column.type = match[1];
         column.size = parseInt(match[2], 10);
     } else {
-        if (type.includes('(')) throw new Error(`Could not detect type of sql type ${type}`);
+        if (type.includes('(')) throw new SqlError('DK-SQL006', `Could not detect type of sql type ${type}`);
         column.type = type;
     }
 }
-
 
 export abstract class SchemaParser {
     constructor(
         protected connection: SQLConnection,
         protected platform: DefaultPlatform,
-    ) {
-    }
+    ) {}
 
     abstract parse(database: DatabaseModel, limitTableNames?: string[]): Promise<void>;
 }

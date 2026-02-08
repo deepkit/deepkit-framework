@@ -11,11 +11,13 @@
 declare var requestAnimationFrame: any;
 declare var cancelAnimationFrame: any;
 
-export const nextTick = typeof requestAnimationFrame !== 'undefined'
-    ? (cb: () => void) => requestAnimationFrame(cb) : (cb: () => void) => setTimeout(cb);
+export const nextTick =
+    typeof requestAnimationFrame !== 'undefined'
+        ? (cb: () => void) => requestAnimationFrame(cb)
+        : (cb: () => void) => setTimeout(cb);
 
-export const clearTick = typeof requestAnimationFrame !== 'undefined'
-    ? (id: any) => cancelAnimationFrame(id) : (id: any) => clearTick(id);
+export const clearTick =
+    typeof requestAnimationFrame !== 'undefined' ? (id: any) => cancelAnimationFrame(id) : (id: any) => clearTick(id);
 
 /**
  * Wraps a function and calls it only `cps` times per frame.
@@ -97,6 +99,6 @@ export function bufferedGate<T>(callback: (arg: T) => any) {
             if (activated) {
                 throttled();
             }
-        }
+        },
     };
 }

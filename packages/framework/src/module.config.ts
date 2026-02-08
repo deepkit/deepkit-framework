@@ -155,13 +155,13 @@ export class FrameworkConfig {
 
     migrationDir: string = 'migrations';
 
-    broker: BrokerConfig = new BrokerConfig;
+    broker: BrokerConfig = new BrokerConfig();
 
     /**
      * Will be forwarded to HttpModule.
      * @see HttpConfig
      */
-    http: HttpConfig = new HttpConfig;
+    http: HttpConfig = new HttpConfig();
 
     /**
      * If true logs all routes and rpc controllers on startup.

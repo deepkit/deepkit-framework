@@ -7,8 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import sift from 'sift';
+
 import { FilterQuery } from '@deepkit/rpc';
 
 //todo: move to live-database

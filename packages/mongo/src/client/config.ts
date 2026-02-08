@@ -7,19 +7,26 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { Host } from './host.js';
-import { CommandOptions, ConnectionOptions } from './options.js';
-import { parse as parseUrl } from 'url';
 import { parse as parseQueryString } from 'querystring';
-import { MongoError } from './error.js';
+import { parse as parseUrl } from 'url';
+
 import { arrayRemoveItem, singleStack } from '@deepkit/core';
-import { resolveSrvHosts } from './dns.js';
-import { cast, ReflectionClass } from '@deepkit/type';
+import { ReflectionClass, cast } from '@deepkit/type';
+
 import { ReadPreferenceMessage, TransactionalMessage, WriteConcernMessage } from './command/command.js';
 import type { MongoDatabaseTransaction } from './connection.js';
+import { resolveSrvHosts } from './dns.js';
+import { MongoError } from './error.js';
+import { Host } from './host.js';
+import { CommandOptions, ConnectionOptions } from './options.js';
 
-export type Topology = 'single' | 'replicaSetNoPrimary' | 'replicaSetWithPrimary' | 'sharded' | 'unknown' | 'invalidated';
+export type Topology =
+    | 'single'
+    | 'replicaSetNoPrimary'
+    | 'replicaSetWithPrimary'
+    | 'sharded'
+    | 'unknown'
+    | 'invalidated';
 
 /**
  * @see https://github.com/mongodb/specifications/blob/master/source/max-staleness/max-staleness.md
@@ -160,16 +167,14 @@ export class MongoClientConfig {
     authUser?: string;
     authPassword?: string;
 
-    options: ConnectionOptions = new ConnectionOptions;
+    options: ConnectionOptions = new ConnectionOptions();
 
     isSrv: boolean = false;
     srvDomain: string = '';
 
     lastTopologyKey: string = '';
 
-    constructor(
-        connectionString: string,
-    ) {
+    constructor(connectionString: string) {
         this.parseConnectionString(connectionString);
     }
 
@@ -223,7 +228,14 @@ export class MongoClientConfig {
      * commitTransaction/abortTransaction commands are allowed to set writeConcern.
      */
     applyWriteConcern(cmd: WriteConcernMessage, options: CommandOptions) {
-        if (this.options.w || this.options.journal || this.options.wtimeout || options.writeConcern || options.journal || options.wtimeout) {
+        if (
+            this.options.w ||
+            this.options.journal ||
+            this.options.wtimeout ||
+            options.writeConcern ||
+            options.journal ||
+            options.wtimeout
+        ) {
             cmd.writeConcern = {};
             if (this.options.w !== undefined) cmd.writeConcern.w = this.options.w;
             if (this.options.journal !== undefined) cmd.writeConcern.j = this.options.journal;
@@ -237,7 +249,12 @@ export class MongoClientConfig {
     /**
      * @see https://github.com/mongodb/specifications/blob/master/source/server-selection/server-selection.md#passing-read-preference-to-mongos-and-load-balancers
      */
-    applyReadPreference(host: Host, cmd: ReadPreferenceMessage & TransactionalMessage, options: CommandOptions, transaction?: MongoDatabaseTransaction) {
+    applyReadPreference(
+        host: Host,
+        cmd: ReadPreferenceMessage & TransactionalMessage,
+        options: CommandOptions,
+        transaction?: MongoDatabaseTransaction,
+    ) {
         const readPreference = options.readPreference || this.options.readPreference;
         if (readPreference === 'primary') return;
 
@@ -341,7 +358,7 @@ export class MongoClientConfig {
         for (const host of this.hosts) {
             if (host.hostname === hostname && host.port === port) return host;
         }
-        throw new MongoError(`Could not find host ${hostname}:${port}`);
+        throw new MongoError('DK-MG001', `Could not find host ${hostname}:${port}`);
     }
 
     deleteHost(hostname: string, port: number) {
@@ -368,7 +385,7 @@ export class MongoClientConfig {
             }
 
             const hostsData = await this.resolveSrvHosts();
-            const options = { ...hostsData.options ? parseQueryString(hostsData.options) : {} };
+            const options = { ...(hostsData.options ? parseQueryString(hostsData.options) : {}) };
             const partialOptions = cast<ConnectionOptions>(options) as {};
             for (const [k, v] of Object.entries(partialOptions)) {
                 this.options[k] = v;

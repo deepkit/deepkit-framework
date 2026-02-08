@@ -1,15 +1,18 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
+
 import {
-    createClassDecoratorContext,
-    createFreeDecoratorContext,
-    createPropertyDecoratorContext,
     DecoratorAndFetchSignature,
     DualDecorator,
     ExtractApiDataType,
     ExtractClass,
+    PropertyDecoratorFn,
+    createClassDecoratorContext,
+    createFreeDecoratorContext,
+    createPropertyDecoratorContext,
     isDecoratorContext,
     mergeDecorator,
-    PropertyDecoratorFn,
 } from '../src/decorator-builder.js';
 
 test('without host', () => {
@@ -19,12 +22,12 @@ test('without host', () => {
 
     const dec1 = createFreeDecoratorContext(
         class {
-            t = new Dec1Model;
+            t = new Dec1Model();
 
             name(name: string) {
                 this.t.name = name;
-            };
-        }
+            }
+        },
     );
 
     expect(isDecoratorContext(dec1, dec1)).toBe(true);
@@ -52,7 +55,7 @@ test('collapsing correctly', () => {
 
     const dec1 = createFreeDecoratorContext(
         class {
-            t = new ArgDefinition;
+            t = new ArgDefinition();
 
             get optional() {
                 this.t.optional = true;
@@ -62,8 +65,7 @@ test('collapsing correctly', () => {
             default(value: any) {
                 this.t.default = value;
             }
-
-        }
+        },
     );
 
     expect(isDecoratorContext(dec1, dec1)).toBe(true);
@@ -93,16 +95,11 @@ test('inheritance', () => {
     class A {
         t = new Dec1Model();
 
-        methodA() {
-
-        }
+        methodA() {}
     }
 
-
     class B extends A {
-        methodB() {
-
-        }
+        methodB() {}
     }
 
     const dec1 = createFreeDecoratorContext(B);
@@ -118,46 +115,41 @@ test('inheritance', () => {
     }
 });
 
-
 test('merge', () => {
     const dec1 = createClassDecoratorContext(
         class {
-            t = new class {
+            t = new (class {
                 name = '';
-            };
+            })();
 
             name(name: string) {
                 this.t.name = name;
-            };
-        }
+            }
+        },
     );
 
     const dec2 = createClassDecoratorContext(
         class {
-            t = new class {
+            t = new (class {
                 title = '';
-            };
+            })();
 
             title(name: string) {
                 this.t.title = name;
-            };
-        }
+            }
+        },
     );
 
     const dec3 = mergeDecorator(dec1, dec2);
 
     @dec3.name('myName')
-    class Peter {
-
-    }
+    class Peter {}
 
     expect(dec1._fetch(Peter)!.name).toBe('myName');
     expect(dec2._fetch(Peter)).toBe(undefined);
 
     @dec3.title('myTitle')
-    class Peter2 {
-
-    }
+    class Peter2 {}
 
     expect(dec1._fetch(Peter)!.name).toBe('myName');
     expect(dec1._fetch(Peter2)).toBe(undefined);
@@ -168,42 +160,44 @@ test('merge', () => {
 test('dual decorator', () => {
     const dec1 = createClassDecoratorContext(
         class {
-            t = new class {
+            t = new (class {
                 name = '';
                 resolver: string[] = [];
-            };
+            })();
 
             resolve(name: string): DualDecorator {
                 this.t.resolver.push(name);
-            };
+            }
 
             controller(name: string) {
                 this.t.name = name;
-            };
-        }
+            }
+        },
     );
 
     class Dec2 {
-        t = new class {
+        t = new (class {
             name = '';
             resolver: string[] = [];
-        };
+        })();
 
         name(name: string) {
             this.t.name = name;
-        };
+        }
 
         resolve(name: string): DualDecorator {
             this.t.resolver.push(name);
-        };
-
-        typeArg<T>(a: T) {
         }
+
+        typeArg<T>(a: T) {}
     }
 
     type Dec2FluidDecorator<T, D extends Function> = {
-        [name in keyof T]: name extends 'typeArg' ? <A>(a: A) => D & Dec2FluidDecorator<T, D> : T[name] extends (...args: infer K) => any ? (...args: K) => D & Dec2FluidDecorator<T, D>
-            : D & Dec2FluidDecorator<T, D> & { _data: ExtractApiDataType<T> };
+        [name in keyof T]: name extends 'typeArg'
+            ? <A>(a: A) => D & Dec2FluidDecorator<T, D>
+            : T[name] extends (...args: infer K) => any
+              ? (...args: K) => D & Dec2FluidDecorator<T, D>
+              : D & Dec2FluidDecorator<T, D> & { _data: ExtractApiDataType<T> };
     };
 
     type PropertyDecoratorResult2 = Dec2FluidDecorator<ExtractClass<typeof Dec2>, PropertyDecoratorFn> & DecoratorAndFetchSignature<typeof Dec2, PropertyDecoratorFn>;
@@ -238,9 +232,8 @@ test('dual decorator', () => {
 
     {
         expect(() => {
-            @(merged.name('b'))
-            class MyClass {
-            }
+            @merged.name('b')
+            class MyClass {}
         }).toThrow(`Decorator 'name' can not be used on class MyClass`);
     }
     {
@@ -261,37 +254,32 @@ test('basic', () => {
 
     const dec = createClassDecoratorContext(
         class {
-            t = new EntityInfo;
+            t = new EntityInfo();
 
             name(name: string) {
                 this.t.name = name;
-            };
+            }
 
             title(title: string) {
                 this.t.title = title;
-            };
-        }
+            }
+        },
     );
 
-    @(dec.name('peter'))
-    class Peter {
-    }
+    @dec.name('peter')
+    class Peter {}
 
     expect(dec._fetch(Peter)).toBeInstanceOf(EntityInfo);
     expect(dec._fetch(Peter)!.name).toBe('peter');
 
     @dec
-    class Peter2 {
-
-    }
+    class Peter2 {}
 
     expect(dec._fetch(Peter2)).toBeInstanceOf(EntityInfo);
     expect(dec._fetch(Peter2)!.name).toBe('');
 
     @(dec.name('peter').title('asd'))
-    class Peter3 {
-
-    }
+    class Peter3 {}
 
     expect(dec._fetch(Peter3)).toBeInstanceOf(EntityInfo);
     expect(dec._fetch(Peter3)!.name).toBe('peter');
@@ -306,31 +294,27 @@ test('basic magic property', () => {
 
     const dec = createClassDecoratorContext(
         class {
-            t = new EntityInfo;
+            t = new EntityInfo();
 
             name(name: string) {
                 this.t.name = name;
             }
 
             get important() {
-                return this.t.important = true;
+                return (this.t.important = true);
             }
-        }
+        },
     );
 
-    @(dec.important)
-    class Peter2 {
-
-    }
+    @dec.important
+    class Peter2 {}
 
     expect(dec._fetch(Peter2)).toBeInstanceOf(EntityInfo);
     expect(dec._fetch(Peter2)!.name).toBe('');
     expect(dec._fetch(Peter2)!.important).toBe(true);
 
-    @(dec.important.name('peter3'))
-    class Peter3 {
-
-    }
+    @dec.important.name('peter3')
+    class Peter3 {}
 
     expect(dec._fetch(Peter3)).toBeInstanceOf(EntityInfo);
     expect(dec._fetch(Peter3)!.name).toBe('peter3');
@@ -338,9 +322,7 @@ test('basic magic property', () => {
 
     {
         @(dec.name('peter4').important)
-        class Peter4 {
-
-        }
+        class Peter4 {}
 
         expect(dec._fetch(Peter4)).toBeInstanceOf(EntityInfo);
         expect(dec._fetch(Peter4)!.name).toBe('peter4');
@@ -348,11 +330,9 @@ test('basic magic property', () => {
     }
 
     {
-        @(dec.name('peter4'))
-        @(dec.important)
-        class Peter4 {
-
-        }
+        @dec.name('peter4')
+        @dec.important
+        class Peter4 {}
 
         expect(dec._fetch(Peter4)).toBeInstanceOf(EntityInfo);
         expect(dec._fetch(Peter4)!.name).toBe('peter4');
@@ -367,26 +347,22 @@ test('basic multiple', () => {
 
     const dec = createClassDecoratorContext(
         class {
-            t = new EntityInfo;
+            t = new EntityInfo();
 
             name(name: string) {
                 this.t.name = name;
             }
-        }
+        },
     );
 
-    @(dec.name('peter'))
-    class Peter {
-    }
+    @dec.name('peter')
+    class Peter {}
 
-    @(dec.name('peter2'))
-    class Peter2 {
-    }
+    @dec.name('peter2')
+    class Peter2 {}
 
-
-    @(dec.name('peter3'))
-    class Peter3 {
-    }
+    @dec.name('peter3')
+    class Peter3 {}
 
     expect(dec._fetch(Peter)).toBeInstanceOf(EntityInfo);
     expect(dec._fetch(Peter)!.name).toBe('peter');
@@ -402,24 +378,21 @@ test('basic property', () => {
     class PropertyInfo {
         important = false;
 
-        constructor(
-            public name: string = ''
-        ) {
-        }
+        constructor(public name: string = '') {}
     }
 
     const dec = createPropertyDecoratorContext(
         class {
-            t = new PropertyInfo;
+            t = new PropertyInfo();
 
             name(name: string) {
                 this.t.name = name;
             }
 
             get important() {
-                return this.t.important = true;
+                return (this.t.important = true);
             }
-        }
+        },
     );
 
     {
@@ -434,7 +407,7 @@ test('basic property', () => {
 
     {
         class Peter {
-            @(dec.name('peter')) name!: string;
+            @dec.name('peter') name!: string;
         }
 
         expect(dec._fetch(Peter, 'name')).toBeInstanceOf(PropertyInfo);
@@ -444,7 +417,7 @@ test('basic property', () => {
 
     {
         class Peter {
-            @(dec.important) name!: string;
+            @dec.important name!: string;
         }
 
         expect(dec._fetch(Peter, 'name')).toBeInstanceOf(PropertyInfo);
@@ -454,7 +427,7 @@ test('basic property', () => {
 
     {
         class Peter {
-            @(dec.important.name('peter')) name!: string;
+            @dec.important.name('peter') name!: string;
         }
 
         expect(dec._fetch(Peter, 'name')).toBeInstanceOf(PropertyInfo);
@@ -464,8 +437,8 @@ test('basic property', () => {
 
     {
         class Peter {
-            @(dec.important)
-            @(dec.name('peter'))
+            @dec.important
+            @dec.name('peter')
             name!: string;
         }
 

@@ -1,19 +1,24 @@
 import { expect, test } from '@jest/globals';
-import { decodeFrameData, deserializeFrameData, encodeFrameData } from '@deepkit/framework-debug-api';
-import { encodeCompoundKey, FrameCategory, FrameCategoryData, Stopwatch } from '@deepkit/stopwatch';
+
 import { App } from '@deepkit/app';
+import { decodeFrameData, deserializeFrameData, encodeFrameData } from '@deepkit/framework-debug-api';
+import { FrameCategory, FrameCategoryData, Stopwatch, encodeCompoundKey } from '@deepkit/stopwatch';
+
 import { FrameworkModule } from '../src/module.js';
 
-
 test('encode/decode', async () => {
-    const data = encodeFrameData([{
-        cid: encodeCompoundKey(1, 1), category: FrameCategory.http, data: {
-            method: 'GET',
-            clientIp: '127.0.0.1'
-        }
-    }]);
+    const data = encodeFrameData([
+        {
+            cid: encodeCompoundKey(1, 1),
+            category: FrameCategory.http,
+            data: {
+                method: 'GET',
+                clientIp: '127.0.0.1',
+            },
+        },
+    ]);
 
-    decodeFrameData(data, (data) => {
+    decodeFrameData(data, data => {
         console.log('data', data);
         const http = deserializeFrameData(data) as FrameCategoryData[FrameCategory.http];
         console.log('http', http);
@@ -23,7 +28,7 @@ test('encode/decode', async () => {
 
 test('default disabled', () => {
     const app = new App({
-        imports: [new FrameworkModule()]
+        imports: [new FrameworkModule()],
     });
 
     expect(app.get(Stopwatch).active).toBe(false);
@@ -31,7 +36,7 @@ test('default disabled', () => {
 
 test('enabled with debug', () => {
     const app = new App({
-        imports: [new FrameworkModule({ debug: true })]
+        imports: [new FrameworkModule({ debug: true })],
     });
 
     expect(app.get(Stopwatch).active).toBe(true);
@@ -39,7 +44,7 @@ test('enabled with debug', () => {
 
 test('enabled with profile', () => {
     const app = new App({
-        imports: [new FrameworkModule({ profile: true })]
+        imports: [new FrameworkModule({ profile: true })],
     });
 
     expect(app.get(Stopwatch).active).toBe(true);

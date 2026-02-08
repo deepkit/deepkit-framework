@@ -7,14 +7,14 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { test } from 'node:test';
 
-import { test } from '@jest/globals';
 import { equalType } from './utils.js';
 
 test('Exclude', () => {
     equalType<Exclude<'a' | 'b' | 'c', 'b'>, 'a' | 'c'>();
 
-    type o = { a: string, b: number, c: boolean }
+    type o = { a: string; b: number; c: boolean };
     equalType<Exclude<keyof o, 'b' | 'c'>, 'a'>();
 });
 
@@ -24,15 +24,15 @@ test('Extract', () => {
 });
 
 test('Pick', () => {
-    type o = { a: string, b: number, c: boolean }
+    type o = { a: string; b: number; c: boolean };
     equalType<Pick<o, 'a'>, { a: string }>();
-    equalType<Pick<o, 'a' | 'b'>, { a: string, b: number }>();
-    equalType<Pick<o, Exclude<keyof o, 'c'>>, { a: string, b: number }>();
+    equalType<Pick<o, 'a' | 'b'>, { a: string; b: number }>();
+    equalType<Pick<o, Exclude<keyof o, 'c'>>, { a: string; b: number }>();
 });
 
 test('Omit', () => {
-    equalType<Omit<{ a: string, b: number, c: boolean }, 'b' | 'c'>, { a: string }>();
-    equalType<Omit<{ a: string, b: number, c: boolean }, 'a'>, { b: number, c: boolean }>();
+    equalType<Omit<{ a: string; b: number; c: boolean }, 'b' | 'c'>, { a: string }>();
+    equalType<Omit<{ a: string; b: number; c: boolean }, 'a'>, { b: number; c: boolean }>();
 });
 
 test('Omit 2', () => {
@@ -44,7 +44,6 @@ test('Omit 2', () => {
     type B = Omit<A, 'value'>;
     equalType<B, { readonly a: string }>();
 });
-
 
 test('Awaited', () => {
     type T1 = Promise<string> extends object ? true : false;
@@ -59,13 +58,13 @@ test('Awaited', () => {
     type T3 = Promise<string> extends { then(onfulfilled: infer F, ...args: infer _): any } ? F : false;
     equalType<T3 extends (value: string) => any ? true : never, true>();
 
-    type T33 = Promise<string> extends (object & { then(onfulfilled: infer F, ...args: infer _): any }) ? F : false;
-    equalType<T33 extends ((value: string) => any) ? true : never, true>();
+    type T33 = Promise<string> extends object & { then(onfulfilled: infer F, ...args: infer _): any } ? F : false;
+    equalType<T33 extends (value: string) => any ? true : never, true>();
 
-    type T4 = ((value: string) => any) extends ((value: infer V, ...args: infer _) => any) ? V : never;
+    type T4 = ((value: string) => any) extends (value: infer V, ...args: infer _) => any ? V : never;
     equalType<T4, string>();
 
-    type T44 = T33 extends ((value: infer V, ...args: infer _) => any) ? V : never;
+    type T44 = T33 extends (value: infer V, ...args: infer _) => any ? V : never;
     equalType<T44, string>();
 
     equalType<Awaited<Promise<string>>, string>();
@@ -74,11 +73,11 @@ test('Awaited', () => {
 });
 
 test('intersection object', () => {
-    type a1 = string & {}
-    type a2 = null & {}
-    type a3 = undefined & {}
-    type a4 = (string | undefined) & {}
-    type a5 = (number | 'abc' | undefined) & {}
+    type a1 = string & {};
+    type a2 = null & {};
+    type a3 = undefined & {};
+    type a4 = (string | undefined) & {};
+    type a5 = (number | 'abc' | undefined) & {};
     equalType<a1, string>();
     equalType<a2, never>();
     equalType<a3, never>();
@@ -96,13 +95,13 @@ test('Record', () => {
 });
 
 test('Partial', () => {
-    type o = { a: string, b: number, c: boolean }
-    equalType<Partial<o>, { a?: string, b?: number, c?: boolean }>();
+    type o = { a: string; b: number; c: boolean };
+    equalType<Partial<o>, { a?: string; b?: number; c?: boolean }>();
 });
 
 test('Required', () => {
-    type o = { a: string, b?: number, c?: boolean }
-    equalType<Required<o>, { a: string, b: number, c: boolean }>();
+    type o = { a: string; b?: number; c?: boolean };
+    equalType<Required<o>, { a: string; b: number; c: boolean }>();
 });
 
 test('ReturnType', () => {
@@ -116,8 +115,7 @@ test('ReturnType', () => {
 });
 
 test('Parameters runtime', () => {
-    function fn(a: string, ...r: any[]): void {
-    }
+    function fn(a: string, ...r: any[]): void {}
 
     equalType<Parameters<typeof fn>, [a: string, ...r: any[]]>();
 });
@@ -137,7 +135,7 @@ test('Parameters single type', () => {
 });
 
 test('Parameters single type no rest', () => {
-    type FirstParam<T extends (...args: any) => any> = T extends (k: infer I) => void ? I : never
+    type FirstParam<T extends (...args: any) => any> = T extends (k: infer I) => void ? I : never;
     type fn = (a: string) => void;
 
     type r = FirstParam<fn>;
@@ -157,8 +155,10 @@ test('sub Parameters type', () => {
 
 test('ConstructorParameters', () => {
     class User {
-        constructor(public username: string, password?: string) {
-        }
+        constructor(
+            public username: string,
+            password?: string,
+        ) {}
     }
     equalType<ConstructorParameters<typeof User>, [username: string, password?: string]>();
 

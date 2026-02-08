@@ -72,8 +72,8 @@ export interface brokerDelete {
  * @internal
  */
 export interface brokerIncrement {
-    n: string,
-    v?: number
+    n: string;
+    v?: number;
 }
 
 /**
@@ -87,24 +87,24 @@ export interface brokerResponseIncrement {
  * @internal
  */
 export interface brokerSet {
-    n: string,
-    v: Uint8Array,
-    ttl: number,
+    n: string;
+    v: Uint8Array;
+    ttl: number;
 }
 
 /**
  * @internal
  */
 export interface brokerInvalidateCache {
-    n: string,
+    n: string;
 }
 
 /**
  * @internal
  */
 export interface brokerSetCache {
-    n: string,
-    v: Uint8Array,
+    n: string;
+    v: Uint8Array;
     ttl: number;
     tags?: string[];
 }
@@ -121,23 +121,25 @@ export interface brokerInvalidateCacheMessage {
  * @internal
  */
 export interface brokerResponseGet {
-    v?: Uint8Array,
+    v?: Uint8Array;
 }
 
 /**
  * @internal
  */
 export interface brokerResponseGetCache {
-    v?: Uint8Array,
-    ttl?: number,
+    v?: Uint8Array;
+    ttl?: number;
 }
 
 /**
  * @internal
  */
-export type brokerResponseGetCacheMeta = {
-    ttl: number,
-} | { missing: true };
+export type brokerResponseGetCacheMeta =
+    | {
+          ttl: number;
+      }
+    | { missing: true };
 
 /**
  * @internal
@@ -157,8 +159,8 @@ export interface brokerGetCache {
  * @internal
  */
 export interface brokerBusPublish {
-    c: string,
-    v: Uint8Array,
+    c: string;
+    v: Uint8Array;
 }
 
 /**
@@ -172,8 +174,8 @@ export interface brokerBusSubscribe {
  * @internal
  */
 export interface brokerBusResponseHandleMessage {
-    c: string,
-    v: Uint8Array,
+    c: string;
+    v: Uint8Array;
 }
 
 /**
@@ -236,9 +238,9 @@ export interface brokerLockId {
  * @internal
  */
 export interface brokerLock {
-    id: string,
-    ttl: number,
-    timeout?: number,
+    id: string;
+    ttl: number;
+    timeout?: number;
 }
 
 /**
@@ -252,8 +254,8 @@ export interface brokerResponseIsLock {
  * @internal
  */
 export interface brokerEntityFields {
-    name: string,
-    fields: string[],
+    name: string;
+    fields: string[];
 }
 
 /**
@@ -267,11 +269,11 @@ export enum SnapshotEntryType {
  * @internal
  */
 export type SnapshotEntry = {
-    type: SnapshotEntryType.queue,
+    type: SnapshotEntryType.queue;
     currentId: number;
     name: string;
     amount: number;
-}
+};
 
 /**
  * @internal

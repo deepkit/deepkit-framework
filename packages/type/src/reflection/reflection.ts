@@ -7,38 +7,49 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import {
-    assertType,
-    autoIncrementAnnotation,
+    AbstractClassType,
+    ClassType,
+    DeepkitError,
+    arrayRemoveItem,
+    getClassName,
+    isArray,
+    isClass,
+    isFunction,
+    isGlobalClass,
+    isPrototypeOfBase,
+    stringifyValueWithType,
+} from '@deepkit/core';
+
+import { isWithDeferredDecorators } from '../decorator.js';
+import { findCommonLiteral } from '../inheritance.js';
+import {
     BackReferenceOptionsResolved,
-    clearTypeJitContainer,
-    copyAndSetParent,
+    DatabaseFieldOptions,
+    EntityOptions,
+    IndexOptions,
+    ReferenceOptions,
+    ValidateFunction,
+    autoIncrementAnnotation,
     dataAnnotation,
     databaseAnnotation,
-    DatabaseFieldOptions,
     embeddedAnnotation,
     entityAnnotation,
-    EntityOptions,
     excludedAnnotation,
     getBackReferenceType,
-    getClassType,
     getReferenceType,
-    getTypeJitContainer,
     groupAnnotation,
-    hasMember,
     indexAnnotation,
-    IndexOptions,
     isBackReferenceType,
     isReferenceType,
-    isType,
-    memberNameToString,
     primaryKeyAnnotation,
-    ReferenceOptions,
+} from '../type-annotations.js';
+import { SerializedTypes, serializeType } from '../type-serialization.js';
+import { NoTypeReceived } from '../utils.js';
+import { Packed, resolvePacked, resolveRuntimeType } from './processor.js';
+import {
     ReflectionKind,
     ReflectionVisibility,
-    stringifyResolvedType,
-    stringifyType,
     Type,
     TypeClass,
     TypeFunction,
@@ -49,14 +60,17 @@ import {
     TypeProperty,
     TypePropertySignature,
     TypeTemplateLiteral,
+    assertType,
+    clearTypeJitContainer,
+    copyAndSetParent,
+    getClassType,
+    getTypeJitContainer,
+    hasMember,
+    isType,
+    memberNameToString,
+    stringifyResolvedType,
+    stringifyType,
 } from './type.js';
-import { AbstractClassType, arrayRemoveItem, ClassType, getClassName, isArray, isClass, isFunction, isGlobalClass, isPrototypeOfBase, stringifyValueWithType } from '@deepkit/core';
-import { Packed, resolvePacked, resolveRuntimeType } from './processor.js';
-import { NoTypeReceived } from '../utils.js';
-import { findCommonLiteral } from '../inheritance.js';
-import type { ValidateFunction } from '../validator.js';
-import { isWithDeferredDecorators } from '../decorator.js';
-import { SerializedTypes, serializeType } from '../type-serialization.js';
 
 /**
  * Receives the runtime type of template argument or runtime symbols like
@@ -72,11 +86,17 @@ import { SerializedTypes, serializeType } from '../type-serialization.js';
  */
 export type ReceiveType<T> = Packed<T> | ClassType<T> | Type;
 
-export function resolveReceiveType(type?: Packed | Type | Function | ClassType | AbstractClassType | ReflectionClass<any>): Type {
-    if (!type) throw new NoTypeReceived();
+export function resolveReceiveType(
+    type?: Packed | Type | Function | ClassType | AbstractClassType | ReflectionClass<any>,
+): Type {
+    if (!type) throw new NoTypeReceived('resolveReceiveType called with undefined type');
     let typeFn: Function | undefined = undefined;
 
     if (isArray(type)) {
+        // backward compat: old compiler wraps single type arg in array [packed]
+        if (type.length === 1 && isArray(type[0])) {
+            type = type[0] as Packed;
+        }
         if (type.__type) return type.__type;
         // this is fast path for simple references to a type, e.g. cast<User>(), so that User is directly handled
         // instead of running the VM to resolve to User first.
@@ -84,9 +104,15 @@ export function resolveReceiveType(type?: Packed | Type | Function | ClassType |
             //n! represents a simple inline: [Op.inline, 0]
             //P7! represents a class reference: [Op.Frame, Op.classReference, 0] (Op.Frame seems unnecessary)
             typeFn = (type as any)[0] as Function | any;
-            type = (isFunction(typeFn) ? typeFn() : typeFn) as Packed | Type | ClassType | AbstractClassType | ReflectionClass<any> | undefined;
+            type = (isFunction(typeFn) ? typeFn() : typeFn) as
+                | Packed
+                | Type
+                | ClassType
+                | AbstractClassType
+                | ReflectionClass<any>
+                | undefined;
             if (!type) {
-                throw new Error(`No type resolved for ${String(typeFn)}. Circular import or no runtime type available.`);
+                throw new NoTypeReceived(`type reference ${String(typeFn)} returned undefined`);
             }
         }
     }
@@ -98,11 +124,11 @@ export function resolveReceiveType(type?: Packed | Type | Function | ClassType |
         if (!('__type' in type)) {
             if ((type as any).__cached_type) return (type as any).__cached_type;
             // disabled reflection for this class, so we return shallow TypeClass
-            return (type as any).__cached_type = {
+            return ((type as any).__cached_type = {
                 kind: ReflectionKind.class,
                 classType: type as any,
                 types: [],
-            } as any;
+            } as any);
         }
         return resolveRuntimeType(type) as Type;
     }
@@ -122,53 +148,7 @@ export function reflectOrUndefined(o: any, ...args: any[]): Type | undefined {
     }
 }
 
-export function valuesOf<T>(args: any[] = [], p?: ReceiveType<T>): (string | number | symbol | Type)[] {
-    const type = typeOf(args, p);
-    if (type.kind === ReflectionKind.union) {
-        return type.types.map(v => {
-            if (v.kind === ReflectionKind.literal) return v.literal;
-            return v;
-        }) as (string | number | symbol | Type)[];
-    }
-    if (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) {
-        return type.types.map(v => {
-            if (v.kind === ReflectionKind.method) return v;
-            if (v.kind === ReflectionKind.property) return v.type;
-            if (v.kind === ReflectionKind.propertySignature) return v.type;
-            if (v.kind === ReflectionKind.methodSignature) return v;
-            return v;
-        }) as (string | number | symbol | Type)[];
-    }
-    return [];
-}
-
-export function propertiesOf<T>(args: any[] = [], p?: ReceiveType<T>): (string | number | symbol | Type)[] {
-    const type = typeOf(args, p);
-    if (type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.class) {
-        return type.types.map(v => {
-            if (v.kind === ReflectionKind.method) return v.name;
-            if (v.kind === ReflectionKind.property) return v.name;
-            if (v.kind === ReflectionKind.propertySignature) return v.name;
-            if (v.kind === ReflectionKind.methodSignature) return v.name;
-            return v;
-        }) as (string | number | symbol | Type)[];
-    }
-    return [];
-}
-
-export function getNominalId<T>(args: any[] = [], p?: ReceiveType<T>): number | undefined {
-    const t = typeOf(args, p);
-    if (t.kind === ReflectionKind.class || t.kind === ReflectionKind.objectLiteral) return t.id;
-    return;
-}
-
-export function typeOf<T>(args: any[] = [], p?: ReceiveType<T>): Type {
-    if (p) {
-        return args.length > 0 ? resolveRuntimeType(p, args) : resolveReceiveType(p) as Type;
-    }
-
-    throw new Error('No type given');
-}
+export { typeOf, valuesOf, propertiesOf, getNominalId } from '../reflect.js';
 
 export function removeTypeName<T extends Type>(type: T): T {
     const o = { ...type };
@@ -190,14 +170,23 @@ export function removeNominal<T extends Type | undefined | Type[]>(type: T): T {
     return type;
 }
 
-export function getProperty(type: TypeObjectLiteral | TypeClass, memberName: number | string | symbol): TypeProperty | TypePropertySignature | undefined {
+export function getProperty(
+    type: TypeObjectLiteral | TypeClass,
+    memberName: number | string | symbol,
+): TypeProperty | TypePropertySignature | undefined {
     for (const t of type.types) {
-        if ((t.kind === ReflectionKind.property || t.kind === ReflectionKind.propertySignature) && t.name === memberName) return t;
+        if (
+            (t.kind === ReflectionKind.property || t.kind === ReflectionKind.propertySignature) &&
+            t.name === memberName
+        )
+            return t;
     }
     return;
 }
 
-export function toSignature(type: TypeProperty | TypeMethod | TypePropertySignature | TypeMethodSignature): TypePropertySignature | TypeMethodSignature {
+export function toSignature(
+    type: TypeProperty | TypeMethod | TypePropertySignature | TypeMethodSignature,
+): TypePropertySignature | TypeMethodSignature {
     if (type.kind === ReflectionKind.propertySignature || type.kind === ReflectionKind.methodSignature) return type;
     if (type.kind === ReflectionKind.property) {
         return { ...type, parent: type.parent as any, kind: ReflectionKind.propertySignature };
@@ -211,11 +200,15 @@ export function hasCircularReference(type: Type) {
     if (jit.hasCircularReference !== undefined) return jit.hasCircularReference;
 
     let hasCircular = false;
-    visit(type, () => undefined, () => {
-        hasCircular = true;
-    });
+    visit(
+        type,
+        () => undefined,
+        () => {
+            hasCircular = true;
+        },
+    );
 
-    return jit.hasCircularReference = hasCircular;
+    return (jit.hasCircularReference = hasCircular);
 }
 
 let visitStackId: number = 0;
@@ -231,7 +224,7 @@ function extendPath(path: string, member: Type): string {
 }
 
 export function visit(type: Type, visitor: (type: Type, path: string) => false | void, onCircular?: () => void): void {
-    const stack: { type: Type, depth: number, path: string }[] = [];
+    const stack: { type: Type; depth: number; path: string }[] = [];
     stack.push({ type, depth: 0, path: '' });
     const stackId: number = visitStackId++;
 
@@ -255,11 +248,12 @@ export function visit(type: Type, visitor: (type: Type, path: string) => false |
             case ReflectionKind.class:
             case ReflectionKind.intersection:
             case ReflectionKind.templateLiteral:
-                for (const member of type.types) stack.push({
-                    type: member,
-                    depth: entry.depth + 1,
-                    path: extendPath(entry.path, member),
-                });
+                for (const member of type.types)
+                    stack.push({
+                        type: member,
+                        depth: entry.depth + 1,
+                        path: extendPath(entry.path, member),
+                    });
                 break;
             case ReflectionKind.string:
             case ReflectionKind.number:
@@ -273,11 +267,12 @@ export function visit(type: Type, visitor: (type: Type, path: string) => false |
             case ReflectionKind.method:
             case ReflectionKind.methodSignature:
                 stack.push({ type: type.return, depth: entry.depth + 1, path: entry.path });
-                for (const member of type.parameters) stack.push({
-                    type: member,
-                    depth: entry.depth + 1,
-                    path: extendPath(entry.path, member),
-                });
+                for (const member of type.parameters)
+                    stack.push({
+                        type: member,
+                        depth: entry.depth + 1,
+                        path: extendPath(entry.path, member),
+                    });
                 break;
             case ReflectionKind.propertySignature:
             case ReflectionKind.property:
@@ -307,9 +302,10 @@ function hasFunctionExpression(fn: Function): boolean {
         code = code.slice('function() { return '.length);
         if (code.endsWith('; }')) code = code.slice(0, -3);
     }
-    if (code[0] === '\'' && code[code.length - 1] === '\'') return false;
+    if (code[0] === "'" && code[code.length - 1] === "'") return false;
     if (code[0] === '"' && code[code.length - 1] === '"') return false;
     if (code[0] === '`' && code[code.length - 1] === '`') return false;
+    if (code.startsWith('new ')) return false;
     return code.includes('(');
 }
 
@@ -412,9 +408,7 @@ export class ReflectionFunction {
     parameters: ReflectionParameter[] = [];
     description: string = '';
 
-    constructor(
-        public readonly type: TypeMethod | TypeMethodSignature | TypeFunction,
-    ) {
+    constructor(public readonly type: TypeMethod | TypeMethodSignature | TypeFunction) {
         for (const p of this.type.parameters) {
             this.parameters.push(new ReflectionParameter(p, this));
         }
@@ -436,12 +430,12 @@ export class ReflectionFunction {
 
         const type = reflect(fn);
         if (type.kind !== ReflectionKind.function) {
-            throw new Error(`Given object is not a function ${fn}`);
+            throw new DeepkitError('DK-T110', `Given object is not a function ${fn}`);
         }
         return new ReflectionFunction(type);
     }
 
-    getParameterNames(): (string)[] {
+    getParameterNames(): string[] {
         return this.getParameters().map(v => v.getName());
     }
 
@@ -458,7 +452,7 @@ export class ReflectionFunction {
 
     getParameter(name: string | number | symbol): ReflectionParameter {
         const property = this.getParameterOrUndefined(name);
-        if (!property) throw new Error(`No parameter ${String(name)} in method ${this.name} found.`);
+        if (!property) throw new DeepkitError('DK-T111', `No parameter ${String(name)} in method ${this.name} found.`);
         return property;
     }
 
@@ -628,7 +622,10 @@ export class ReflectionProperty {
     }
 
     isDatabaseMigrationSkipped(database: string): boolean {
-        return this.isDatabaseSkipped(database) || databaseAnnotation.getDatabase(this.getType(), database)?.skipMigration === true;
+        return (
+            this.isDatabaseSkipped(database) ||
+            databaseAnnotation.getDatabase(this.getType(), database)?.skipMigration === true
+        );
     }
 
     getBackReference(): BackReferenceOptionsResolved {
@@ -690,9 +687,11 @@ export class ReflectionProperty {
      */
     getResolvedReflectionClass(): ReflectionClass<any> {
         if (this.type.kind !== ReflectionKind.class && this.type.kind !== ReflectionKind.objectLiteral) {
-            throw new Error(`Could not resolve reflection class since ${this.name} is not a class|object but of type ${stringifyType(this.type)}`);
+            throw new Error(
+                `Could not resolve reflection class since ${this.name} is not a class|object but of type ${stringifyType(this.type)}`,
+            );
         }
-        return this.cachedResolvedReflectionClass ||= resolveClassType(this.getType());
+        return (this.cachedResolvedReflectionClass ||= resolveClassType(this.getType()));
     }
 
     /**
@@ -721,7 +720,10 @@ export class ReflectionProperty {
     }
 
     clone(reflectionClass?: ReflectionClass<any>, property?: TypeProperty | TypePropertySignature): ReflectionProperty {
-        const c = new ReflectionProperty(copyAndSetParent(property || this.property), reflectionClass || this.reflectionClass);
+        const c = new ReflectionProperty(
+            copyAndSetParent(property || this.property),
+            reflectionClass || this.reflectionClass,
+        );
         c.jsonType = this.jsonType;
         c.serializer = this.serializer;
         c.deserializer = this.deserializer;
@@ -783,7 +785,10 @@ export class ReflectionProperty {
      * If the property is actual optional or is an union with undefined in it.
      */
     isOptional(): boolean {
-        return this.property.optional === true || (this.type.kind === ReflectionKind.union && this.type.types.some(v => v.kind === ReflectionKind.undefined));
+        return (
+            this.property.optional === true ||
+            (this.type.kind === ReflectionKind.union && this.type.types.some(v => v.kind === ReflectionKind.undefined))
+        );
     }
 
     setOptional(v: boolean): void {
@@ -791,7 +796,7 @@ export class ReflectionProperty {
     }
 
     isNullable(): boolean {
-        return (this.type.kind === ReflectionKind.union && this.type.types.some(v => v.kind === ReflectionKind.null));
+        return this.type.kind === ReflectionKind.union && this.type.types.some(v => v.kind === ReflectionKind.null);
     }
 
     isReadonly(): boolean {
@@ -817,7 +822,11 @@ export class ReflectionProperty {
     }
 
     hasDefaultFunctionExpression(): boolean {
-        return this.property.kind === ReflectionKind.property && !!this.property.default && hasFunctionExpression(this.property.default);
+        return (
+            this.property.kind === ReflectionKind.property &&
+            !!this.property.default &&
+            hasFunctionExpression(this.property.default)
+        );
     }
 
     getDefaultValueFunction(): (() => any) | undefined {
@@ -832,15 +841,21 @@ export class ReflectionProperty {
     }
 
     isPublic(): boolean {
-        return this.property.kind === ReflectionKind.property ? this.property.visibility === ReflectionVisibility.public : true;
+        return this.property.kind === ReflectionKind.property
+            ? this.property.visibility === ReflectionVisibility.public
+            : true;
     }
 
     isProtected(): boolean {
-        return this.property.kind === ReflectionKind.property ? this.property.visibility === ReflectionVisibility.protected : false;
+        return this.property.kind === ReflectionKind.property
+            ? this.property.visibility === ReflectionVisibility.protected
+            : false;
     }
 
     isPrivate(): boolean {
-        return this.property.kind === ReflectionKind.property ? this.property.visibility === ReflectionVisibility.private : false;
+        return this.property.kind === ReflectionKind.property
+            ? this.property.visibility === ReflectionVisibility.private
+            : false;
     }
 }
 
@@ -865,7 +880,7 @@ export class EntityData {
     databaseSchemaName?: string;
     disableConstructor: boolean = false;
     data: { [name: string]: any } = {};
-    indexes: { names: string[], options: IndexOptions }[] = [];
+    indexes: { names: string[]; options: IndexOptions }[] = [];
     singleTableInheritance?: true;
 }
 
@@ -874,7 +889,8 @@ function applyEntityOptions(reflection: ReflectionClass<any>, entityOptions: Ent
     if (entityOptions.description !== undefined) reflection.description = entityOptions.description;
     if (entityOptions.collection !== undefined) reflection.collectionName = entityOptions.collection;
     if (entityOptions.database !== undefined) reflection.databaseSchemaName = entityOptions.database;
-    if (entityOptions.singleTableInheritance !== undefined) reflection.singleTableInheritance = entityOptions.singleTableInheritance;
+    if (entityOptions.singleTableInheritance !== undefined)
+        reflection.singleTableInheritance = entityOptions.singleTableInheritance;
     if (entityOptions.indexes !== undefined) reflection.indexes = entityOptions.indexes;
 }
 
@@ -942,7 +958,7 @@ export class ReflectionClass<T> {
      * }
      * ```
      */
-    indexes: { names: string[], options: IndexOptions }[] = [];
+    indexes: { names: string[]; options: IndexOptions }[] = [];
 
     protected propertyNames: string[] = [];
     protected methodNames: string[] = [];
@@ -968,8 +984,12 @@ export class ReflectionClass<T> {
      */
     public subClasses: ReflectionClass<any>[] = [];
 
-    constructor(public readonly type: TypeClass | TypeObjectLiteral, public readonly parent?: ReflectionClass<any>) {
-        if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral) throw new Error('Only class, interface, or object literal type possible');
+    constructor(
+        public readonly type: TypeClass | TypeObjectLiteral,
+        public readonly parent?: ReflectionClass<any>,
+    ) {
+        if (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral)
+            throw new Error('Only class, interface, or object literal type possible');
 
         if (parent) {
             this.name = parent.name;
@@ -1008,7 +1028,6 @@ export class ReflectionClass<T> {
 
                     const reflectionMethod = this.getMethodOrUndefined(property);
                     if (reflectionMethod) reflectionMethod.applyDecorator(data);
-
                 } else if (parameterIndexOrDescriptor !== undefined) {
                     const reflectionMethod = this.getMethodOrUndefined(property || 'constructor');
                     if (reflectionMethod) {
@@ -1059,12 +1078,14 @@ export class ReflectionClass<T> {
     }
 
     getClassName(): string {
-        return this.type.kind === ReflectionKind.class ? this.type.typeName || getClassName(this.getClassType()) : this.type.typeName || 'Object';
+        return this.type.kind === ReflectionKind.class
+            ? this.type.typeName || getClassName(this.getClassType())
+            : this.type.typeName || 'Object';
     }
 
     createDefaultObject(): object {
         try {
-            return new (this.getClassType());
+            return new (this.getClassType())();
         } catch {
             return {};
         }
@@ -1092,7 +1113,7 @@ export class ReflectionClass<T> {
 
     getPrimary(): ReflectionProperty {
         if (!this.primaries.length) {
-            throw new Error(`Class ${this.getClassName()} has no primary key.`);
+            throw new DeepkitError('DK-T100', `Class ${this.getClassName()} has no primary key`);
         }
         return this.primaries[0];
     }
@@ -1122,12 +1143,15 @@ export class ReflectionClass<T> {
 
     removeProperty(name: string | number | symbol) {
         const property = this.properties.find(v => v.getName() === name);
-        if (!property) throw new Error(`Property ${String(name)} not known in ${this.getClassName()}`);
+        if (!property)
+            throw new DeepkitError('DK-T102', `No property '${String(name)}' found in ${this.getClassName()}`);
 
         const stringName = memberNameToString(name);
         arrayRemoveItem(this.propertyNames, stringName);
 
-        const indexType = this.type.types.findIndex(v => (v.kind === ReflectionKind.property || v.kind === ReflectionKind.propertySignature) && v.name === name);
+        const indexType = this.type.types.findIndex(
+            v => (v.kind === ReflectionKind.property || v.kind === ReflectionKind.propertySignature) && v.name === name,
+        );
         if (indexType !== -1) this.type.types.splice(indexType, 1);
 
         arrayRemoveItem(this.properties, property);
@@ -1178,7 +1202,7 @@ export class ReflectionClass<T> {
         optional?: true;
         readonly?: true;
         description?: string;
-        visibility?: ReflectionVisibility
+        visibility?: ReflectionVisibility;
         type: Type;
     }): ReflectionProperty {
         const type = {
@@ -1227,7 +1251,8 @@ export class ReflectionClass<T> {
 
     getAssignedSingleTableInheritanceSubClassesByIdentifier(): { [id: string]: ReflectionClass<any> } | undefined {
         if (!this.subClasses.length) return;
-        if (this.assignedSingleTableInheritanceSubClassesByIdentifier) return this.assignedSingleTableInheritanceSubClassesByIdentifier;
+        if (this.assignedSingleTableInheritanceSubClassesByIdentifier)
+            return this.assignedSingleTableInheritanceSubClassesByIdentifier;
 
         let isBaseOfSingleTableEntity = false;
         for (const schema of this.subClasses) {
@@ -1243,7 +1268,8 @@ export class ReflectionClass<T> {
 
         for (const schema of this.subClasses) {
             if (schema.singleTableInheritance) {
-                if (!this.assignedSingleTableInheritanceSubClassesByIdentifier) this.assignedSingleTableInheritanceSubClassesByIdentifier = {};
+                if (!this.assignedSingleTableInheritanceSubClassesByIdentifier)
+                    this.assignedSingleTableInheritanceSubClassesByIdentifier = {};
                 const property = schema.getProperty(discriminant);
                 assertType(property.type, ReflectionKind.literal);
                 this.assignedSingleTableInheritanceSubClassesByIdentifier[property.type.literal as string] = schema;
@@ -1258,14 +1284,16 @@ export class ReflectionClass<T> {
 
     getSingleTableInheritanceDiscriminantName(): string {
         if (!this.data.singleTableInheritanceProperty) {
-
             // let discriminant = findCommonDiscriminant(this.subClasses);
 
             //when no discriminator was found, find a common literal
             const discriminant = findCommonLiteral(this.subClasses);
 
             if (!discriminant) {
-                throw new Error(`Sub classes of ${this.getClassName()} single-table inheritance [${this.subClasses.map(v => v.getClassName())}] have no common discriminant or common literal. Please define one.`);
+                throw new DeepkitError(
+                    'DK-T105',
+                    `Sub classes of ${this.getClassName()} single-table inheritance [${this.subClasses.map(v => v.getClassName())}] have no common discriminant or common literal.`,
+                );
             }
             this.data.singleTableInheritanceProperty = this.getProperty(discriminant);
         }
@@ -1291,21 +1319,42 @@ export class ReflectionClass<T> {
         }
     }
 
-    static from<T>(classTypeIn?: ReceiveType<T> | AbstractClassType<T> | TypeClass | TypeObjectLiteral | ReflectionClass<any>, args: any[] = []): ReflectionClass<T> {
-        if (!classTypeIn) throw new Error(`No type given in ReflectionClass.from<T>`);
-        if (isArray(classTypeIn)) classTypeIn = resolveReceiveType(classTypeIn);
+    static from<T>(
+        classTypeIn?:
+            | AbstractClassType<T>
+            | ClassType<T>
+            | TypeClass
+            | TypeObjectLiteral
+            | ReflectionClass<any>
+            | Type
+            | Packed,
+        args: any[] = [],
+    ): ReflectionClass<T> {
+        if (!classTypeIn) throw new NoTypeReceived('ReflectionClass.from() called without argument');
+        if (isArray(classTypeIn)) classTypeIn = resolvePacked(classTypeIn, undefined, { reuseCached: true });
 
         if (classTypeIn instanceof ReflectionClass) return classTypeIn;
         if (isType(classTypeIn)) {
-            if (classTypeIn.kind === ReflectionKind.objectLiteral || (classTypeIn.kind === ReflectionKind.class && classTypeIn.typeArguments)) {
+            if (
+                classTypeIn.kind === ReflectionKind.objectLiteral ||
+                (classTypeIn.kind === ReflectionKind.class && classTypeIn.typeArguments)
+            ) {
                 const jit = getTypeJitContainer(classTypeIn);
                 if (jit.reflectionClass) return jit.reflectionClass;
-                return jit.reflectionClass = new ReflectionClass<T>(classTypeIn);
+                return (jit.reflectionClass = new ReflectionClass<T>(classTypeIn));
             }
-            if (classTypeIn.kind !== ReflectionKind.class) throw new Error(`TypeClass or TypeObjectLiteral expected, not ${ReflectionKind[classTypeIn.kind]}`);
+            if (classTypeIn.kind !== ReflectionKind.class)
+                throw new DeepkitError(
+                    'DK-T104',
+                    `TypeClass or TypeObjectLiteral expected, not ${ReflectionKind[classTypeIn.kind]}.`,
+                );
         }
 
-        const classType = isType(classTypeIn) ? (classTypeIn as TypeClass).classType : (classTypeIn as any)['prototype'] ? classTypeIn as ClassType<T> : classTypeIn.constructor as ClassType<T>;
+        const classType = isType(classTypeIn)
+            ? (classTypeIn as TypeClass).classType
+            : (classTypeIn as any)['prototype']
+              ? (classTypeIn as ClassType<T>)
+              : (classTypeIn.constructor as ClassType<T>);
 
         if (!classType.prototype.hasOwnProperty(reflectionClassSymbol)) {
             Object.defineProperty(classType.prototype, reflectionClassSymbol, { writable: true, enumerable: false });
@@ -1315,20 +1364,30 @@ export class ReflectionClass<T> {
             return classType.prototype[reflectionClassSymbol];
         }
 
-        const type = isType(classTypeIn) ? classTypeIn as TypeClass : ('__type' in classType ?
-            args.length ? resolveRuntimeType(classType, args) : resolveRuntimeType(classType)
-            : {
-                kind: ReflectionKind.class,
-                classType,
-                types: [],
-            } as TypeClass);
+        const type = isType(classTypeIn)
+            ? (classTypeIn as TypeClass)
+            : '__type' in classType
+              ? args.length
+                  ? resolveRuntimeType(classType, args)
+                  : resolveRuntimeType(classType)
+              : ({
+                    kind: ReflectionKind.class,
+                    classType,
+                    types: [],
+                } as TypeClass);
 
         if (type.kind !== ReflectionKind.class) {
-            throw new Error(`Given class is not a class but kind ${ReflectionKind[type.kind]}. classType: ${stringifyValueWithType(classType)}`);
+            throw new DeepkitError(
+                'DK-T104',
+                `TypeClass or TypeObjectLiteral expected, not ${ReflectionKind[type.kind]}. classType: ${stringifyValueWithType(classType)}`,
+            );
         }
 
         const parentProto = Object.getPrototypeOf(classType.prototype);
-        const parentReflectionClass: ReflectionClass<T> | undefined = parentProto && parentProto.constructor !== Object ? ReflectionClass.from(parentProto, type.extendsArguments) : undefined;
+        const parentReflectionClass: ReflectionClass<T> | undefined =
+            parentProto && parentProto.constructor !== Object
+                ? ReflectionClass.from(parentProto, type.extendsArguments)
+                : undefined;
 
         const reflectionClass = new ReflectionClass(type, parentReflectionClass);
         if (args.length === 0) {
@@ -1383,7 +1442,11 @@ export class ReflectionClass<T> {
 
     getProperty(name: string | number | symbol): ReflectionProperty {
         const property = this.getPropertyOrUndefined(name);
-        if (!property) throw new Error(`No property ${memberNameToString(name)} found in ${this.getClassName()}`);
+        if (!property)
+            throw new DeepkitError(
+                'DK-T102',
+                `No property '${memberNameToString(name)}' found in ${this.getClassName()}.`,
+            );
         return property;
     }
 
@@ -1401,7 +1464,11 @@ export class ReflectionClass<T> {
 
     getMethod(name: string | number | symbol): ReflectionMethod {
         const method = this.getMethodOrUndefined(name);
-        if (!method) throw new Error(`No method ${memberNameToString(name)} found in ${this.getClassName()}`);
+        if (!method)
+            throw new DeepkitError(
+                'DK-T103',
+                `No method '${memberNameToString(name)}' found in ${this.getClassName()}.`,
+            );
         return method;
     }
 
@@ -1449,7 +1516,11 @@ export class ReflectionClass<T> {
                 continue;
             }
 
-            if (fromReference.isBackReference() && fromReference.getBackReference().mappedBy && !fromReference.getBackReference().via) {
+            if (
+                fromReference.isBackReference() &&
+                fromReference.getBackReference().mappedBy &&
+                !fromReference.getBackReference().via
+            ) {
                 if (fromReference.getBackReference().mappedBy === backRef.name) {
                     //perfect match
                     return backRef;
@@ -1458,7 +1529,12 @@ export class ReflectionClass<T> {
             }
 
             //add to candidates if possible
-            if (fromReference.isBackReference() && fromReference.getBackReference().via && backRef.isBackReference() && backRef.getBackReference().via) {
+            if (
+                fromReference.isBackReference() &&
+                fromReference.getBackReference().via &&
+                backRef.isBackReference() &&
+                backRef.getBackReference().via
+            ) {
                 if (fromReference.getBackReference().via === backRef.getBackReference().via) {
                     candidates.push(backRef);
                 }
@@ -1474,13 +1550,18 @@ export class ReflectionClass<T> {
         }
 
         if (candidates.length > 1) {
-            throw new Error(`Class ${this.getClassName()} has multiple potential reverse references [${candidates.map(v => v.name).join(', ')}] for ${fromReference.name} to class ${getClassName(toClassType)}. ` +
-                `Please specify each back reference by using 'mappedBy', e.g. @t.backReference({mappedBy: 'fieldNameOnTheOtherSide'} so its not ambiguous anymore.`);
+            throw new DeepkitError(
+                'DK-T107',
+                `Class ${this.getClassName()} has multiple potential reverse references [${candidates.map(v => v.name).join(', ')}] for ${fromReference.name} to class ${getClassName(toClassType)}. Use 'mappedBy' to disambiguate.`,
+            );
         }
 
         if (candidates.length === 1) return candidates[0];
 
-        throw new Error(`Class ${this.getClassName()} has no reference to class ${getClassName(toClassType)} defined.`);
+        throw new DeepkitError(
+            'DK-T106',
+            `Class ${this.getClassName()} has no reference to class ${getClassName(toClassType)} defined.`,
+        );
     }
 
     public extractPrimaryKey(item: object): Partial<T> {
@@ -1492,7 +1573,6 @@ export class ReflectionClass<T> {
         return primaryKey;
     }
 }
-
 
 // old function to decorate an interface
 // export function decorate<T>(decorate: { [P in keyof T]?: FreeDecoratorFn<any> }, p?: ReceiveType<T>): ReflectionClass<T> {

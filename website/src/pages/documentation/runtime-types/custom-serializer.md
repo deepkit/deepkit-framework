@@ -14,8 +14,8 @@ The following example creates an empty serializer.
 import { EmptySerializer } from '@deepkit/type';
 
 class User {
-    name: string = '';
-    created: Date = new Date;
+  name: string = '';
+  created: Date = new Date();
 }
 
 const mySerializer = new EmptySerializer('mySerializer');
@@ -33,7 +33,7 @@ As you can see, nothing has been converted (`created` is still a number, but we 
 
 ```typescript
 mySerializer.deserializeRegistry.registerClass(Date, (type, state) => {
-    state.addSetter(`new Date(${state.accessor})`);
+  state.addSetter(`new Date(${state.accessor})`);
 });
 
 const user = deserialize<User>({ name: 'Peter', created: 0 }, undefined, mySerializer);
@@ -51,7 +51,7 @@ To do the same for serialization, we register another serialization template.
 
 ```typescript
 mySerializer.serializeRegistry.registerClass(Date, (type, state) => {
-    state.addSetter(`${state.accessor}.toJSON()`);
+  state.addSetter(`${state.accessor}.toJSON()`);
 });
 
 const user1 = new User();
@@ -76,24 +76,24 @@ If you want to extend an existing serializer, you can do so using class inherita
 
 ```typescript
 class MySerializer extends Serializer {
-    constructor(name: string = 'mySerializer') {
-        super(name);
-        this.registerTemplates();
-    }
+  constructor(name: string = 'mySerializer') {
+    super(name);
+    this.registerTemplates();
+  }
 
-    protected registerTemplates() {
-        this.deserializeRegistry.register(ReflectionKind.string, (type, state) => {
-            state.addSetter(`String(${state.accessor})`);
-        });
+  protected registerTemplates() {
+    this.deserializeRegistry.register(ReflectionKind.string, (type, state) => {
+      state.addSetter(`String(${state.accessor})`);
+    });
 
-        this.deserializeRegistry.registerClass(Date, (type, state) => {
-            state.addSetter(`new Date(${state.accessor})`);
-        });
+    this.deserializeRegistry.registerClass(Date, (type, state) => {
+      state.addSetter(`new Date(${state.accessor})`);
+    });
 
-        this.serializeRegistry.registerClass(Date, (type, state) => {
-            state.addSetter(`${state.accessor}.toJSON()`);
-        });
-    }
+    this.serializeRegistry.registerClass(Date, (type, state) => {
+      state.addSetter(`${state.accessor}.toJSON()`);
+    });
+  }
 }
 const mySerializer = new MySerializer();
 ```

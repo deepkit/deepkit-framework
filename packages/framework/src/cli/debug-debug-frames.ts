@@ -7,16 +7,17 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 
-import { cli, Command, Flag } from '@deepkit/app';
-import { FrameworkConfig } from '../module.config.js';
+import { Command, Flag, cli } from '@deepkit/app';
+import { sleep } from '@deepkit/core';
+import { decodeFrames } from '@deepkit/framework-debug-api';
 import { LoggerInterface } from '@deepkit/logger';
 import { FrameCategory, Stopwatch, StopwatchStore } from '@deepkit/stopwatch';
-import { join } from 'path';
-import { existsSync, readFileSync } from 'fs';
-import { decodeFrames } from '@deepkit/framework-debug-api';
-import { sleep } from '@deepkit/core';
+
 import { FileStopwatchStore } from '../debug/stopwatch/store.js';
+import { FrameworkConfig } from '../module.config.js';
 
 /**
  * @description Prints debugging information about profiler frames.
@@ -28,12 +29,9 @@ export class DebugProfileFramesCommand implements Command {
         protected logger: LoggerInterface,
         protected stopwatchStore: StopwatchStore,
         protected stopwatch: Stopwatch,
-    ) {
-    }
+    ) {}
 
-    async execute(
-        reset: boolean & Flag = false,
-    ): Promise<void> {
+    async execute(reset: boolean & Flag = false): Promise<void> {
         if (reset) (this.stopwatchStore as FileStopwatchStore).removeAll();
         this.stopwatch.enable();
         console.log('start');
@@ -54,7 +52,7 @@ export class DebugProfileFramesCommand implements Command {
                             } else {
                                 for (let i = 0; i < 2; i++) {
                                     const frame = this.stopwatch.start('Sub sub sub ' + i, FrameCategory.function);
-                                        await sleep(0.1);
+                                    await sleep(0.1);
                                     frame.end();
                                 }
                             }
@@ -90,7 +88,7 @@ export class DebugProfileFramesCommand implements Command {
         // //
         // // const frames: { [cid: number]: Frame } = {};
         if (existsSync(framesPath)) {
-            decodeFrames(readFileSync(framesPath), (frame) => {
+            decodeFrames(readFileSync(framesPath), frame => {
                 console.log(frame);
                 // if (frame.type === FrameType.start) {
                 //     if (frame.category !== FrameCategory.http) return;
@@ -117,6 +115,5 @@ export class DebugProfileFramesCommand implements Command {
         //     if (data.url) r.url = data.url;
         //     if (data.responseStatus) r.statusCode = data.responseStatus;
         // });
-
     }
 }

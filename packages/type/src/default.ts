@@ -1,4 +1,4 @@
-import { binaryTypes, ReflectionKind, resolveTypeMembers, Type } from './reflection/type.js';
+import { ReflectionKind, Type, binaryTypes, resolveTypeMembers } from './reflection/type.js';
 
 /**
  * Returns a sensible default value for a given type.
@@ -68,10 +68,10 @@ export function defaultValue(type: Type): any {
             return result;
         }
         case ReflectionKind.class: {
-            if (type.classType === Date) return new Date;
-            if (type.classType === Set) return new Set;
-            if (type.classType === Map) return new Map;
-            if (binaryTypes.includes(type.classType)) return new type.classType;
+            if (type.classType === Date) return new Date();
+            if (type.classType === Set) return new Set();
+            if (type.classType === Map) return new Map();
+            if (binaryTypes.includes(type.classType)) return new type.classType();
 
             const result: any = {};
             const types = resolveTypeMembers(type);

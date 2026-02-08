@@ -1,5 +1,7 @@
-import { PrimaryKey } from '@deepkit/type';
 import { test } from '@jest/globals';
+
+import { PrimaryKey } from '@deepkit/type';
+
 import { Database } from '../src/database.js';
 import { MemoryDatabaseAdapter } from '../src/memory-db.js';
 

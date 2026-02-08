@@ -90,8 +90,52 @@ export interface HttpParserOptions extends FormidableOptions {
     multipartJsonKey?: string | undefined;
 }
 
-export class HttpConfig {
+export interface CorsOptions {
+    /**
+     * Allowed origins. Can be:
+     * - true: reflect request Origin (echo back)
+     * - '*': literal wildcard (cannot use with credentials)
+     * - string: exact origin match
+     * - string[]: list of allowed origins
+     * - RegExp: pattern match against origin
+     * - (origin: string) => boolean | string: custom function
+     */
+    allowOrigin: boolean | '*' | string | string[] | RegExp | ((origin: string) => boolean | string);
 
+    /**
+     * Allowed HTTP methods for preflight.
+     * @default ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE']
+     */
+    allowMethods?: string[];
+
+    /**
+     * Allowed headers.
+     * - true: reflect Access-Control-Request-Headers
+     * - string[]: explicit list
+     * @default true
+     */
+    allowHeaders?: string[] | true;
+
+    /**
+     * Headers exposed to the browser.
+     */
+    exposeHeaders?: string[];
+
+    /**
+     * Allow credentials (cookies, auth headers).
+     * Cannot be used with allowOrigin: '*'
+     * @default false
+     */
+    credentials?: boolean;
+
+    /**
+     * Preflight cache duration in seconds.
+     * @default 86400 (24 hours)
+     */
+    maxAge?: number;
+}
+
+export class HttpConfig {
     debug: boolean = false;
 
     parser: HttpParserOptions = {};
@@ -167,4 +211,10 @@ export class HttpConfig {
      * Default is 5 minutes.
      */
     requestTimeout?: number;
+
+    /**
+     * CORS configuration. Disabled by default.
+     * Set to enable cross-origin requests.
+     */
+    cors?: CorsOptions;
 }

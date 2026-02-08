@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+
 import { FilesystemFile, pathDirectories, resolveFilesystemPath } from '../src/filesystem.js';
 
 test('utils pathDirectories', async () => {

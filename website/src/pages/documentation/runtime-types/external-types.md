@@ -33,10 +33,11 @@ To following shows how to annotate generic classes:
 
 ```typescript
 import { MyExternalClass } from 'external-package';
+
 import { annotateClass } from '@deepkit/type';
 
 class AnnotatedClass<T> {
-    id!: T;
+  id!: T;
 }
 
 annotateClass(ExternalClass, AnnotatedClass);

@@ -44,10 +44,9 @@ const cacheEnumKeys = new Map<Object, string[]>();
 export function getEnumValues(enumDefinition: any): any[] {
     let value = cacheEnumKeys.get(enumDefinition);
     if (!value) {
-        value = Object.values(enumDefinition)
-            .filter((v: any) => {
-                return 'number' !== typeof enumDefinition[v];
-            }) as any[];
+        value = Object.values(enumDefinition).filter((v: any) => {
+            return 'number' !== typeof enumDefinition[v];
+        }) as any[];
 
         cacheEnumKeys.set(enumDefinition, value);
     }

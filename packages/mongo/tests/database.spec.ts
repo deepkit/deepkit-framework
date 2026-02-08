@@ -1,17 +1,18 @@
 import { expect, test } from '@jest/globals';
-import { Database, DatabaseErrorEvent, onDatabaseError } from '@deepkit/orm';
-import { MongoDatabaseAdapter } from '../src/adapter.js';
-import { entity, MongoId, PrimaryKey } from '@deepkit/type';
-import { MongoConnectionError, MongoDatabaseError } from '../src/client/error.js';
+
 import { assertDefined, assertInstanceOf } from '@deepkit/core';
+import { Database, DatabaseErrorEvent, onDatabaseError } from '@deepkit/orm';
+import { MongoId, PrimaryKey, entity } from '@deepkit/type';
+
+import { MongoDatabaseAdapter } from '../src/adapter.js';
+import { MongoConnectionError, MongoDatabaseError } from '../src/client/error.js';
 
 test('simple', async () => {
     @entity.name('asd')
     class Test {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
@@ -23,8 +24,13 @@ test('simple', async () => {
     }
 
     {
-        expect(await database.query(Test).filter({name: {$regex: /asd/}}).has()).toBe(true);
-        const item = await database.query(Test).filter({name: 'asd'}).findOne();
+        expect(
+            await database
+                .query(Test)
+                .filter({ name: { $regex: /asd/ } })
+                .has(),
+        ).toBe(true);
+        const item = await database.query(Test).filter({ name: 'asd' }).findOne();
         expect(item).toBeInstanceOf(Test);
         expect(item.name).toBe('asd');
     }
@@ -36,8 +42,7 @@ test('unit of work', async () => {
     class Test {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
@@ -50,15 +55,15 @@ test('unit of work', async () => {
     await session.commit();
 
     {
-        expect(await session.query(Test).filter({name: 'asd'}).has()).toBe(true);
-        const item = await session.query(Test).filter({name: 'asd'}).findOne();
+        expect(await session.query(Test).filter({ name: 'asd' }).has()).toBe(true);
+        const item = await session.query(Test).filter({ name: 'asd' }).findOne();
         expect(item).toBeInstanceOf(Test);
         expect(item.name).toBe('asd');
     }
 
     await session.remove(item);
     await session.commit();
-    expect(await session.query(Test).filter({name: 'asd'}).has()).toBe(false);
+    expect(await session.query(Test).filter({ name: 'asd' }).has()).toBe(false);
     database.disconnect();
 });
 
@@ -67,8 +72,7 @@ test('repository', async () => {
     class Test {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
@@ -77,11 +81,10 @@ test('repository', async () => {
     await database.persist(item);
 
     class TestRepository {
-        constructor(protected database: Database<MongoDatabaseAdapter>) {
-        }
+        constructor(protected database: Database<MongoDatabaseAdapter>) {}
 
         async findById(id: string) {
-            return this.database.query(Test).filter({_id: id}).findOne();
+            return this.database.query(Test).filter({ _id: id }).findOne();
         }
     }
 
@@ -98,21 +101,20 @@ test('session', async () => {
     class Test {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
     await database.query(Test).deleteMany();
 
-    await database.session(async (session) => {
+    await database.session(async session => {
         const item = new Test('asd');
         session.add(item);
     });
 
     {
-        expect(await database.query(Test).filter({name: 'asd'}).has()).toBe(true);
-        const item = await database.query(Test).filter({name: 'asd'}).findOne();
+        expect(await database.query(Test).filter({ name: 'asd' }).has()).toBe(true);
+        const item = await database.query(Test).filter({ name: 'asd' }).findOne();
         expect(item).toBeInstanceOf(Test);
         expect(item.name).toBe('asd');
     }
@@ -124,13 +126,12 @@ test('errors connect', async () => {
     class Test {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = new Database(new MongoDatabaseAdapter('mongodb://invalid/test'));
     let called: DatabaseErrorEvent | undefined;
-    database.listen(onDatabaseError, (event) => {
+    database.listen(onDatabaseError, event => {
         called = event;
     });
 
@@ -146,21 +147,20 @@ test('errors raw', async () => {
     class Test {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
     let called: DatabaseErrorEvent | undefined;
-    database.listen(onDatabaseError, (event) => {
+    database.listen(onDatabaseError, event => {
         called = event;
     });
 
-    await expect(() => database.raw<Test>([{$invalid: 1}]).find()).rejects.toThrow('Unrecognized pipeline stage name');
+    await expect(() => database.raw<Test>([{ $invalid: 1 }]).find()).rejects.toThrow('Unrecognized pipeline stage name');
 
     assertDefined(called);
     assertInstanceOf(called.error, MongoDatabaseError);
-    expect(called.error.code).toBe(40324);
+    expect(called.error.mongoCode).toBe(40324);
     expect(called.error.message).toContain('Unrecognized pipeline stage nam');
 });
 
@@ -168,20 +168,19 @@ test('errors query', async () => {
     class Test {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = new Database(new MongoDatabaseAdapter('mongodb://127.0.0.1/test'));
     let called: DatabaseErrorEvent | undefined;
-    database.listen(onDatabaseError, (event) => {
+    database.listen(onDatabaseError, event => {
         called = event;
     });
 
-    await expect(() => database.query<Test>().filter({$invalid: 1}).find()).rejects.toThrow('unknown top level operator: $invalid');
+    await expect(() => database.query<Test>().filter({ $invalid: 1 }).find()).rejects.toThrow('unknown top level operator: $invalid');
 
     assertDefined(called);
     assertInstanceOf(called.error, MongoDatabaseError);
-    expect(called.error.code).toBe(2);
+    expect(called.error.mongoCode).toBe(2);
     expect(called.error.message).toContain('unknown top level operator: $invalid');
 });

@@ -8,7 +8,10 @@ declare const Buffer: any;
  * Note that the result is either Uin8Array or Buffer, depending on the environment.
  * Buffer from NodeJS works slightly different than Uint8Array.
  */
-export const createBuffer: (size: number) => Uint8Array = 'undefined' !== typeof Buffer && 'function' === typeof Buffer.allocUnsafe ? Buffer.allocUnsafe : (size) => new Uint8Array(size);
+export const createBuffer: (size: number) => Uint8Array =
+    'undefined' !== typeof Buffer && 'function' === typeof Buffer.allocUnsafe
+        ? Buffer.allocUnsafe
+        : size => new Uint8Array(size);
 
 /**
  * Concat multiple buffers into one.
@@ -31,7 +34,10 @@ export function bufferConcat(chunks: Uint8Array[], length?: number): Uint8Array 
 
 const textEncoder = new TextDecoder();
 
-export const uint8ArrayToUtf8 = 'undefined' !== typeof Buffer ? (buffer: Uint8Array) => Buffer.from(buffer).toString('utf8') : (buffer: Uint8Array) => textEncoder.decode(buffer);
+export const uint8ArrayToUtf8 =
+    'undefined' !== typeof Buffer
+        ? (buffer: Uint8Array) => Buffer.from(buffer).toString('utf8')
+        : (buffer: Uint8Array) => textEncoder.decode(buffer);
 
 /**
  * Convert a buffer to a string.
@@ -55,4 +61,5 @@ export function nativeBase64ToUint8Array(base64: string): Uint8Array {
 /**
  * Converts a base64 string to a Uint8Array.
  */
-export const base64ToUint8Array: (v: string) => Uint8Array = 'undefined' === typeof Buffer ? nativeBase64ToUint8Array : (base64: string) => Buffer.from(base64, 'base64');
+export const base64ToUint8Array: (v: string) => Uint8Array =
+    'undefined' === typeof Buffer ? nativeBase64ToUint8Array : (base64: string) => Buffer.from(base64, 'base64');

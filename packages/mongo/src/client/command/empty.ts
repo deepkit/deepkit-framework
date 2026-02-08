@@ -7,9 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { Command } from './command.js';
-
 
 export class EmptyCommand extends Command<void> {
     execute(): Promise<any> {
@@ -19,5 +17,4 @@ export class EmptyCommand extends Command<void> {
     needsWritableHost(): boolean {
         return false;
     }
-
 }

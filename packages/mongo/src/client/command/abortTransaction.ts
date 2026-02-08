@@ -7,10 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BaseResponse, Command, TransactionalMessage } from './command.js';
 import { MongoClientConfig } from '../config.js';
 import { Host } from '../host.js';
+import { BaseResponse, Command, TransactionalMessage } from './command.js';
 
 type AbortTransaction = TransactionalMessage & {
     $db: string;

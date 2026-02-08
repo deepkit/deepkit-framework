@@ -7,11 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { Command, WriteConcernMessage } from './command.js';
 import type { MongoClientConfig } from '../config.js';
-import type { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
+import type { Host } from '../host.js';
+import { Command, WriteConcernMessage } from './command.js';
 
 type DropDatabase = {
     dropDatabase: 1;
@@ -25,7 +24,8 @@ export class DropDatabaseCommand<T> extends Command<void> {
 
     async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<void> {
         const cmd: DropDatabase = {
-            dropDatabase: 1, $db: this.dbName,
+            dropDatabase: 1,
+            $db: this.dbName,
         };
         config.applyWriteConcern(cmd, this.options);
         await this.sendAndWait<DropDatabase>(cmd);

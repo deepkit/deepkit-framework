@@ -7,8 +7,13 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { ClassType, capitalize } from '@deepkit/core';
 import {
+    ReflectionClass,
+    ReflectionProperty,
+    SerializeFunction,
+    Serializer,
+    UnpopulatedCheck,
     createReferenceClass,
     deserialize,
     getPartialSerializeFunction,
@@ -18,18 +23,13 @@ import {
     isReferenceHydrated,
     isReferenceInstance,
     markAsHydrated,
-    ReflectionClass,
-    ReflectionProperty,
     resolveForeignReflectionClass,
-    SerializeFunction,
-    Serializer,
     typeSettings,
-    UnpopulatedCheck,
     unpopulatedSymbol,
 } from '@deepkit/type';
+
+import { ClassState, IdentityMap, PKHash, getClassState, getInstanceState } from './identity-map.js';
 import { DatabaseQueryModel } from './query.js';
-import { capitalize, ClassType } from '@deepkit/core';
-import { ClassState, getClassState, getInstanceState, IdentityMap, PKHash } from './identity-map.js';
 import { getReference } from './reference.js';
 import { OrmEntity } from './type.js';
 
@@ -38,6 +38,62 @@ export type HydratorFn = (item: any) => Promise<void>;
 export function setHydratedDatabaseSession(item: any, hydrator: (item: any) => Promise<void>) {
     const info = getReferenceInfo(item);
     if (info) info.hydrator = hydrator;
+}
+
+/**
+ * Upgrades a reference proxy to a full object in place.
+ * This preserves object identity - all existing holders of the reference
+ * will see the upgraded object with all properties accessible.
+ *
+ * The upgrade is done by:
+ * 1. Changing the prototype from ReferenceClass to EntityClass (removes proxy getters,
+ *    makes isReferenceInstance return false)
+ * 2. Assigning properties directly (faster than Object.defineProperty)
+ */
+function upgradeReferenceToObject(
+    item: any,
+    classSchema: ReflectionClass<any>,
+    dbRecord: DBRecord,
+    serializer: Serializer,
+    getRef: (
+        classSchema: ReflectionClass<any>,
+        dbRecord: DBRecord,
+        property: ReflectionProperty,
+        isPartial: boolean,
+    ) => object | undefined | null,
+    isPartial: boolean,
+): void {
+    // Change prototype first - this removes the reference proxy getters and makes
+    // isReferenceInstance return false. Must be done BEFORE property assignment
+    // for optimal V8 performance.
+    const entityPrototype = classSchema.getClassType().prototype;
+    Object.setPrototypeOf(item, entityPrototype);
+
+    const converted: any = deserialize(dbRecord, undefined, serializer, undefined, classSchema.type);
+
+    for (const propName of classSchema.getPropertyNames()) {
+        const property = classSchema.getProperty(propName);
+        if (property.isPrimaryKey()) continue;
+
+        // Skip properties already set on the instance
+        if (Object.prototype.hasOwnProperty.call(item, propName)) continue;
+
+        if (property.isReference() || property.isBackReference()) {
+            // Skip array references/back-references - they need separate loading
+            if (property.isArray()) continue;
+            // Skip non-array back-references too - they can't be hydrated from current dbRecord
+            if (property.isBackReference()) continue;
+
+            // Direct assignment is faster than Object.defineProperty
+            item[propName] = getRef(classSchema, dbRecord, property, isPartial);
+            continue;
+        }
+
+        // Direct assignment for regular properties
+        item[propName] = converted[propName];
+    }
+
+    markAsHydrated(item);
 }
 
 type DBRecord = { [name: string]: any };
@@ -85,38 +141,45 @@ export class Formatter {
         item: any,
         classSchema: ReflectionClass<any>,
         propertySchema: ReflectionProperty,
-        reason: 'join' | 'lazy' = 'join'
+        reason: 'join' | 'lazy' = 'join',
     ) {
-        const label = propertySchema.isReference() ? 'Reference' : propertySchema.isBackReference() ? 'BackReference' : 'Property';
-        const reasons: {[p in typeof reason]: string} = {
+        const label = propertySchema.isReference()
+            ? 'Reference'
+            : propertySchema.isBackReference()
+              ? 'BackReference'
+              : 'Property';
+        const reasons: { [p in typeof reason]: string } = {
             join: 'Use joinWith(), useJoinWith(), etc to populate the reference.',
-            lazy: `Remove lazyLoad('${propertySchema.name}') or call 'await hydrateEntity(item)'`
-        }
-        const description = reason ===
-        Object.defineProperty(item, propertySchema.name, {
-            enumerable: true,
-            configurable: false,
-            get() {
-                if (this.hasOwnProperty(propertySchema.symbol)) {
-                    return this[propertySchema.symbol];
-                }
+            lazy: `Remove lazyLoad('${propertySchema.name}') or call 'await hydrateEntity(item)'`,
+        };
+        const description =
+            reason ===
+            Object.defineProperty(item, propertySchema.name, {
+                enumerable: true,
+                configurable: false,
+                get() {
+                    if (this.hasOwnProperty(propertySchema.symbol)) {
+                        return this[propertySchema.symbol];
+                    }
 
-                if (typeSettings.unpopulatedCheck === UnpopulatedCheck.Throw) {
-                    throw new Error(`${label} ${classSchema.getClassName()}.${propertySchema.name} was not populated. ${reasons[reason]}`);
-                }
+                    if (typeSettings.unpopulatedCheck === UnpopulatedCheck.Throw) {
+                        throw new Error(
+                            `${label} ${classSchema.getClassName()}.${propertySchema.name} was not populated. ${reasons[reason]}`,
+                        );
+                    }
 
-                if (typeSettings.unpopulatedCheck === UnpopulatedCheck.ReturnSymbol) {
-                    return unpopulatedSymbol;
-                }
-            },
-            set(v: any) {
-                Object.defineProperty(item, propertySchema.symbol, {
-                    enumerable: false,
-                    writable: true,
-                    value: v
-                });
-            }
-        });
+                    if (typeSettings.unpopulatedCheck === UnpopulatedCheck.ReturnSymbol) {
+                        return unpopulatedSymbol;
+                    }
+                },
+                set(v: any) {
+                    Object.defineProperty(item, propertySchema.symbol, {
+                        enumerable: false,
+                        writable: true,
+                        value: v,
+                    });
+                },
+            });
     }
 
     protected getReferenceClass<T>(classSchema: ReflectionClass<T>): ClassType<T> {
@@ -137,7 +200,7 @@ export class Formatter {
         classSchema: ReflectionClass<any>,
         dbRecord: DBRecord,
         propertySchema: ReflectionProperty,
-        isPartial: boolean
+        isPartial: boolean,
     ): object | undefined | null {
         const foreignSchema = propertySchema.getResolvedReflectionClass();
         const pool = this.getInstancePoolForClass(foreignSchema.getClassType());
@@ -151,14 +214,28 @@ export class Formatter {
             const foreignPrimaryFields = foreignSchema.getPrimaries();
             let allFilled = foreignPrimaryFields.length;
             for (const property of foreignPrimaryFields) {
-                const foreignKey = foreignPrimaryFields.length === 1 ? propertySchema.name : propertySchema.name + capitalize(property.name);
+                const foreignKey =
+                    foreignPrimaryFields.length === 1
+                        ? propertySchema.name
+                        : propertySchema.name + capitalize(property.name);
                 if (property.isReference()) {
-                    foreignPrimaryKey[property.name] = this.getReference(property.getResolvedReflectionClass(), dbRecord, propertySchema, isPartial);
+                    foreignPrimaryKey[property.name] = this.getReference(
+                        property.getResolvedReflectionClass(),
+                        dbRecord,
+                        propertySchema,
+                        isPartial,
+                    );
                 } else {
                     if (dbRecord[foreignKey] === undefined || dbRecord[foreignKey] === null) {
                         allFilled--;
                     } else {
-                        const v = deserialize(dbRecord[foreignKey], undefined, this.serializer, undefined, property.type);
+                        const v = deserialize(
+                            dbRecord[foreignKey],
+                            undefined,
+                            this.serializer,
+                            undefined,
+                            property.type,
+                        );
                         if (v === undefined || v === null) allFilled--;
                         foreignPrimaryKey[property.name] = v;
                     }
@@ -174,7 +251,7 @@ export class Formatter {
             foreignPrimaryKey,
             isPartial ? undefined : this.identityMap,
             isPartial ? undefined : pool,
-            this.getReferenceClass(foreignSchema)
+            this.getReferenceClass(foreignSchema),
         );
 
         getInstanceState(getClassState(foreignSchema), ref).markAsFromDatabase();
@@ -182,7 +259,11 @@ export class Formatter {
         return ref;
     }
 
-    protected hydrateModel(model: DatabaseQueryModel<any, any, any>, classSchema: ReflectionClass<any>, dbRecord: DBRecord) {
+    protected hydrateModel(
+        model: DatabaseQueryModel<any, any, any>,
+        classSchema: ReflectionClass<any>,
+        dbRecord: DBRecord,
+    ) {
         let pool: Map<PKHash, any> | undefined = undefined;
         let pkHash: any = undefined;
         const partial = model.isPartial();
@@ -196,78 +277,90 @@ export class Formatter {
                 const availableValues = Array.from(Object.keys(singleTableInheritanceMap));
                 throw new Error(
                     `${classSchema.getClassName()} has no sub class with discriminator value ${JSON.stringify(dbRecord[discriminant])} for field ${discriminant}.` +
-                    `Available discriminator values ${availableValues.map(v => JSON.stringify(v)).join(',')}`
+                        `Available discriminator values ${availableValues.map(v => JSON.stringify(v)).join(',')}`,
                 );
             }
             classSchema = subClassSchema;
         }
 
+        // Track whether we found the entity in the pool (same query) vs only in identity map (previous query)
+        let foundInPool = false;
+
         if (this.rootClassSchema.getReferences().length > 0) {
             //the pool is only necessary when the root class has actually references
-            pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(dbRecord) : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
+            pkHash =
+                classSchema === this.rootClassSchema
+                    ? this.rootPkHash(dbRecord)
+                    : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
             pool = this.getInstancePoolForClass(classSchema.getClassType());
 
             const found = pool.get(pkHash);
-            //When in a record is a reference found, it will be put into the pool.
-            //If a subsequent record has the same PK as that reference, it would return that
-            //reference instead of the full record - which is wrong. This makes sure
-            //that references are excluded from the pool. However, that also breaks for
-            //references the identity. We could improve that with a more complex resolution algorithm,
-            //that involves changing already populated objects.
-            if (found && !isReferenceInstance(found)) {
-                //it could be that the found item was created as joined object, which could mean it was not yet fully populated.
-                this.assignJoins(model, classSchema, dbRecord, found);
-                return found;
+            if (found) {
+                foundInPool = true;
+                if (isReferenceInstance(found)) {
+                    // Reference found in pool (created as FK in this query).
+                    // hydrateModel is only called for root entities or joined entities,
+                    // never for FK processing - so we always have full data here.
+                    // Upgrade the reference to preserve object identity.
+                    if (!isReferenceHydrated(found)) {
+                        upgradeReferenceToObject(
+                            found,
+                            classSchema,
+                            dbRecord,
+                            this.serializer,
+                            (cs, rec, prop, partial) => this.getReference(cs, rec, prop, partial),
+                            partial,
+                        );
+                    }
+                    this.assignJoins(model, classSchema, dbRecord, found);
+                    return found;
+                } else {
+                    // Full object in pool
+                    this.assignJoins(model, classSchema, dbRecord, found);
+                    return found;
+                }
             }
         }
 
-        if (this.identityMap && !partial) {
+        // Only check identity map if we didn't find it in the pool
+        // Pool = same query (FK references should stay as references)
+        // Identity map only = previous query (references should be upgraded)
+        if (this.identityMap && !partial && !foundInPool) {
             if (!pkHash) {
-                pkHash = classSchema === this.rootClassSchema ? this.rootPkHash(dbRecord) : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
+                pkHash =
+                    classSchema === this.rootClassSchema
+                        ? this.rootPkHash(dbRecord)
+                        : getPrimaryKeyHashGenerator(classSchema, this.serializer)(dbRecord);
             }
             const item = this.identityMap.getByHash(classSchema, pkHash);
 
             if (item) {
                 const fromDatabase = getInstanceState(classState, item).isFromDatabase();
+                const isReference = isReferenceInstance(item);
 
-                //if its proxy a unhydrated proxy then we update property values
-                if (fromDatabase && !isReferenceHydrated(item)) {
-                    //we automatically hydrate proxy object once someone fetches them from the database.
-                    //or we update a stale instance
-                    const converted: any = deserialize(dbRecord, undefined, this.serializer, undefined, classSchema.type);
-
-                    for (const propName of classSchema.getPropertyNames()) {
-                        const property = classSchema.getProperty(propName);
-                        if (property.isPrimaryKey()) continue;
-
-                        if (propName in item) continue;
-
-                        if (property.isReference() || property.isBackReference()) {
-                            if (property.isArray()) continue;
-
-                            Object.defineProperty(item, propName, {
-                                enumerable: true,
-                                configurable: true,
-                                value: this.getReference(classSchema, dbRecord, property, partial),
-                            });
-                            continue;
-                        }
-
-                        Object.defineProperty(item, propName, {
-                            enumerable: true,
-                            configurable: true,
-                            value: converted[propName],
-                        });
-                    }
-
-                    markAsHydrated(item);
+                // Reference from previous query: always upgrade when we have full data
+                if (isReference && !isReferenceHydrated(item)) {
+                    upgradeReferenceToObject(
+                        item,
+                        classSchema,
+                        dbRecord,
+                        this.serializer,
+                        (cs, rec, prop, partial) => this.getReference(cs, rec, prop, partial),
+                        partial,
+                    );
+                } else if (fromDatabase && !isReferenceHydrated(item) && !isReference) {
+                    // Stale non-reference instance from database - update with fresh data
+                    upgradeReferenceToObject(
+                        item,
+                        classSchema,
+                        dbRecord,
+                        this.serializer,
+                        (cs, rec, prop, partial) => this.getReference(cs, rec, prop, partial),
+                        partial,
+                    );
                 }
 
-                if (fromDatabase) {
-                    //check if we got new reference data we can apply to the instance
-                    this.assignJoins(model, classSchema, dbRecord, item);
-                }
-
+                this.assignJoins(model, classSchema, dbRecord, item);
                 return item;
             }
         }
@@ -285,7 +378,12 @@ export class Formatter {
         return converted;
     }
 
-    protected assignJoins(model: DatabaseQueryModel<any, any, any>, classSchema: ReflectionClass<any>, dbRecord: DBRecord, item: any): { [name: string]: true } {
+    protected assignJoins(
+        model: DatabaseQueryModel<any, any, any>,
+        classSchema: ReflectionClass<any>,
+        dbRecord: DBRecord,
+        item: any,
+    ): { [name: string]: true } {
         const handledRelation: { [name: string]: true } = {};
 
         for (const join of model.joins) {
@@ -302,14 +400,20 @@ export class Formatter {
                 if (join.propertySchema.isBackReference() && join.propertySchema.isArray()) {
                     if (hasValue) {
                         item[join.propertySchema.name] = dbRecord[refName].map((item: any) => {
-                            return this.hydrateModel(join.query.model, resolveForeignReflectionClass(join.propertySchema), item);
+                            return this.hydrateModel(
+                                join.query.model,
+                                resolveForeignReflectionClass(join.propertySchema),
+                                item,
+                            );
                         });
                     } else if (!item[join.propertySchema.name]) {
                         item[join.propertySchema.name] = [];
                     }
                 } else if (hasValue) {
                     item[join.propertySchema.name] = this.hydrateModel(
-                        join.query.model, resolveForeignReflectionClass(join.propertySchema), dbRecord[refName]
+                        join.query.model,
+                        resolveForeignReflectionClass(join.propertySchema),
+                        dbRecord[refName],
                     );
                 } else {
                     item[join.propertySchema.name] = undefined;
@@ -331,12 +435,22 @@ export class Formatter {
         return handledRelation;
     }
 
-    protected createObject(model: DatabaseQueryModel<any, any, any>, classState: ClassState, classSchema: ReflectionClass<any>, dbRecord: DBRecord) {
+    protected createObject(
+        model: DatabaseQueryModel<any, any, any>,
+        classState: ClassState,
+        classSchema: ReflectionClass<any>,
+        dbRecord: DBRecord,
+    ) {
         const partial = model.isPartial();
 
-        const converted = classSchema === this.rootClassSchema
-            ? (partial ? this.partialDeserialize(dbRecord) : this.deserialize(dbRecord))
-            : (partial ? getPartialSerializeFunction(classSchema.type, this.serializer.deserializeRegistry)(dbRecord) : getSerializeFunction(classSchema.type, this.serializer.deserializeRegistry)(dbRecord));
+        const converted =
+            classSchema === this.rootClassSchema
+                ? partial
+                    ? this.partialDeserialize(dbRecord)
+                    : this.deserialize(dbRecord)
+                : partial
+                  ? getPartialSerializeFunction(classSchema.type, this.serializer.deserializeRegistry)(dbRecord)
+                  : getSerializeFunction(classSchema.type, this.serializer.deserializeRegistry)(dbRecord);
 
         if (!partial) {
             if (model.withChangeDetection) getInstanceState(classState, converted).markAsFromDatabase();
@@ -356,7 +470,9 @@ export class Formatter {
         }
 
         if (classSchema.getReferences().length > 0) {
-            const handledRelation = model.joins.length ? this.assignJoins(model, classSchema, dbRecord, converted) : undefined;
+            const handledRelation = model.joins.length
+                ? this.assignJoins(model, classSchema, dbRecord, converted)
+                : undefined;
 
             //all non-populated owning references will be just proxy references
             for (const property of classSchema.getReferences()) {

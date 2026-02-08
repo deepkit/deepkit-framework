@@ -7,4 +7,5 @@ export type GetMoreMessage = {
     batchSize?: number;
     maxTimeMS?: number;
     comment?: string;
-} & TransactionalMessage & ReadPreferenceMessage;
+} & TransactionalMessage &
+    ReadPreferenceMessage;

@@ -7,12 +7,28 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import {
+    BsonStreamReader,
+    Writer,
+    deserializeBSONWithoutOptimiser,
+    getBSONDeserializer,
+    getBSONSerializer,
+    getBSONSizer,
+} from '@deepkit/bson';
+import { ClassType, bufferConcat, createBuffer } from '@deepkit/core';
+import {
+    ReceiveType,
+    ReflectionClass,
+    Type,
+    deserialize,
+    resolveReceiveType,
+    serialize,
+    typeOf,
+    typeSettings,
+} from '@deepkit/type';
 
-import { BsonStreamReader, deserializeBSONWithoutOptimiser, getBSONDeserializer, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
-import { bufferConcat, ClassType, createBuffer } from '@deepkit/core';
-import { rpcChunk, RpcError, rpcError, RpcTypes } from './model.js';
+import { RpcError, RpcTypes, rpcChunk, rpcError } from './model.js';
 import type { SingleProgress } from './progress.js';
-import { deserialize, ReceiveType, ReflectionClass, resolveReceiveType, serialize, Type, typeOf, typeSettings } from '@deepkit/type';
 
 export enum RpcMessageRouteType {
     client = 0,
@@ -89,25 +105,26 @@ export class RpcMessage {
         public bodyOffset: number = 0,
         public bodySize: number = 0,
         public buffer?: Uint8Array,
-    ) {
-    }
+    ) {}
 
     debug() {
         return {
             type: this.type,
             typeString: RpcTypes[this.type],
             id: this.id,
-            date: new Date,
+            date: new Date(),
             composite: this.composite,
             body: this.bodySize ? this.parseGenericBody() : undefined,
-            messages: this.composite ? this.getBodies().map(message => {
-                return {
-                    id: message.id,
-                    type: message.type,
-                    date: new Date,
-                    body: message.bodySize ? message.parseGenericBody() : undefined,
-                };
-            }) : [],
+            messages: this.composite
+                ? this.getBodies().map(message => {
+                      return {
+                          id: message.id,
+                          type: message.type,
+                          date: new Date(),
+                          body: message.bodySize ? message.parseGenericBody() : undefined,
+                      };
+                  })
+                : [],
         };
     }
 
@@ -118,7 +135,8 @@ export class RpcMessage {
 
     getPeerId(): string {
         if (!this.buffer) throw new RpcError('No buffer');
-        if (this.routeType !== RpcMessageRouteType.peer) throw new RpcError(`Message is not routed via peer, but ${this.routeType}`);
+        if (this.routeType !== RpcMessageRouteType.peer)
+            throw new RpcError(`Message is not routed via peer, but ${this.routeType}`);
         if (this.peerId) return this.peerId;
         this.peerId = '';
         for (let offset = 10 + 16, c: number = this.buffer[offset]; c !== 0; offset++, c = this.buffer[offset]) {
@@ -130,13 +148,15 @@ export class RpcMessage {
 
     getSource(): Uint8Array {
         if (!this.buffer) throw new RpcError('No buffer');
-        if (this.routeType !== RpcMessageRouteType.sourceDest && this.routeType !== RpcMessageRouteType.peer) throw new RpcError(`Message is not routed via sourceDest, but ${this.routeType}`);
+        if (this.routeType !== RpcMessageRouteType.sourceDest && this.routeType !== RpcMessageRouteType.peer)
+            throw new RpcError(`Message is not routed via sourceDest, but ${this.routeType}`);
         return this.buffer.subarray(4 + 1 + 4 + 1, 4 + 1 + 4 + 1 + 16);
     }
 
     getDestination(): Uint8Array {
         if (!this.buffer) throw new RpcError('No buffer');
-        if (this.routeType !== RpcMessageRouteType.sourceDest) throw new RpcError(`Message is not routed via sourceDest, but ${this.routeType}`);
+        if (this.routeType !== RpcMessageRouteType.sourceDest)
+            throw new RpcError(`Message is not routed via sourceDest, but ${this.routeType}`);
         return this.buffer.subarray(4 + 1 + 4 + 1 + 16, 4 + 1 + 4 + 1 + 16 + 16);
     }
 
@@ -217,8 +237,7 @@ export function readBinaryRpcMessage(buffer: Uint8Array): RpcMessage {
         for (let i = 0; i < buffer.byteLength; i++) {
             hex += buffer[i].toString(16).padStart(2, '0');
         }
-        message += ' Buffer hex: '
-            + hex.substr(0, 500) + (hex.length > 500 ? '...' : '');
+        message += ' Buffer hex: ' + hex.substr(0, 500) + (hex.length > 500 ? '...' : '');
         throw new RpcError(message);
     }
 
@@ -229,7 +248,7 @@ export function readBinaryRpcMessage(buffer: Uint8Array): RpcMessage {
 
     if (routeType === RpcMessageRouteType.peer) {
         offset += 16; //<source>
-        while (buffer[offset++] !== 0) ; //feed until \0 byte
+        while (buffer[offset++] !== 0); //feed until \0 byte
     } else if (routeType === RpcMessageRouteType.sourceDest) {
         offset += 16 + 16; //uuid is each 16 bytes
     }
@@ -286,7 +305,7 @@ export function serializeBinaryRpcCompositeMessage(message: RpcMessageDefinition
 
         if (sub.schema && sub.body) {
             //BSON object contain already their size at the beginning
-            getBSONSerializer(undefined, sub.schema)(sub.body, { writer });
+            getBSONSerializer(sub.schema)(sub.body, { writer });
         }
     }
 
@@ -329,8 +348,10 @@ export function serializeBinaryRpcCompositeMessageSourceDest(message: RpcMessage
     writer.writeUint32(message.id);
 
     writer.writeByte(RpcMessageRouteType.sourceDest);
-    if (message.source.byteLength !== 16) throw new RpcError(`Source invalid byteLength of ${message.source.byteLength}`);
-    if (message.destination.byteLength !== 16) throw new RpcError(`Destination invalid byteLength of ${message.destination.byteLength}`);
+    if (message.source.byteLength !== 16)
+        throw new RpcError(`Source invalid byteLength of ${message.source.byteLength}`);
+    if (message.destination.byteLength !== 16)
+        throw new RpcError(`Destination invalid byteLength of ${message.destination.byteLength}`);
     writer.writeBuffer(message.source);
     writer.writeBuffer(message.destination);
     writer.writeByte(1); //composite=true
@@ -342,7 +363,7 @@ export function serializeBinaryRpcCompositeMessageSourceDest(message: RpcMessage
 
         if (sub.schema && sub.body) {
             //BSON object contain already their size at the beginning
-            getBSONSerializer(undefined, sub.schema)(sub.body, { writer });
+            getBSONSerializer(sub.schema)(sub.body, { writer });
         }
     }
 
@@ -364,7 +385,8 @@ export interface RpcMessageDefinition {
 }
 
 export function createRpcMessage<T>(
-    id: number, type: number,
+    id: number,
+    type: number,
     body?: T,
     routeType: RpcMessageRouteType.client | RpcMessageRouteType.server = RpcMessageRouteType.client,
     schema?: ReceiveType<T>,
@@ -378,7 +400,6 @@ export function createRpcMessage<T>(
             body,
         },
     };
-
 }
 
 export function serializeBinaryRpcMessage(message: RpcMessageDefinition): Uint8Array {
@@ -416,7 +437,7 @@ export function serializeBinaryRpcMessageSingleBody(message: RpcMessageDefinitio
 
     if (message.body) {
         const offset = writer.offset;
-        const serializer = getBSONSerializer(undefined, message.body.type);
+        const serializer = getBSONSerializer(message.body.type);
         serializer(message.body.body, { writer });
     }
 
@@ -424,7 +445,8 @@ export function serializeBinaryRpcMessageSingleBody(message: RpcMessageDefinitio
 }
 
 export function createRpcMessagePeer<T>(
-    id: number, type: number,
+    id: number,
+    type: number,
     source: Uint8Array,
     peerId: string,
     body?: T,
@@ -457,7 +479,8 @@ export function serializeBinaryRpcMessagePeer(message: RpcMessageDefinition): Ui
     writer.writeUint32(message.id);
 
     writer.writeByte(RpcMessageRouteType.peer);
-    if (message.source.byteLength !== 16) throw new RpcError(`Source invalid byteLength of ${message.source.byteLength}`);
+    if (message.source.byteLength !== 16)
+        throw new RpcError(`Source invalid byteLength of ${message.source.byteLength}`);
     writer.writeBuffer(message.source);
     writer.writeAsciiString(message.peerId);
     writer.writeNull();
@@ -465,7 +488,7 @@ export function serializeBinaryRpcMessagePeer(message: RpcMessageDefinition): Ui
     writer.writeByte(0); //composite=false
     writer.writeByte(message.type);
 
-    if (message.body) getBSONSerializer(undefined, message.body.type)(message.body.body, { writer });
+    if (message.body) getBSONSerializer(message.body.type)(message.body.body, { writer });
 
     return writer.buffer;
 }
@@ -505,21 +528,24 @@ export function serializeBinaryRpcMessageSourceDest(message: RpcMessageDefinitio
     writer.writeUint32(message.id);
 
     writer.writeByte(RpcMessageRouteType.sourceDest);
-    if (message.source.byteLength !== 16) throw new RpcError(`Source invalid byteLength of ${message.source.byteLength}`);
-    if (message.destination.byteLength !== 16) throw new RpcError(`Destination invalid byteLength of ${message.destination.byteLength}`);
+    if (message.source.byteLength !== 16)
+        throw new RpcError(`Source invalid byteLength of ${message.source.byteLength}`);
+    if (message.destination.byteLength !== 16)
+        throw new RpcError(`Destination invalid byteLength of ${message.destination.byteLength}`);
     writer.writeBuffer(message.source);
     writer.writeBuffer(message.destination);
 
     writer.writeByte(0); //composite=false
     writer.writeByte(message.type);
 
-    if (message.body) getBSONSerializer(undefined, message.body.type)(message.body.body, { writer });
+    if (message.body) getBSONSerializer(message.body.type)(message.body.body, { writer });
 
     return writer.buffer;
 }
 
 export function createRpcMessageSourceDestForBody<T>(
-    id: number, type: number,
+    id: number,
+    type: number,
     source: Uint8Array,
     destination: Uint8Array,
     body: Uint8Array,
@@ -534,7 +560,8 @@ export function createRpcMessageSourceDestForBody<T>(
 
     writer.writeByte(RpcMessageRouteType.sourceDest);
     if (source.byteLength !== 16) throw new RpcError(`Source invalid byteLength of ${source.byteLength}`);
-    if (destination.byteLength !== 16) throw new RpcError(`Destination invalid byteLength of ${destination.byteLength}`);
+    if (destination.byteLength !== 16)
+        throw new RpcError(`Destination invalid byteLength of ${destination.byteLength}`);
     writer.writeBuffer(source);
     writer.writeBuffer(destination);
 
@@ -547,7 +574,7 @@ export function createRpcMessageSourceDestForBody<T>(
 }
 
 export class RpcBinaryMessageReader {
-    protected chunks = new Map<number, { loaded: number, buffers: Uint8Array[], last: number }>();
+    protected chunks = new Map<number, { loaded: number; buffers: Uint8Array[]; last: number }>();
     protected progress = new Map<number, SingleProgress>();
     protected chunkAcks = new Map<number, (active: boolean) => void>();
     protected streamReader = new BsonStreamReader(this.gotMessage.bind(this));
@@ -557,8 +584,7 @@ export class RpcBinaryMessageReader {
     constructor(
         protected readonly onMessage: (response: RpcMessage) => void,
         protected readonly onChunk?: (id: number, abort: boolean) => void,
-    ) {
-    }
+    ) {}
 
     cleanUp() {
         if (this.lastCleanUpTimeout) return;
@@ -655,7 +681,7 @@ export class RpcBinaryMessageReader {
 }
 
 export function readUint32LE(buffer: Uint8Array, offset: number = 0): number {
-    return buffer[offset] + (buffer[offset + 1] * 2 ** 8) + (buffer[offset + 2] * 2 ** 16) + (buffer[offset + 3] * 2 ** 24);
+    return buffer[offset] + buffer[offset + 1] * 2 ** 8 + buffer[offset + 2] * 2 ** 16 + buffer[offset + 3] * 2 ** 24;
 }
 
 export interface EncodedError {
@@ -693,8 +719,10 @@ export function rpcDecodeError(error: EncodedError): Error {
     if (error.classType) {
         const entity = typeSettings.registeredEntities[error.classType];
         if (!entity) {
-            throw new RpcError(`Could not find an entity named ${error.classType} for an error thrown. ` +
-                `Make sure the class is loaded and correctly defined using @entity.name(${JSON.stringify(error.classType)})`);
+            throw new RpcError(
+                `Could not find an entity named ${error.classType} for an error thrown. ` +
+                    `Make sure the class is loaded and correctly defined using @entity.name(${JSON.stringify(error.classType)})`,
+            );
         }
         const schema = ReflectionClass.from(entity);
         if (error.properties) {
@@ -713,7 +741,11 @@ export function rpcDecodeError(error: EncodedError): Error {
     return e;
 }
 
-export function createErrorMessage(id: number, error: Error | string, routeType: RpcMessageRouteType.client | RpcMessageRouteType.server): RpcMessageDefinition {
+export function createErrorMessage(
+    id: number,
+    error: Error | string,
+    routeType: RpcMessageRouteType.client | RpcMessageRouteType.server,
+): RpcMessageDefinition {
     const extracted = rpcEncodeError(error);
 
     return createRpcMessage(id, RpcTypes.Error, extracted, routeType, typeOf<rpcError>());

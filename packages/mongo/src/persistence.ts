@@ -7,7 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { ObjectId } from '@deepkit/bson';
+import { empty, formatError } from '@deepkit/core';
 import {
     DatabaseDeleteError,
     DatabaseInsertError,
@@ -15,31 +16,34 @@ import {
     DatabasePersistenceChangeSet,
     DatabaseSession,
     DatabaseUpdateError,
+    OrmEntity,
     getClassState,
     getInstanceState,
-    OrmEntity,
 } from '@deepkit/orm';
-import { convertClassQueryToMongo } from './mapping.js';
-import { FilterQuery } from './query.model.js';
+import { ReflectionClass, getPartialSerializeFunction } from '@deepkit/type';
+
 import { MongoClient } from './client/client.js';
+import { DeleteCommand } from './client/command/delete.js';
+import { FindCommand } from './client/command/find.js';
+import { FindAndModifyCommand } from './client/command/findAndModify.js';
 import { InsertCommand } from './client/command/insert.js';
 import { UpdateCommand } from './client/command/update.js';
-import { DeleteCommand } from './client/command/delete.js';
-import { FindAndModifyCommand } from './client/command/findAndModify.js';
-import { empty, formatError } from '@deepkit/core';
-import { FindCommand } from './client/command/find.js';
 import { MongoConnection } from './client/connection.js';
-import { getPartialSerializeFunction, ReflectionClass } from '@deepkit/type';
-import { ObjectId } from '@deepkit/bson';
-import { mongoSerializer } from './mongo-serializer.js';
-import { handleSpecificError } from './error.js';
 import { CommandOptions } from './client/options.js';
+import { handleSpecificError } from './error.js';
+import { convertClassQueryToMongo } from './mapping.js';
+import { mongoSerializer } from './mongo-serializer.js';
+import { FilterQuery } from './query.model.js';
 
 export class MongoPersistence extends DatabasePersistence {
     protected connection?: MongoConnection;
     commandOptions: CommandOptions = {};
 
-    constructor(protected client: MongoClient, protected ormSequences: ReflectionClass<any>, protected session: DatabaseSession<any>) {
+    constructor(
+        protected client: MongoClient,
+        protected ormSequences: ReflectionClass<any>,
+        protected session: DatabaseSession<any>,
+    ) {
         super();
     }
 
@@ -107,8 +111,8 @@ export class MongoPersistence extends DatabasePersistence {
         if (autoIncrement) {
             const command = new FindAndModifyCommand(
                 this.ormSequences,
-                { name: classSchema.getCollectionName(), },
-                { $inc: { value: items.length } }
+                { name: classSchema.getCollectionName() },
+                { $inc: { value: items.length } },
             );
             command.returnNew = true;
             command.fields = ['value'];
@@ -150,16 +154,19 @@ export class MongoPersistence extends DatabasePersistence {
         }
     }
 
-    async update<T extends OrmEntity>(classSchema: ReflectionClass<T>, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
-        const updates: { q: any, u: any, multi: boolean }[] = [];
-        const partialSerializer = getPartialSerializeFunction(classSchema.type, mongoSerializer.serializeRegistry)
+    async update<T extends OrmEntity>(
+        classSchema: ReflectionClass<T>,
+        changeSets: DatabasePersistenceChangeSet<T>[],
+    ): Promise<void> {
+        const updates: { q: any; u: any; multi: boolean }[] = [];
+        const partialSerializer = getPartialSerializeFunction(classSchema.type, mongoSerializer.serializeRegistry);
 
         let hasAtomic = false;
         const primaryKeyName = classSchema.getPrimary().name;
         const pks: any[] = [];
         const projection: { [name: string]: 1 } = {};
         projection[primaryKeyName] = 1;
-        const assignReturning: { [name: string]: { item: any, names: string[] } } = {};
+        const assignReturning: { [name: string]: { item: any; names: string[] } } = {};
 
         for (const changeSet of changeSets) {
             if (!hasAtomic && !empty(changeSet.changes.$inc)) hasAtomic = true;
@@ -199,7 +206,7 @@ export class MongoPersistence extends DatabasePersistence {
         const connection = await this.getConnection();
 
         try {
-            const command = new UpdateCommand(classSchema, updates)
+            const command = new UpdateCommand(classSchema, updates);
             command.options = this.commandOptions;
             const res = await connection.execute(command);
 

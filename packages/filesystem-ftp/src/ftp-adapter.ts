@@ -1,8 +1,17 @@
-import { FilesystemAdapter, FilesystemFile, FileType, FileVisibility, Reporter, resolveFilesystemPath } from '@deepkit/filesystem';
-import { pathDirectory, pathBasename } from '@deepkit/core';
 import { Client, FileInfo, UnixPermissions } from 'basic-ftp';
-import type { ConnectionOptions as TLSConnectionOptions } from 'tls';
 import { Readable, Writable } from 'stream';
+import type { ConnectionOptions as TLSConnectionOptions } from 'tls';
+
+import { pathBasename, pathDirectory } from '@deepkit/core';
+import {
+    FileType,
+    FileVisibility,
+    FilesystemAdapter,
+    FilesystemFile,
+    FilesystemFileNotFound,
+    Reporter,
+    resolveFilesystemPath,
+} from '@deepkit/filesystem';
 
 export interface FilesystemFtpOptions {
     /**
@@ -40,11 +49,11 @@ export interface FilesystemFtpOptions {
         file: {
             public: number; //default 0o644
             private: number; //default 0o600
-        },
+        };
         directory: {
             public: number; //default 0o755
             private: number; //default 0o700
-        }
+        };
     };
 }
 
@@ -58,13 +67,13 @@ export class FilesystemFtpAdapter implements FilesystemAdapter {
         permissions: {
             file: {
                 public: 0o644,
-                private: 0o600
+                private: 0o600,
             },
             directory: {
                 public: 0o755,
-                private: 0o700
-            }
-        }
+                private: 0o700,
+            },
+        },
     };
 
     constructor(options: Partial<FilesystemFtpOptions> = {}) {
@@ -138,7 +147,7 @@ export class FilesystemFtpAdapter implements FilesystemAdapter {
     async getVisibility(path: string): Promise<FileVisibility> {
         await this.ensureConnected();
         const file = await this.get(path);
-        if (!file) throw new Error(`File ${path} not found`);
+        if (!file) throw new FilesystemFileNotFound(`File ${path} not found`);
         return file.visibility;
     }
 
@@ -169,7 +178,7 @@ export class FilesystemFtpAdapter implements FilesystemAdapter {
 
     async exists(paths: string[]): Promise<boolean> {
         await this.ensureConnected();
-        const foldersToCheck: { folder: string, names: string[] }[] = [];
+        const foldersToCheck: { folder: string; names: string[] }[] = [];
 
         for (const path of paths) {
             if (path === '/') continue;
@@ -224,10 +233,10 @@ export class FilesystemFtpAdapter implements FilesystemAdapter {
         const remotePath = this.getRemotePath(path);
         const chunks: Uint8Array[] = [];
         const writeable = new Writable({
-            write(chunk: any, encoding: BufferEncoding, callback: (error?: (Error | null)) => void) {
+            write(chunk: any, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
                 chunks.push(chunk);
                 callback(null);
-            }
+            },
         });
         const stream = await this.client.downloadTo(writeable, remotePath);
         return Buffer.concat(chunks);

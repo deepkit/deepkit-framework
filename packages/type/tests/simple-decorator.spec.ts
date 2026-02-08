@@ -7,10 +7,12 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { test } from 'node:test';
 
-import { expect, test } from '@jest/globals';
+import { expect } from '@deepkit/run/expect';
+
 import { typeOf } from '../src/reflection/reflection.js';
-import { PrimaryKey, primaryKeyAnnotation } from '../src/reflection/type.js';
+import { PrimaryKey, primaryKeyAnnotation } from '../src/type-annotations.js';
 
 test('primary key', () => {
     type t = number & PrimaryKey;

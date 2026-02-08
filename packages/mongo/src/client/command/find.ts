@@ -7,16 +7,23 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BaseResponse, CollationMessage, Command, HintMessage, ReadPreferenceMessage, TransactionalMessage } from './command.js';
 import { toFastProperties } from '@deepkit/core';
+import { InlineRuntimeType, ReflectionClass, ReflectionKind, TypeUnion, typeOf } from '@deepkit/type';
+
 import { DEEP_SORT } from '../../query.model.js';
-import { InlineRuntimeType, ReflectionClass, ReflectionKind, typeOf, TypeUnion } from '@deepkit/type';
-import { MongoError } from '../error.js';
-import { GetMoreMessage } from './getMore.js';
 import type { MongoClientConfig } from '../config.js';
-import type { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
+import { MongoError } from '../error.js';
+import type { Host } from '../host.js';
+import {
+    BaseResponse,
+    CollationMessage,
+    Command,
+    HintMessage,
+    ReadPreferenceMessage,
+    TransactionalMessage,
+} from './command.js';
+import { GetMoreMessage } from './getMore.js';
 
 type FindSchema = {
     find: string;
@@ -30,7 +37,8 @@ type FindSchema = {
     allowDiskUse?: boolean;
     collation?: CollationMessage;
     hint?: HintMessage;
-} & TransactionalMessage & ReadPreferenceMessage;
+} & TransactionalMessage &
+    ReadPreferenceMessage;
 
 export class FindCommand<T> extends Command<T[]> {
     constructor(
@@ -75,7 +83,6 @@ export class FindCommand<T> extends Command<T[]> {
 
         let specialisedResponse = this.projection ? jit.mdbFindPartial : jit.mdbFind;
         if (!specialisedResponse) {
-
             // let itemType = this.projection ? partial(classSchema) : classSchema;
 
             const singleTableInheritanceMap = this.schema.getAssignedSingleTableInheritanceSubClassesByIdentifier();
@@ -134,11 +141,11 @@ export class FindCommand<T> extends Command<T[]> {
         }
 
         interface Response extends BaseResponse {
-            cursor: { id: bigint, firstBatch?: any[], nextBatch?: any[] };
+            cursor: { id: bigint; firstBatch?: any[]; nextBatch?: any[] };
         }
 
         const res = await this.sendAndWait<FindSchema, Response>(cmd, undefined, specialisedResponse);
-        if (!res.cursor.firstBatch) throw new MongoError(`No firstBatch received`);
+        if (!res.cursor.firstBatch) throw new MongoError('DK-MG001', `No firstBatch received`);
 
         const result: T[] = res.cursor.firstBatch;
 

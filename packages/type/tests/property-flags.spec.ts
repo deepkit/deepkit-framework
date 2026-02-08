@@ -1,6 +1,10 @@
-import { expect, test } from '@jest/globals';
-import { assertType, integer, ReflectionKind } from '../src/reflection/type.js';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
+
 import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
+import { ReflectionKind, assertType } from '../src/reflection/type.js';
+import { integer } from '../src/type-annotations.js';
 import { expectEqualType } from './utils.js';
 
 interface User {
@@ -10,33 +14,30 @@ interface User {
     readonly postcode: string;
 }
 
-type PartialUser = Pick<
-    User,
-    'id' | 'name'
->;
+type PartialUser = Pick<User, 'id' | 'name'>;
 
 test('the optional modifier should be retained after a mapped type', () => {
     // This has always worked: checking the optional property on the original type
-    const reflectionClass = ReflectionClass.from<User>();
+    const reflectionClass = ReflectionClass.from(typeOf<User>());
     expect(reflectionClass.getProperty('id').isOptional()).toBe(false);
     expect(reflectionClass.getProperty('name').isOptional()).toBe(true);
 
     // ...but it should work if we map it with - e.g., Pick - too.
-    const partialReflectionClass = ReflectionClass.from<PartialUser>();
+    const partialReflectionClass = ReflectionClass.from(typeOf<PartialUser>());
     expect(partialReflectionClass.getProperty('id').isOptional()).toBe(false);
     expect(partialReflectionClass.getProperty('name').isOptional()).toBe(true);
 });
 
-type Test = {name: User['name'], address: User['address']};
+type Test = { name: User['name']; address: User['address'] };
 type Username = User['name'];
 type Username2 = Test['name'];
 
 test('the optional property should not carry over when a property is mapped (consistent with TypeScript)', () => {
-    const reflectionClass = ReflectionClass.from<User>();
+    const reflectionClass = ReflectionClass.from(typeOf<User>());
     expect(reflectionClass.getProperty('address').isOptional()).toBe(false); // (sanity check)
     expect(reflectionClass.getProperty('name').isOptional()).toBe(true);
 
-    const alteredReflectionClass = ReflectionClass.from<Test>();
+    const alteredReflectionClass = ReflectionClass.from(typeOf<Test>());
     expect(alteredReflectionClass.getProperty('address').isOptional()).toBe(false); // (sanity check)
     expect(alteredReflectionClass.getProperty('name').isOptional()).toBe(false);
 
@@ -47,13 +48,10 @@ test('the optional property should not carry over when a property is mapped (con
     assertType(username2, ReflectionKind.string);
 });
 
-type UserNestedType = Omit<Pick<
-    User,
-    'id' | 'name' | 'address'
->, 'id'>;
+type UserNestedType = Omit<Pick<User, 'id' | 'name' | 'address'>, 'id'>;
 
 test('nested mapped types should work', () => {
-    type Test = {name: User['name'], address: User['address']};
+    type Test = { name: User['name']; address: User['address'] };
     const test = typeOf<Test>();
     assertType(test, ReflectionKind.objectLiteral);
     assertType(test.types[0], ReflectionKind.propertySignature);
@@ -77,4 +75,3 @@ test('nested mapped types should work', () => {
     expect(type.types[1].optional).toBe(undefined);
     expect(type.types[1].readonly).toBe(true);
 });
-

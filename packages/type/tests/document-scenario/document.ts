@@ -1,13 +1,10 @@
 import { uuid } from '../../src/utils.js';
 
-type MongoId = string & {__mongoId?: true};
-type Primary = {__primary?: true};
+type MongoId = string & { __mongoId?: true };
+type Primary = { __primary?: true };
 
 class Collection<T> {
-    constructor(
-        private readonly pages: T[] = []
-    ) {
-    }
+    constructor(private readonly pages: T[] = []) {}
 
     public get(index: number): T | null {
         return this.pages[index] || null;
@@ -23,7 +20,7 @@ export class Document {
 
     name?: string;
 
-    pages: Collection<Page> = new Collection;
+    pages: Collection<Page> = new Collection();
 
     page?: Page;
 }
@@ -31,7 +28,7 @@ export class Document {
 export class Page {
     id: string = uuid();
 
-    children: Collection<Page> = new Collection;
+    children: Collection<Page> = new Collection();
 
     picture?: ArrayBuffer;
 

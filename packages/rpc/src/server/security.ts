@@ -7,16 +7,15 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType } from '@deepkit/core';
+
 import { RpcKernelBaseConnection } from './kernel.js';
 
 export class Session {
     constructor(
         public readonly username: string,
         public readonly token: any,
-    ) {
-    }
+    ) {}
 
     public isAnonymous(): boolean {
         return undefined === this.token;
@@ -32,7 +31,11 @@ export interface RpcControllerAccess {
 }
 
 export class RpcKernelSecurity {
-    async hasControllerAccess(session: Session, controllerAccess: RpcControllerAccess, connection: RpcKernelBaseConnection): Promise<boolean> {
+    async hasControllerAccess(
+        session: Session,
+        controllerAccess: RpcControllerAccess,
+        connection: RpcKernelBaseConnection,
+    ): Promise<boolean> {
         return true;
     }
 

@@ -1,4 +1,3 @@
-
 /** @group Path */
 
 /**
@@ -51,8 +50,11 @@ export function pathExtension(path: string): string {
 export function pathJoin(...paths: string[]): string {
     if (paths.length === 2 && paths[0] && paths[1]) return pathNormalize(paths[0]) + pathNormalize(paths[1]);
 
-    return '/' + paths
-        .map(v => pathNormalize(v).slice(1))
-        .filter(v => !!v)
-        .join('/');
+    return (
+        '/' +
+        paths
+            .map(v => pathNormalize(v).slice(1))
+            .filter(v => !!v)
+            .join('/')
+    );
 }

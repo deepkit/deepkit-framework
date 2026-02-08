@@ -1,5 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { AutoIncrement, entity, PrimaryKey } from '@deepkit/type';
+
+import { AutoIncrement, PrimaryKey, entity } from '@deepkit/type';
+
 import { databaseFactory } from './factory.js';
 
 test('transaction', async () => {
@@ -7,8 +9,7 @@ test('transaction', async () => {
     class User {
         public id: number & AutoIncrement & PrimaryKey = 0;
 
-        constructor(public username: string) {
-        }
+        constructor(public username: string) {}
     }
 
     const database = await databaseFactory([User]);

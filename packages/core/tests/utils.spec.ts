@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+
 import { urlJoin } from '../src/url.js';
 
 test('urlJoin', async () => {

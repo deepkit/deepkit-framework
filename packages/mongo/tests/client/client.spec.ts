@@ -1,13 +1,15 @@
 import { expect, jest, test } from '@jest/globals';
+import { fail } from 'assert';
+import { createConnection } from 'net';
+
+import { sleep } from '@deepkit/core';
+import { cast, validatedDeserialize } from '@deepkit/type';
+
+import { MongoConnectionStatus, createCommand } from '../../index.js';
 import { MongoClient } from '../../src/client/client.js';
 import { IsMasterCommand } from '../../src/client/command/ismaster.js';
-import { sleep } from '@deepkit/core';
-import { ConnectionOptions } from '../../src/client/options.js';
-import { cast, validatedDeserialize } from '@deepkit/type';
-import { createConnection } from 'net';
-import { fail } from 'assert';
 import { MongoConnectionError } from '../../src/client/error.js';
-import { createCommand, MongoConnectionStatus } from '../../index.js';
+import { ConnectionOptions } from '../../src/client/options.js';
 
 jest.setTimeout(60000);
 
@@ -51,11 +53,11 @@ test('connect valid', async () => {
 test('test localhost', async () => {
     const socket = createConnection({
         host: '127.0.0.1',
-        port: 27017
+        port: 27017,
     });
 
     await new Promise(async (resolve, reject) => {
-        socket.on('error', (error) => {
+        socket.on('error', error => {
             reject(error);
         });
         await sleep(0.1);
@@ -70,7 +72,7 @@ test('custom command', async () => {
         $db: string;
     }
 
-    const command = createCommand<Message, {ismaster: boolean}>({isMaster: 1, $db: 'deepkit'});
+    const command = createCommand<Message, { ismaster: boolean }>({ isMaster: 1, $db: 'deepkit' });
 
     const client = new MongoClient('mongodb://127.0.0.1/');
     const res = await client.execute(command);
@@ -91,11 +93,10 @@ test('connect handshake', async () => {
 
 test('connect isMaster command', async () => {
     const client = new MongoClient('mongodb://127.0.0.1/');
-    const response = await client.execute(new IsMasterCommand);
+    const response = await client.execute(new IsMasterCommand());
     expect(response.ismaster).toBe(1);
     client.close();
 });
-
 
 // test('connect with username/password', async () => {
 //     const client = new MongoClient('mongodb://marc:password@localhost');
@@ -264,12 +265,12 @@ test('connection pool 10', async () => {
         const c10 = await client.pool.getConnection();
         // this blocks
         let c11: any;
-        client.pool.getConnection().then((c) => {
+        client.pool.getConnection().then(c => {
             c11 = c;
             expect(c11.id).toBe(0);
         });
         let c12: any;
-        client.pool.getConnection().then((c) => {
+        client.pool.getConnection().then(c => {
             c12 = c;
             expect(c12.id).toBe(1);
         });

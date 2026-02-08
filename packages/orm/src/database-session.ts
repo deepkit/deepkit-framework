@@ -7,32 +7,53 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { AbstractClassType, ClassType, DeepkitError, forwardTypeArguments } from '@deepkit/core';
+import { EventDispatcher, EventToken } from '@deepkit/event';
+import { Logger } from '@deepkit/logger';
+import { Stopwatch } from '@deepkit/stopwatch';
+import { GroupArraySort } from '@deepkit/topsort';
+import {
+    PrimaryKeyFields,
+    ReceiveType,
+    ReflectionClass,
+    ReflectionKind,
+    Type,
+    UnpopulatedCheck,
+    getPrimaryKeyExtractor,
+    getTypeJitContainer,
+    isReferenceInstance,
+    markAsHydrated,
+    stringifyType,
+    typeSettings,
+    validate,
+} from '@deepkit/type';
 
 import type { DatabaseAdapter, DatabasePersistence, DatabasePersistenceChangeSet } from './database-adapter.js';
 import { DatabaseEntityRegistry } from './database-adapter.js';
-import { DatabaseValidationError, OrmEntity } from './type.js';
-import { AbstractClassType, ClassType, CustomError, forwardTypeArguments } from '@deepkit/core';
-import { getPrimaryKeyExtractor, getTypeJitContainer, isReferenceInstance, markAsHydrated, PrimaryKeyFields, ReceiveType, ReflectionClass, ReflectionKind, stringifyType, Type, typeSettings, UnpopulatedCheck, validate } from '@deepkit/type';
-import { GroupArraySort } from '@deepkit/topsort';
-import { getClassState, getInstanceState, getNormalizedPrimaryKey, IdentityMap } from './identity-map.js';
-import { getClassSchemaInstancePairs } from './utils.js';
+import {
+    DatabaseErrorInsertEvent,
+    DatabaseErrorUpdateEvent,
+    UnitOfWorkCommitEvent,
+    UnitOfWorkEvent,
+    UnitOfWorkUpdateEvent,
+    onDatabaseError,
+} from './event.js';
 import { HydratorFn } from './formatter.js';
-import { getReference } from './reference.js';
-import { DatabaseErrorInsertEvent, DatabaseErrorUpdateEvent, onDatabaseError, UnitOfWorkCommitEvent, UnitOfWorkEvent, UnitOfWorkUpdateEvent } from './event.js';
-import { Stopwatch } from '@deepkit/stopwatch';
-import { EventDispatcher, EventToken } from '@deepkit/event';
+import { IdentityMap, getClassState, getInstanceState, getNormalizedPrimaryKey } from './identity-map.js';
 import { DatabasePluginRegistry } from './plugin/plugin.js';
-import { Logger } from '@deepkit/logger';
+import { getReference } from './reference.js';
+import { DatabaseValidationError, OrmEntity } from './type.js';
+import { getClassSchemaInstancePairs } from './utils.js';
 
 function resolveReferenceToEntity(type: Type, entityRegistry: DatabaseEntityRegistry): ReflectionClass<any> {
     if (type.kind === ReflectionKind.class) {
-        return getTypeJitContainer(type).resolveReferenceEntity ||= ReflectionClass.from(type.classType);
+        return (getTypeJitContainer(type).resolveReferenceEntity ||= ReflectionClass.from(type.classType));
     }
 
     // object literals have no reference to the nominal type,
     // so we look it up in the EntityRegistry
     if (type.kind === ReflectionKind.objectLiteral) {
-        return getTypeJitContainer(type).resolveReferenceEntity ||= entityRegistry.get(type);
+        return (getTypeJitContainer(type).resolveReferenceEntity ||= entityRegistry.get(type));
     }
 
     throw new Error(`Could not resolve reference to entity for ${stringifyType(type)}`);
@@ -56,9 +77,7 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         protected eventDispatcher: EventDispatcher,
         public logger: Logger,
         protected identityMap?: IdentityMap,
-    ) {
-
-    }
+    ) {}
 
     public isInCommit() {
         return this.inCommit;
@@ -92,7 +111,10 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
         }
     }
 
-    protected getReferenceDependenciesWithSchema<T extends OrmEntity>(classSchema: ReflectionClass<any>, item: T): [ReflectionClass<any>, OrmEntity][] {
+    protected getReferenceDependenciesWithSchema<T extends OrmEntity>(
+        classSchema: ReflectionClass<any>,
+        item: T,
+    ): [ReflectionClass<any>, OrmEntity][] {
         const result: [ReflectionClass<any>, OrmEntity][] = [];
 
         for (const reference of classSchema.getReferences()) {
@@ -237,15 +259,21 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                         try {
                             await persistence.insert(group.type, inserts);
                         } catch (error: any) {
-                            await this.eventDispatcher.dispatch(onDatabaseError, Object.assign(
-                                new DatabaseErrorInsertEvent(error, this.session, classState.classSchema),
-                                { inserts },
-                            ));
+                            await this.eventDispatcher.dispatch(
+                                onDatabaseError,
+                                Object.assign(
+                                    new DatabaseErrorInsertEvent(error, this.session, classState.classSchema),
+                                    { inserts },
+                                ),
+                            );
                             throw error;
                         }
 
                         if (this.eventDispatcher.hasListeners(DatabaseSession.onInsertPost)) {
-                            await this.eventDispatcher.dispatch(DatabaseSession.onInsertPost, new UnitOfWorkEvent(group.type, this.session, inserts));
+                            await this.eventDispatcher.dispatch(
+                                DatabaseSession.onInsertPost,
+                                new UnitOfWorkEvent(group.type, this.session, inserts),
+                            );
                         }
                     }
                 }
@@ -262,15 +290,21 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
                         try {
                             await persistence.update(group.type, changeSets);
                         } catch (error: any) {
-                            await this.eventDispatcher.dispatch(onDatabaseError, Object.assign(
-                                new DatabaseErrorUpdateEvent(error, this.session, classState.classSchema),
-                                { changeSets },
-                            ));
+                            await this.eventDispatcher.dispatch(
+                                onDatabaseError,
+                                Object.assign(
+                                    new DatabaseErrorUpdateEvent(error, this.session, classState.classSchema),
+                                    { changeSets },
+                                ),
+                            );
                             throw error;
                         }
 
                         if (this.eventDispatcher.hasListeners(DatabaseSession.onUpdatePost)) {
-                            await this.eventDispatcher.dispatch(DatabaseSession.onUpdatePost, new UnitOfWorkUpdateEvent(group.type, this.session, changeSets));
+                            await this.eventDispatcher.dispatch(
+                                DatabaseSession.onUpdatePost,
+                                new UnitOfWorkUpdateEvent(group.type, this.session, changeSets),
+                            );
                         }
                     }
                 }
@@ -290,15 +324,17 @@ export class DatabaseSessionRound<ADAPTER extends DatabaseAdapter> {
     }
 }
 
-export class SessionClosedException extends CustomError {
+export class SessionClosedException extends DeepkitError {
+    constructor(message: string, options?: { cause?: Error }) {
+        super('DK-O300', message, options);
+    }
 }
 
 export interface DatabaseSessionHookConstructor<C> {
-    new<T extends DatabaseSession<any>>(session: T): C;
+    new <T extends DatabaseSession<any>>(session: T): C;
 }
 
-export interface DatabaseSessionHook<T extends DatabaseSession<any>> {
-}
+export interface DatabaseSessionHook<T extends DatabaseSession<any>> {}
 
 export abstract class DatabaseTransaction {
     static transactionCounter: number = 0;
@@ -311,8 +347,7 @@ export abstract class DatabaseTransaction {
 
     abstract rollback(): Promise<void>;
 
-    constructor(public id: number = DatabaseTransaction.transactionCounter++) {
-    }
+    constructor(public id: number = DatabaseTransaction.transactionCounter++) {}
 }
 
 export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
@@ -344,8 +379,12 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
 
     protected currentPersistence?: DatabasePersistence = undefined;
 
-    public static readonly onUpdatePre: EventToken<UnitOfWorkUpdateEvent<any>> = new EventToken('orm.session.update.pre');
-    public static readonly onUpdatePost: EventToken<UnitOfWorkUpdateEvent<any>> = new EventToken('orm.session.update.post');
+    public static readonly onUpdatePre: EventToken<UnitOfWorkUpdateEvent<any>> = new EventToken(
+        'orm.session.update.pre',
+    );
+    public static readonly onUpdatePost: EventToken<UnitOfWorkUpdateEvent<any>> = new EventToken(
+        'orm.session.update.post',
+    );
 
     public static readonly onInsertPre: EventToken<UnitOfWorkEvent<any>> = new EventToken('orm.session.insert.pre');
     public static readonly onInsertPost: EventToken<UnitOfWorkEvent<any>> = new EventToken('orm.session.insert.post');
@@ -353,7 +392,9 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
     public static readonly onDeletePre: EventToken<UnitOfWorkEvent<any>> = new EventToken('orm.session.delete.pre');
     public static readonly onDeletePost: EventToken<UnitOfWorkEvent<any>> = new EventToken('orm.session.delete.post');
 
-    public static readonly onCommitPre: EventToken<UnitOfWorkCommitEvent<any>> = new EventToken('orm.session.commit.pre');
+    public static readonly onCommitPre: EventToken<UnitOfWorkCommitEvent<any>> = new EventToken(
+        'orm.session.commit.pre',
+    );
 
     constructor(
         public readonly adapter: ADAPTER,
@@ -366,7 +407,9 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
         const queryFactory = this.adapter.queryFactory(this);
 
         //we cannot use arrow functions, since they can't have ReceiveType<T>
-        function query<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
+        function query<T extends OrmEntity>(
+            type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>,
+        ) {
             const result = queryFactory.createQuery(type);
             result.model.adapterName = adapter.getName();
             return result;
@@ -419,7 +462,9 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
      */
     useTransaction(): ReturnType<this['adapter']['createTransaction']> {
         if (!this.assignedTransaction) {
-            this.assignedTransaction = this.adapter.createTransaction(this) as ReturnType<this['adapter']['createTransaction']>;
+            this.assignedTransaction = this.adapter.createTransaction(this) as ReturnType<
+                this['adapter']['createTransaction']
+            >;
         }
         return this.assignedTransaction;
     }
@@ -524,7 +569,15 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
     }
 
     protected enterNewRound() {
-        this.rounds.push(new DatabaseSessionRound(this.round++, this, this.eventDispatcher, this.logger, this.withIdentityMap ? this.identityMap : undefined));
+        this.rounds.push(
+            new DatabaseSessionRound(
+                this.round++,
+                this,
+                this.eventDispatcher,
+                this.logger,
+                this.withIdentityMap ? this.identityMap : undefined,
+            ),
+        );
     }
 
     /**
@@ -578,7 +631,6 @@ export class DatabaseSession<ADAPTER extends DatabaseAdapter = DatabaseAdapter> 
         this.getCurrentRound().remove(items, ReflectionClass.from(type));
         return this;
     }
-
 
     /**
      * Resets all scheduled changes (add() and remove() calls).

@@ -1,19 +1,34 @@
-import { BrokerAdapterBus, BrokerAdapterCache, BrokerAdapterKeyValue, BrokerAdapterLock, BrokerCacheItemOptionsResolved, BrokerKeyValueOptionsResolved, BrokerTimeOptionsResolved, Release } from '@deepkit/broker';
-import { Type } from '@deepkit/type';
-import { AutoBuffer, getBsonEncoder } from '@deepkit/bson';
 import Redis, { Callback, RedisOptions } from 'ioredis';
+
+import {
+    BrokerAdapterBus,
+    BrokerAdapterCache,
+    BrokerAdapterKeyValue,
+    BrokerAdapterLock,
+    BrokerCacheItemOptionsResolved,
+    BrokerKeyValueOptionsResolved,
+    BrokerTimeOptionsResolved,
+    Release,
+} from '@deepkit/broker';
+import { AutoBuffer, getBsonEncoder } from '@deepkit/bson';
 import { arrayRemoveItem, fixAsyncOperation } from '@deepkit/core';
 import { Logger } from '@deepkit/logger';
+import { Type } from '@deepkit/type';
 
 export type RedisBrokerAdapterOptions = RedisOptions & {
     prefix?: string; // optional prefix for all keys
-}
+};
 
-export class RedisBrokerAdapter implements BrokerAdapterBus, BrokerAdapterKeyValue, BrokerAdapterCache, BrokerAdapterLock {
-    protected subscriptions = new Map<string, {
-        handler: (message: Buffer, callbacks: Callback[]) => void,
-        callbacks: Callback[]
-    }>();
+export class RedisBrokerAdapter
+    implements BrokerAdapterBus, BrokerAdapterKeyValue, BrokerAdapterCache, BrokerAdapterLock
+{
+    protected subscriptions = new Map<
+        string,
+        {
+            handler: (message: Buffer, callbacks: Callback[]) => void;
+            callbacks: Callback[];
+        }
+    >();
 
     private prefix = this.config.prefix || '';
     private redis = new Redis({
@@ -210,4 +225,3 @@ export class RedisBrokerAdapter implements BrokerAdapterBus, BrokerAdapterKeyVal
         this.onInvalidateCacheCallbacks.push(callback);
     }
 }
-

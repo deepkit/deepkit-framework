@@ -1,9 +1,10 @@
 import { test } from '@jest/globals';
-import './filesystem.spec.js';
-import { setAdapterFactory } from './filesystem.spec.js';
-import { FilesystemLocalAdapter } from '../src/local-adapter.js';
 import { mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
+
+import { FilesystemLocalAdapter } from '../src/local-adapter.js';
+import './filesystem.spec.js';
+import { setAdapterFactory } from './filesystem.spec.js';
 
 setAdapterFactory(async () => {
     const tmp = mkdtempSync(tmpdir() + '/filesystem-test-');

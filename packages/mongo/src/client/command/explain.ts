@@ -7,16 +7,15 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BaseResponse, Command, ReadPreferenceMessage, TransactionalMessage } from './command.js';
 import type { MongoClientConfig } from '../config.js';
-import type { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
-import { FindCommand } from './find.js';
+import type { Host } from '../host.js';
 import { AggregateCommand } from './aggregate.js';
-import { UpdateCommand } from './update.js';
-import { FindAndModifyCommand } from './findAndModify.js';
+import { BaseResponse, Command, ReadPreferenceMessage, TransactionalMessage } from './command.js';
 import { CountCommand } from './count.js';
+import { FindCommand } from './find.js';
+import { FindAndModifyCommand } from './findAndModify.js';
+import { UpdateCommand } from './update.js';
 
 export interface MongoExplain extends BaseResponse {
     queryPlanner: {
@@ -55,17 +54,27 @@ type ExplainSchema = {
     explain: any;
     $db: string;
     verbosity: string;
-} & TransactionalMessage & ReadPreferenceMessage;
+} & TransactionalMessage &
+    ReadPreferenceMessage;
 
 export class ExplainCommand extends Command<MongoExplain> {
     constructor(
-        public command: FindCommand<any> | AggregateCommand<any, any> | UpdateCommand<any> | FindAndModifyCommand<any> | CountCommand<any>,
+        public command:
+            | FindCommand<any>
+            | AggregateCommand<any, any>
+            | UpdateCommand<any>
+            | FindAndModifyCommand<any>
+            | CountCommand<any>,
         public verbosity: string,
     ) {
         super();
     }
 
-    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<MongoExplain> {
+    async execute(
+        config: MongoClientConfig,
+        host: Host,
+        transaction?: MongoDatabaseTransaction,
+    ): Promise<MongoExplain> {
         const cmd: ExplainSchema = {
             explain: this.command.getCommand(config, host, transaction),
             $db: config.defaultDb || 'admin',

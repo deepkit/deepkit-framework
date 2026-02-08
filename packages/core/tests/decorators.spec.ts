@@ -1,6 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { log, stack } from '../src/decorators.js';
+
 import { sleep } from '../src/core.js';
+import { log, stack } from '../src/decorators.js';
 
 test('test decorators @sync', async () => {
     class Test {
@@ -18,7 +19,7 @@ test('test decorators @sync', async () => {
             this.running = true;
             this.i++;
             console.log('i++');
-            return new Promise((resolve) => {
+            return new Promise(resolve => {
                 setTimeout(() => {
                     console.log('timeout done');
                     this.j++;
@@ -54,9 +55,15 @@ test('test decorators @sync', async () => {
         const test = new Test();
 
         expect(test.i).toBe(0);
-        test.increase().then((j) => { expect(j).toBe(1) });
-        test.increase().then((j) => { expect(j).toBe(2) });
-        test.increase().then((j) => { expect(j).toBe(3) });
+        test.increase().then(j => {
+            expect(j).toBe(1);
+        });
+        test.increase().then(j => {
+            expect(j).toBe(2);
+        });
+        test.increase().then(j => {
+            expect(j).toBe(3);
+        });
         expect(test.i).toBe(1);
         expect(test.j).toBe(0);
 

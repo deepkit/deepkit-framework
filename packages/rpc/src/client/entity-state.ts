@@ -7,29 +7,31 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { ClassType, arrayRemoveItem, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
+import { ReflectionClass, TypeObjectLiteral, getPartialSerializeFunction, serializer } from '@deepkit/type';
 
-import { arrayRemoveItem, ClassType, deletePathValue, getPathValue, setPathValue } from '@deepkit/core';
 import {
     EntityPatch,
     EntitySubject,
     IdType,
     IdVersionInterface,
-    rpcEntityPatch,
-    rpcEntityRemove,
     RpcError,
     RpcTypes,
+    rpcEntityPatch,
+    rpcEntityRemove,
 } from '../model.js';
 import { RpcMessage } from '../protocol.js';
-import { getPartialSerializeFunction, ReflectionClass, serializer, TypeObjectLiteral } from '@deepkit/type';
 
 export class EntitySubjectStore<T extends IdVersionInterface> {
-    store = new Map<IdType, { item: T, forks: EntitySubject<T>[] }>();
+    store = new Map<IdType, { item: T; forks: EntitySubject<T>[] }>();
     onCreation = new Map<IdType, { calls: Function[] }>();
 
-    protected partialDeserializer = getPartialSerializeFunction(ReflectionClass.from(this.classType).type, serializer.deserializeRegistry);
+    protected partialDeserializer = getPartialSerializeFunction(
+        ReflectionClass.from(this.classType).type,
+        serializer.deserializeRegistry,
+    );
 
-    constructor(protected classType: ClassType) {
-    }
+    constructor(protected classType: ClassType) {}
 
     public isRegistered(id: IdType): boolean {
         return this.store.has(id);
@@ -107,14 +109,16 @@ export class EntitySubjectStore<T extends IdVersionInterface> {
             }
         }
 
-        if (patch.$inc) for (const i in patch.$inc) {
-            if (i === 'version') continue;
-            setPathValue(store.item, i, getPathValue(store.item, i) + patch.$inc[i]);
-        }
+        if (patch.$inc)
+            for (const i in patch.$inc) {
+                if (i === 'version') continue;
+                setPathValue(store.item, i, getPathValue(store.item, i) + patch.$inc[i]);
+            }
 
-        if (patch.$unset) for (const i in patch.$unset) {
-            deletePathValue(store.item, i);
-        }
+        if (patch.$unset)
+            for (const i in patch.$unset) {
+                deletePathValue(store.item, i);
+            }
 
         for (const fork of store.forks) {
             fork.patches.next(patch);

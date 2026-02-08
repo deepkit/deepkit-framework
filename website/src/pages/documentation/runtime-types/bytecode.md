@@ -27,16 +27,16 @@ The existing commands themselves are each one byte in size and can be found in `
 
 ```typescript
 enum ReflectionOp {
-    never,
-    any,
-    unknown,
-    void,
-    object,
+  never,
+  any,
+  unknown,
+  void,
+  object,
 
-    string,
-    number,
+  string,
+  number,
 
-    //...many more
+  //...many more
 }
 ```
 
@@ -44,7 +44,7 @@ A sequence of commands is encoded as a string to save memory. So a type `string[
 
 ```typescript
 function encodeOps(ops: ReflectionOp[]): string {
-    return ops.map(v => String.fromCharCode(v + 33)).join('');
+  return ops.map(v => String.fromCharCode(v + 33)).join('');
 }
 ```
 
@@ -58,7 +58,7 @@ export type TypeA = string[];
 export const __ΩtypeA = ['&F'];
 ```
 
-To prevent naming conflicts, each type is given a "_Ω" prefix. For each explicitly defined type that is exported or used by an exported type, a bytecode is emitted the JavaScript. Classes and functions also receive a bytecode directly as a property.
+To prevent naming conflicts, each type is given a "\_Ω" prefix. For each explicitly defined type that is exported or used by an exported type, a bytecode is emitted the JavaScript. Classes and functions also receive a bytecode directly as a property.
 
 ```typescript
 //TypeScript

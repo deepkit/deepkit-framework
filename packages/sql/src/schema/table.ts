@@ -7,10 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { arrayRemoveItem } from '@deepkit/core';
+import { ReflectionClass, ReflectionProperty, genericEqual } from '@deepkit/type';
+
+import { SqlError } from '../error.js';
 import { cyrb53 } from '../hash.js';
-import { genericEqual, ReflectionClass, ReflectionProperty } from '@deepkit/type';
 
 export class DatabaseModel {
     public schemaName: string = '';
@@ -19,13 +20,12 @@ export class DatabaseModel {
 
     constructor(
         public tables: Table[] = [],
-        public adapterName: string = ''
-    ) {
-    }
+        public adapterName: string = '',
+    ) {}
 
     getTableForClass(schema: ReflectionClass<any>): Table {
         const table = this.schemaMap.get(schema);
-        if (!table) throw new Error(`No table for entity ${schema.getClassName()}`);
+        if (!table) throw new SqlError('DK-SQL004', `No table for entity ${schema.getClassName()}`);
         return table;
     }
 
@@ -51,7 +51,7 @@ export class DatabaseModel {
 
     getTable(name: string, schemaName?: string): Table {
         const table = this.tables.find(v => v.isName(name, schemaName));
-        if (!table) throw new Error(`Could not find table ${name} in schema ${schemaName}`);
+        if (!table) throw new SqlError('DK-SQL005', `Could not find table ${name} in schema ${schemaName}`);
         return table;
     }
 
@@ -74,15 +74,12 @@ export class Table {
     public schemaName: string = '';
     public alias: string = '';
 
-    public columnForProperty: Map<ReflectionProperty, Column> = new Map;
+    public columnForProperty: Map<ReflectionProperty, Column> = new Map();
     public columns: Column[] = [];
     public indices: IndexModel[] = [];
     public foreignKeys: ForeignKey[] = [];
 
-    constructor(
-        public name: string,
-    ) {
-    }
+    constructor(public name: string) {}
 
     isName(name: string, schemaName?: string): boolean {
         if (schemaName && schemaName !== this.schemaName) return false;
@@ -184,7 +181,6 @@ export class Table {
         }
         return false;
     }
-
 }
 
 export class Column {
@@ -206,9 +202,8 @@ export class Column {
 
     constructor(
         public table: Table,
-        public name: string //real column name (probably transformed to snake case, or something)
-    ) {
-    }
+        public name: string, //real column name (probably transformed to snake case, or something)
+    ) {}
 
     getName(): string {
         return this.name;
@@ -233,8 +228,11 @@ export class IndexModel {
 
     public size: number = 0;
 
-    constructor(public table: Table, public name: string, public isUnique = false) {
-    }
+    constructor(
+        public table: Table,
+        public name: string,
+        public isUnique = false,
+    ) {}
 
     getName(): string {
         if (!this.name) {
@@ -269,8 +267,11 @@ export class ForeignKey {
     public onUpdate: ForeignKeyAction = 'CASCADE';
     public onDelete: ForeignKeyAction = 'CASCADE';
 
-    constructor(public table: Table, public name: string, public foreign: Table) {
-    }
+    constructor(
+        public table: Table,
+        public name: string,
+        public foreign: Table,
+    ) {}
 
     getName(): string {
         if (!this.name) {
@@ -302,17 +303,18 @@ export class ForeignKey {
 }
 
 export class ColumnPropertyDiff {
-    constructor(public readonly from: any, public readonly to: any) {
-    }
+    constructor(
+        public readonly from: any,
+        public readonly to: any,
+    ) {}
 }
 
 export class ColumnDiff {
     constructor(
         public from: Column,
         public to: Column,
-        public changedProperties = new Map<keyof Column, ColumnPropertyDiff>()
-    ) {
-    }
+        public changedProperties = new Map<keyof Column, ColumnPropertyDiff>(),
+    ) {}
 
     valueOf() {
         const res: string[] = [];
@@ -334,11 +336,19 @@ export class ColumnComparator {
 
         if (from.scale !== to.scale) changedProperties.set('scale', new ColumnPropertyDiff(from.scale, to.scale));
         if (from.size !== to.size) changedProperties.set('size', new ColumnPropertyDiff(from.size, to.size));
-        if (from.unsigned !== to.unsigned) changedProperties.set('unsigned', new ColumnPropertyDiff(from.unsigned, to.unsigned));
-        if (from.isNotNull !== to.isNotNull) changedProperties.set('isNotNull', new ColumnPropertyDiff(from.isNotNull, to.isNotNull));
-        if (from.isAutoIncrement !== to.isAutoIncrement) changedProperties.set('isAutoIncrement', new ColumnPropertyDiff(from.isAutoIncrement, to.isAutoIncrement));
-        if (!genericEqual(from.defaultValue, to.defaultValue)) changedProperties.set('defaultValue', new ColumnPropertyDiff(from.defaultValue, to.defaultValue));
-        if (from.defaultExpression !== to.defaultExpression) changedProperties.set('defaultExpression', new ColumnPropertyDiff(from.defaultExpression, to.defaultExpression));
+        if (from.unsigned !== to.unsigned)
+            changedProperties.set('unsigned', new ColumnPropertyDiff(from.unsigned, to.unsigned));
+        if (from.isNotNull !== to.isNotNull)
+            changedProperties.set('isNotNull', new ColumnPropertyDiff(from.isNotNull, to.isNotNull));
+        if (from.isAutoIncrement !== to.isAutoIncrement)
+            changedProperties.set('isAutoIncrement', new ColumnPropertyDiff(from.isAutoIncrement, to.isAutoIncrement));
+        if (!genericEqual(from.defaultValue, to.defaultValue))
+            changedProperties.set('defaultValue', new ColumnPropertyDiff(from.defaultValue, to.defaultValue));
+        if (from.defaultExpression !== to.defaultExpression)
+            changedProperties.set(
+                'defaultExpression',
+                new ColumnPropertyDiff(from.defaultExpression, to.defaultExpression),
+            );
 
         return changedProperties;
     }
@@ -347,8 +357,14 @@ export class ColumnComparator {
 export class IndexComparator {
     static computeDiff(from: IndexModel, to: IndexModel) {
         //check if order has changed.
-        const fromColumnNames = from.columns.map(v => v.name).join(',').toLowerCase();
-        const toColumnNames = to.columns.map(v => v.name).join(',').toLowerCase();
+        const fromColumnNames = from.columns
+            .map(v => v.name)
+            .join(',')
+            .toLowerCase();
+        const toColumnNames = to.columns
+            .map(v => v.name)
+            .join(',')
+            .toLowerCase();
         if (fromColumnNames !== toColumnNames) return true;
 
         return from.isUnique !== to.isUnique;
@@ -359,12 +375,24 @@ export class ForeignKeyComparator {
     static computeDiff(from: ForeignKey, to: ForeignKey) {
         if (from.foreign.getName() !== to.foreign.getName()) return true;
 
-        const fromFkLocalFields = from.localColumns.map(v => v.name).join(',').toLowerCase();
-        const toFkLocalFields = to.localColumns.map(v => v.name).join(',').toLowerCase();
+        const fromFkLocalFields = from.localColumns
+            .map(v => v.name)
+            .join(',')
+            .toLowerCase();
+        const toFkLocalFields = to.localColumns
+            .map(v => v.name)
+            .join(',')
+            .toLowerCase();
         if (fromFkLocalFields !== toFkLocalFields) return true;
 
-        const fromFkForeignFields = from.localColumns.map(v => v.name).join(',').toLowerCase();
-        const toFkForeignFields = to.localColumns.map(v => v.name).join(',').toLowerCase();
+        const fromFkForeignFields = from.localColumns
+            .map(v => v.name)
+            .join(',')
+            .toLowerCase();
+        const toFkForeignFields = to.localColumns
+            .map(v => v.name)
+            .join(',')
+            .toLowerCase();
         if (fromFkForeignFields !== toFkForeignFields) return true;
 
         if (from.onUpdate.toLowerCase() !== to.onUpdate.toLowerCase()) return true;
@@ -392,8 +420,10 @@ export class TableDiff {
     public modifiedFKs: [from: ForeignKey, to: ForeignKey][] = [];
     public removedFKs: ForeignKey[] = [];
 
-    constructor(public from: Table, public to: Table) {
-    }
+    constructor(
+        public from: Table,
+        public to: Table,
+    ) {}
 
     hasModifiedPk(): boolean {
         return this.addedPKColumns.length > 0 || this.renamedPKColumns.length > 0 || this.removedPKColumns.length > 0;
@@ -420,9 +450,9 @@ export class TableDiff {
 
         if (this.modifiedColumns.length) {
             lines.push('   modifiedColumns:');
-            for (const diff of this.modifiedColumns) lines.push(`     ${diff.from.getName()}=>${diff.to.getName()} ${diff.valueOf()}`);
+            for (const diff of this.modifiedColumns)
+                lines.push(`     ${diff.from.getName()}=>${diff.to.getName()} ${diff.valueOf()}`);
         }
-
 
         if (this.addedPKColumns.length) {
             lines.push('   addedPKColumns:');
@@ -484,7 +514,10 @@ export class TableDiff {
 export class TableComparator {
     public readonly diff: TableDiff;
 
-    constructor(public from: Table, public to: Table) {
+    constructor(
+        public from: Table,
+        public to: Table,
+    ) {
         this.diff = new TableDiff(from, to);
     }
 
@@ -665,9 +698,9 @@ export class DatabaseDiff {
     public renamedTables: [from: Table, to: Table][] = [];
 
     constructor(
-        public from: DatabaseModel, public to: DatabaseModel
-    ) {
-    }
+        public from: DatabaseModel,
+        public to: DatabaseModel,
+    ) {}
 
     removeTable(name: string, schema?: string) {
         this.removedTables = this.removedTables.filter(v => v.name !== name && v.schemaName !== schema);
@@ -695,7 +728,8 @@ export class DatabaseComparator {
     public withRenaming: boolean = true;
 
     constructor(
-        public from: DatabaseModel, public to: DatabaseModel
+        public from: DatabaseModel,
+        public to: DatabaseModel,
     ) {
         this.diff = new DatabaseDiff(from, to);
     }

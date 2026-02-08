@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+
 import { parseConnectionString } from '../src/config.js';
 
 test('basics', async () => {
@@ -8,7 +9,7 @@ test('basics', async () => {
         port: 5432,
         password: 'password2',
         database: 'mydb',
-        user: 'user1'
+        user: 'user1',
     });
 });
 
@@ -21,6 +22,6 @@ test('with-params', async () => {
         database: 'mydb',
         user: 'user1',
         query_timeout: 1000,
-        keepAlive: true
+        keepAlive: true,
     });
 });

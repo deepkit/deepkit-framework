@@ -7,24 +7,21 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType } from '@deepkit/core';
 import { BaseEvent, EventToken } from '@deepkit/event';
 import type { Changes } from '@deepkit/type';
 import { PrimaryKeyType, ReflectionClass } from '@deepkit/type';
+
 import type { DatabasePersistenceChangeSet } from './database-adapter.js';
 import type { DatabaseSession } from './database-session.js';
 import type { Query } from './query.js';
 import type { DeleteResult, PatchResult } from './type.js';
 import { OrmEntity } from './type.js';
 
-export class DatabaseEvent extends BaseEvent {
-}
+export class DatabaseEvent extends BaseEvent {}
 
 export class UnitOfWorkCommitEvent<T> extends DatabaseEvent {
-    constructor(
-        public readonly databaseSession: DatabaseSession<any>,
-    ) {
+    constructor(public readonly databaseSession: DatabaseSession<any>) {
         super();
     }
 }
@@ -112,7 +109,6 @@ export class DatabaseErrorUpdateEvent extends DatabaseErrorEvent {
  * In event.classSchema and event.query you might find additional context, but not necessarily.
  */
 export const onDatabaseError = new EventToken<DatabaseErrorEvent>('database.error');
-
 
 export class QueryDatabaseDeleteEvent<T extends OrmEntity> extends DatabaseEvent {
     constructor(

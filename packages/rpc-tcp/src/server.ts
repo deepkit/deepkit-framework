@@ -1,11 +1,12 @@
-import { asyncOperation, ParsedHost, parseHost } from '@deepkit/core';
-import { RpcKernel, RpcMessageDefinition } from '@deepkit/rpc';
 import { existsSync, mkdirSync, unlinkSync } from 'fs';
-import { createServer, Server, Socket } from 'net';
+import { IncomingMessage } from 'http';
+import { Server, Socket, createServer } from 'net';
+import { dirname } from 'path';
 import type { ServerOptions as WebSocketServerOptions } from 'ws';
 import { WebSocketServer } from 'ws';
-import { IncomingMessage } from 'http';
-import { dirname } from 'path';
+
+import { DeepkitError, ParsedHost, asyncOperation, parseHost } from '@deepkit/core';
+import { RpcKernel, RpcMessageDefinition } from '@deepkit/rpc';
 
 /**
  * Uses the node `net` module to create a server. Supports unix sockets.
@@ -34,13 +35,13 @@ export class RpcTcpServer {
             });
 
             this.server.on('error', (err: any) => {
-                reject(new Error('Could not start broker server: ' + err));
+                reject(new DeepkitError('DK-RT001', 'Could not start broker server: ' + err));
             });
 
             this.server.on('connection', (socket: Socket) => {
                 const connection = this.kernel?.createConnection({
                     write(b: RpcMessageDefinition) {
-                        connection.sendBinary(b, (data) => socket.write(data));
+                        connection.sendBinary(b, data => socket.write(data));
                     },
                     clientAddress(): string {
                         return socket.remoteAddress || '';
@@ -61,7 +62,7 @@ export class RpcTcpServer {
                     connection.close();
                 });
 
-                socket.on('error', (error) => {
+                socket.on('error', error => {
                     connection.close(error);
                 });
             });
@@ -126,7 +127,7 @@ export class RpcWebSocketServer {
                 connection.close();
             });
 
-            ws.on('error', (error) => {
+            ws.on('error', error => {
                 connection.close(error);
             });
         });

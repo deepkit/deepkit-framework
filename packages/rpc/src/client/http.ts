@@ -1,11 +1,12 @@
-import { ClientTransportAdapter, RpcClient } from './client.js';
-import { TransportClientConnection } from '../transport.js';
-import { RpcMessageDefinition } from '../protocol.js';
-import { RpcError, RpcTypes } from '../model.js';
-import { HttpRpcMessage } from '../server/http.js';
 import { serialize } from '@deepkit/type';
 
-declare const location: { protocol: string, host: string, origin: string };
+import { RpcError, RpcTypes } from '../model.js';
+import { RpcMessageDefinition } from '../protocol.js';
+import { HttpRpcMessage } from '../server/http.js';
+import { TransportClientConnection } from '../transport.js';
+import { ClientTransportAdapter, RpcClient } from './client.js';
+
+declare const location: { protocol: string; host: string; origin: string };
 
 export interface RpcHttpResponseInterface {
     status: number;
@@ -14,24 +15,27 @@ export interface RpcHttpResponseInterface {
 }
 
 export interface RpcHttpInterface {
-    fetch(url: string, options: {
-        headers: { [name: string]: string },
-        method: string,
-        body?: string
-    }): Promise<RpcHttpResponseInterface>;
+    fetch(
+        url: string,
+        options: {
+            headers: { [name: string]: string };
+            method: string;
+            body?: string;
+        },
+    ): Promise<RpcHttpResponseInterface>;
 }
 
 export class RpcHttpFetch implements RpcHttpInterface {
-    constructor(
-        private baseUrl: string | ((url: string) => string) = '',
-    ) {
-    }
+    constructor(private baseUrl: string | ((url: string) => string) = '') {}
 
-    async fetch(url: string, options: {
-        headers: { [name: string]: string },
-        method: string,
-        body: any
-    }): Promise<RpcHttpResponseInterface> {
+    async fetch(
+        url: string,
+        options: {
+            headers: { [name: string]: string };
+            method: string;
+            body: any;
+        },
+    ): Promise<RpcHttpResponseInterface> {
         if ('function' === typeof this.baseUrl) {
             url = this.baseUrl(url);
         } else if (this.baseUrl) {
@@ -93,18 +97,26 @@ export class RpcHttpClientAdapter implements ClientTransportAdapter {
 
                 if (message.type === RpcTypes.ActionType) {
                     if (!message.body) throw new RpcError('No body given');
-                    const body = message.body.body as { controller: string, method: string, };
+                    const body = message.body.body as { controller: string; method: string };
                     path = body.controller + '/' + encodeURIComponent(body.method) + '.type';
                     method = 'GET';
                 } else if (message.type === RpcTypes.Action) {
                     if (!message.body) throw new RpcError('No body given');
-                    const messageBody = serialize(message.body.body, undefined, undefined, undefined, message.body.type) as {
-                        controller: string,
-                        method: string,
-                        args: any[]
+                    const messageBody = serialize(
+                        message.body.body,
+                        undefined,
+                        undefined,
+                        undefined,
+                        message.body.type,
+                    ) as {
+                        controller: string;
+                        method: string;
+                        args: any[];
                     };
                     path = messageBody.controller + '/' + encodeURIComponent(messageBody.method);
-                    const allPrimitive = messageBody.args.every(v => ['string', 'number', 'boolean', 'bigint'].includes(typeof v));
+                    const allPrimitive = messageBody.args.every(v =>
+                        ['string', 'number', 'boolean', 'bigint'].includes(typeof v),
+                    );
                     if (allPrimitive) {
                         for (const a of messageBody.args) {
                             qs.push('arg=' + encodeURIComponent(String(a)));
@@ -119,13 +131,18 @@ export class RpcHttpClientAdapter implements ClientTransportAdapter {
                 }
 
                 const res = await this.http.fetch(this.url + '/' + path + '?' + qs.join('&'), {
-                    headers: Object.assign({
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        ...(connection.token != undefined) ? {
-                            'Authorization': String(connection.token),
-                        } : {},
-                    }, this.headers),
+                    headers: Object.assign(
+                        {
+                            'Content-Type': 'application/json',
+                            Accept: 'application/json',
+                            ...(connection.token != undefined
+                                ? {
+                                      Authorization: String(connection.token),
+                                  }
+                                : {}),
+                        },
+                        this.headers,
+                    ),
                     method,
                     body,
                 });
@@ -142,14 +159,12 @@ export class RpcHttpClientAdapter implements ClientTransportAdapter {
             bufferedAmount(): number {
                 return 0;
             },
-            close(): void {
-            },
+            close(): void {},
             clientAddress(): string {
                 return '';
             },
         });
     }
 }
-
 
 export const RpcHttpHeaderNames = ['x-message-type', 'x-message-composite', 'x-message-routetype'];

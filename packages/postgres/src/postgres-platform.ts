@@ -7,16 +7,18 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import sqlstring from 'sqlstring';
 
+import { isArray, isObject } from '@deepkit/core';
 import {
     Column,
     ColumnDiff,
     DefaultPlatform,
     IndexModel,
-    isSet,
     PreparedAdapter,
     SqlPlaceholderStrategy,
     Table,
+    isSet,
     typeResolvesToBigInt,
     typeResolvesToBoolean,
     typeResolvesToDate,
@@ -24,21 +26,20 @@ import {
     typeResolvesToNumber,
     typeResolvesToString,
 } from '@deepkit/sql';
-import { postgresSerializer } from './postgres-serializer.js';
 import {
-    isReferenceType,
-    isUUIDType,
     ReflectionClass,
     ReflectionKind,
     ReflectionProperty,
     Serializer,
     Type,
     TypeNumberBrand,
+    isReferenceType,
+    isUUIDType,
 } from '@deepkit/type';
+
 import { PostgresSchemaParser } from './postgres-schema-parser.js';
+import { postgresSerializer } from './postgres-serializer.js';
 import { PostgreSQLFilterBuilder } from './sql-filter-builder.js';
-import { isArray, isObject } from '@deepkit/core';
-import sqlstring from 'sqlstring';
 
 function escapeLiteral(value: any): string {
     if (value === null || value === undefined) return 'null';
@@ -47,11 +48,11 @@ function escapeLiteral(value: any): string {
     if ('string' !== typeof value) return escapeLiteral(String(value));
 
     let hasBackslash = false;
-    let escaped = '\'';
+    let escaped = "'";
 
     for (let i = 0; i < value.length; i++) {
         const c = value[i];
-        if (c === '\'') {
+        if (c === "'") {
             escaped += c + c;
         } else if (c === '\\') {
             escaped += c + c;
@@ -61,7 +62,7 @@ function escapeLiteral(value: any): string {
         }
     }
 
-    escaped += '\'';
+    escaped += "'";
 
     if (hasBackslash) {
         escaped = ' E' + escaped;
@@ -72,7 +73,7 @@ function escapeLiteral(value: any): string {
 
 export class PostgresPlaceholderStrategy extends SqlPlaceholderStrategy {
     override getPlaceholder() {
-        return '$' + (++this.offset);
+        return '$' + ++this.offset;
     }
 }
 
@@ -104,8 +105,14 @@ export class PostgresPlatform extends DefaultPlatform {
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.int32, 'integer');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.uint32, 'integer');
         this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float32, 'real');
-        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float64, 'double precision');
-        this.addType(type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float, 'double precision');
+        this.addType(
+            type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float64,
+            'double precision',
+        );
+        this.addType(
+            type => type.kind === ReflectionKind.number && type.brand === TypeNumberBrand.float,
+            'double precision',
+        );
 
         this.addType(isUUIDType, 'uuid');
         this.addBinaryType('bytea');
@@ -130,8 +137,12 @@ export class PostgresPlatform extends DefaultPlatform {
         return super.getAggregateSelect(tableName, property, func);
     }
 
-    override createSqlFilterBuilder(adapter: PreparedAdapter, schema: ReflectionClass<any>, tableName: string): PostgreSQLFilterBuilder {
-        return new PostgreSQLFilterBuilder(adapter, schema, tableName, this.serializer, new this.placeholderStrategy);
+    override createSqlFilterBuilder(
+        adapter: PreparedAdapter,
+        schema: ReflectionClass<any>,
+        tableName: string,
+    ): PostgreSQLFilterBuilder {
+        return new PostgreSQLFilterBuilder(adapter, schema, tableName, this.serializer, new this.placeholderStrategy());
     }
 
     override getDeepColumnAccessor(table: string, column: string, path: string) {
@@ -139,7 +150,8 @@ export class PostgresPlatform extends DefaultPlatform {
     }
 
     override quoteValue(value: any): string {
-        if (!(value instanceof Date) && (isObject(value) || isArray(value))) return escapeLiteral(JSON.stringify(value));
+        if (!(value instanceof Date) && (isObject(value) || isArray(value)))
+            return escapeLiteral(JSON.stringify(value));
         if (value instanceof Date) return 'TIMESTAMP ' + sqlstring.escape(value);
         return escapeLiteral(value);
     }
@@ -188,12 +200,16 @@ export class PostgresPlatform extends DefaultPlatform {
         const identifier = this.getIdentifier(diff.to);
 
         if (diff.from.type !== diff.to.type || diff.from.isAutoIncrement !== diff.to.isAutoIncrement) {
-            lines.push(`ALTER TABLE ${this.getIdentifier(diff.to.table)} ALTER ${identifier} TYPE ${this.getColumnType(diff.to)}`);
+            lines.push(
+                `ALTER TABLE ${this.getIdentifier(diff.to.table)} ALTER ${identifier} TYPE ${this.getColumnType(diff.to)}`,
+            );
         }
 
         if (diff.from.isNotNull !== diff.to.isNotNull) {
             if (diff.to.defaultExpression !== undefined || diff.to.defaultValue !== undefined) {
-                lines.push(`ALTER TABLE ${this.getIdentifier(diff.to.table)} ALTER ${identifier} SET ${this.getColumnDefaultValueDDL(diff.to)}`);
+                lines.push(
+                    `ALTER TABLE ${this.getIdentifier(diff.to.table)} ALTER ${identifier} SET ${this.getColumnDefaultValueDDL(diff.to)}`,
+                );
             } else {
                 lines.push(`ALTER TABLE ${this.getIdentifier(diff.to.table)} ALTER ${identifier} DROP DEFAULT`);
             }
@@ -204,7 +220,9 @@ export class PostgresPlatform extends DefaultPlatform {
                 //NOT NULL is newly added, so we need to update all existing rows to have a value
                 const defaultExpression = this.getDefaultExpression(diff.to);
                 if (defaultExpression) {
-                    lines.push(`UPDATE ${this.getIdentifier(diff.to.table)} SET ${identifier} = ${defaultExpression} WHERE ${identifier} IS NULL`);
+                    lines.push(
+                        `UPDATE ${this.getIdentifier(diff.to.table)} SET ${identifier} = ${defaultExpression} WHERE ${identifier} IS NULL`,
+                    );
                 }
                 lines.push(`ALTER TABLE ${this.getIdentifier(diff.to.table)} ALTER ${identifier} SET NOT NULL`);
             } else {
@@ -212,7 +230,7 @@ export class PostgresPlatform extends DefaultPlatform {
             }
         }
 
-        return lines.join(';\n')
+        return lines.join(';\n');
     }
 
     getDefaultExpression(column: Column): string {

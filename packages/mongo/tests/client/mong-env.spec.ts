@@ -1,20 +1,21 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, jest, test } from '@jest/globals';
-import { MongoClient } from '../../src/client/client.js';
-import { createMongoClientFactory, MongoEnv, MongoInstance } from './env-setup.js';
+
 import { sleep } from '@deepkit/core';
-import { MongoConnection, MongoConnectionPool, MongoStats, onMongoTopologyChange } from '../../src/client/connection.js';
 import { EventDispatcher } from '@deepkit/event';
 import { ConsoleLogger } from '@deepkit/logger';
+
+import { MongoClient } from '../../src/client/client.js';
 import { IsMasterCommand } from '../../src/client/command/ismaster.js';
+import { MongoClientConfig } from '../../src/client/config.js';
+import { MongoConnection, MongoConnectionPool, MongoStats, onMongoTopologyChange } from '../../src/client/connection.js';
 import { MongoConnectionError } from '../../src/client/error.js';
 import { Host } from '../../src/client/host.js';
-import { MongoClientConfig } from '../../src/client/config.js';
 import { mongoBinarySerializer } from '../../src/mongo-serializer.js';
+import { MongoEnv, MongoInstance, createMongoClientFactory } from './env-setup.js';
 
 jest.setTimeout(60 * 1000);
 
-test('nix', () => {
-});
+test('nix', () => {});
 
 describe('basic', () => {
     it('should close the node process', async () => {
@@ -26,13 +27,20 @@ describe('basic', () => {
         const host = new Host('primary', 27017);
         const config = new MongoClientConfig('mongodb://primary');
         const connection = new MongoConnection(
-            1, host, config, mongoBinarySerializer, (connection) => {
+            1,
+            host,
+            config,
+            mongoBinarySerializer,
+            connection => {
                 console.log('onClose', connection.id);
-            }, () => {
+            },
+            () => {
                 console.log('onRelease', connection.id);
-            }, (bytes) => {
+            },
+            bytes => {
                 console.log('onSent', bytes);
-            }, (bytes) => {
+            },
+            bytes => {
                 console.log('onReceived', bytes);
             },
         );
@@ -92,7 +100,10 @@ describe('mongo-env', () => {
         }
 
         mongo.closeConnections();
-        await sleep(0);
+        // Wait for close event to propagate (may take a few event loop ticks under load)
+        for (let i = 0; i < 100 && client.pool.isConnected(); i++) {
+            await sleep(0.01);
+        }
         expect(client.pool.isConnected()).toBe(false);
 
         {
@@ -123,8 +134,8 @@ describe('mongo-env', () => {
 
     it('topology change event', async () => {
         const client = createClient(`mongodb://127.0.0.1:${mongo.proxyPort}`);
-        const promise = new Promise<void>((resolve) => {
-            client.eventDispatcher.listen(onMongoTopologyChange, (event) => {
+        const promise = new Promise<void>(resolve => {
+            client.eventDispatcher.listen(onMongoTopologyChange, event => {
                 resolve();
             });
         });
@@ -151,24 +162,22 @@ describe('mongo-env', () => {
 });
 
 describe('replica set, primary secondary', () => {
-    const mongoEnv = new MongoEnv;
+    const mongoEnv = new MongoEnv();
 
     let primary: MongoInstance;
     let secondary1: MongoInstance;
     const createClient = createMongoClientFactory(mongoEnv);
 
     beforeAll(async () => {
-        [primary, secondary1] = await Promise.all([
-            mongoEnv.addMongo('primary', 'rs1'),
-            mongoEnv.addMongo('secondary1', 'rs1'),
-        ]);
+        [primary, secondary1] = await Promise.all([mongoEnv.addMongo('primary', 'rs1'), mongoEnv.addMongo('secondary1', 'rs1')]);
 
-        const init = await mongoEnv.execute('primary', `rs.initiate(${JSON.stringify({
-            _id: 'rs1',
-            members: [
-                { _id: 0, host: primary.name },
-            ],
-        })})`);
+        const init = await mongoEnv.execute(
+            'primary',
+            `rs.initiate(${JSON.stringify({
+                _id: 'rs1',
+                members: [{ _id: 0, host: primary.name }],
+            })})`,
+        );
         // console.log('rs.initiate', init);
         await mongoEnv.waitUntilBeingPrimary('primary');
 
@@ -209,8 +218,8 @@ describe('replica set, primary secondary', () => {
 
         const client = createClient(`mongodb://primary`);
 
-        const promise = new Promise<void>((resolve) => {
-            client.eventDispatcher.listen(onMongoTopologyChange, (event) => {
+        const promise = new Promise<void>(resolve => {
+            client.eventDispatcher.listen(onMongoTopologyChange, event => {
                 resolve();
             });
         });
@@ -250,9 +259,11 @@ describe('replica set, primary secondary', () => {
         expect(client.config.hosts[1].isWritable()).toBe(false);
         expect(client.config.hosts[1].isReadable()).toBe(true);
 
-        await expect(client.getConnection({
-            readPreference: 'primary',
-        })).rejects.toThrow('Connection failed: no primary available');
+        await expect(
+            client.getConnection({
+                readPreference: 'primary',
+            }),
+        ).rejects.toThrow('Connection failed: no primary available');
 
         await primary.startProxy();
         await client.eventDispatcher.next(onMongoTopologyChange);
@@ -313,7 +324,6 @@ describe('replica set, primary secondary', () => {
 });
 
 describe('primary - 2 secondaries', () => {
-
     // await mongoEnv.addReplicaSet('primary', 'secondary2', 1, 1);
     // await mongoEnv.waitUntilBeingSecondary('secondary2');
     //

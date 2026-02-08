@@ -7,13 +7,12 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { BaseImplementation, ElementNotFoundException } from './base.js';
 
 interface ItemElement<T> {
-    item: T,
-    dependencies: T[],
-    visited: boolean,
+    item: T;
+    dependencies: T[];
+    visited: boolean;
 }
 
 /**

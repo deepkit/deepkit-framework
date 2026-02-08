@@ -1,6 +1,8 @@
-import { FilesystemAdapter, FilesystemFile, FileType, FileVisibility, Reporter } from './filesystem.js';
-import { pathDirectory, pathNormalize } from '@deepkit/core';
 import type * as fs from 'fs/promises';
+
+import { pathDirectory, pathNormalize } from '@deepkit/core';
+
+import { FileType, FileVisibility, FilesystemAdapter, FilesystemFile, Reporter } from './filesystem.js';
 
 export interface FilesystemLocalAdapterOptions {
     root: string;
@@ -8,11 +10,11 @@ export interface FilesystemLocalAdapterOptions {
         file: {
             public: number; //default 0o644
             private: number; //default 0o600
-        },
+        };
         directory: {
             public: number; //default 0o755
             private: number; //default 0o700
-        }
+        };
     };
 }
 
@@ -25,13 +27,13 @@ export class FilesystemLocalAdapter implements FilesystemAdapter {
         permissions: {
             file: {
                 public: 0o644,
-                private: 0o600
+                private: 0o600,
             },
             directory: {
                 public: 0o755,
-                private: 0o700
-            }
-        }
+                private: 0o700,
+            },
+        },
     };
 
     constructor(options: Partial<FilesystemLocalAdapterOptions>) {

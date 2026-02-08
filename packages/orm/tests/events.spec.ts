@@ -1,11 +1,13 @@
 import { expect, test } from '@jest/globals';
-import { Database } from '../src/database.js';
-import { MemoryDatabaseAdapter } from '../src/memory-db.js';
-import { AutoIncrement, PrimaryKey, ReflectionClass, t } from '@deepkit/type';
-import { DatabaseSession } from '../src/database-session.js';
-import { DatabasePersistence } from '../src/database-adapter.js';
-import { DatabaseErrorEvent, DatabaseErrorInsertEvent, DatabaseErrorUpdateEvent, onDatabaseError } from '../src/event.js';
+
 import { assertDefined, assertInstanceOf } from '@deepkit/core';
+import { AutoIncrement, PrimaryKey, ReflectionClass, t } from '@deepkit/type';
+
+import { DatabasePersistence } from '../src/database-adapter.js';
+import { DatabaseSession } from '../src/database-session.js';
+import { Database } from '../src/database.js';
+import { DatabaseErrorEvent, DatabaseErrorInsertEvent, DatabaseErrorUpdateEvent, onDatabaseError } from '../src/event.js';
+import { MemoryDatabaseAdapter } from '../src/memory-db.js';
 
 test('onUpdate plugin', async () => {
     function onUpdate() {
@@ -18,7 +20,7 @@ test('onUpdate plugin', async () => {
                 for (const property of event.classSchema.getProperties()) {
                     if (!property.data['timestamp/onUpdate']) continue;
                     for (const item of event.changeSets) {
-                        item.changes.set(property.name, new Date);
+                        item.changes.set(property.name, new Date());
                     }
                 }
             });
@@ -28,15 +30,14 @@ test('onUpdate plugin', async () => {
     class User {
         id: number & PrimaryKey & AutoIncrement = 0;
 
-        createdAt: Date = new Date;
+        createdAt: Date = new Date();
 
         logins: number = 0;
 
         @onUpdate()
-        updatedAt: Date = new Date;
+        updatedAt: Date = new Date();
 
-        constructor(public username: string) {
-        }
+        constructor(public username: string) {}
     }
 
     const database = new Database(new MemoryDatabaseAdapter(), [User]);
@@ -59,10 +60,8 @@ test('onUpdate plugin', async () => {
         expect(user3.updatedAt).not.toEqual(date1);
     }
 
-
     const schema = ReflectionClass.from(User);
     expect(schema.getProperty('updatedAt').data['timestamp/onUpdate']).toBe(true);
-
 });
 
 test('error insert event', async () => {
@@ -70,8 +69,7 @@ test('error insert event', async () => {
         constructor(
             public id: number & PrimaryKey,
             public username: string,
-        ) {
-        }
+        ) {}
     }
 
     class FailAdapter extends MemoryDatabaseAdapter {
@@ -98,17 +96,15 @@ test('error insert event', async () => {
     expect(event.error.message).toBe('oops');
     expect(event.inserts.length).toBe(1);
     assertInstanceOf(event.inserts[0], User);
-    expect(event.inserts[0]).toMatchObject({ id: 1, username: 'peter' })
+    expect(event.inserts[0]).toMatchObject({ id: 1, username: 'peter' });
 });
-
 
 test('error update event', async () => {
     class User {
         constructor(
             public id: number & PrimaryKey,
             public username: string,
-        ) {
-        }
+        ) {}
     }
 
     class FailAdapter extends MemoryDatabaseAdapter {

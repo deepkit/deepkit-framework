@@ -7,35 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-// import { ClassSchema, PropertySchema } from './model.js';
-//
-//
-// export function findCommonDiscriminant(classSchemas: ClassSchema[]): string | undefined {
-//     //check if all discriminators are correct
-//     let discriminatorFound: { schema: ClassSchema, property: PropertySchema } | undefined;
-//     for (const schema of classSchemas) {
-//         if (discriminatorFound && !schema.discriminant) {
-//             throw new Error(`${discriminatorFound.schema.getClassName()} has a discriminant on '${discriminatorFound.property.name}' but ${schema.getClassName()} has none.`);
-//         }
-//
-//         if (discriminatorFound && schema.discriminant && schema.discriminant !== discriminatorFound.property.name) {
-//             throw new Error(`${discriminatorFound.schema.getClassName()} has a discriminant on '${discriminatorFound.property.name}' but ${schema.getClassName()} has one on '${schema.discriminant}'.`);
-//         }
-//
-//         if (!discriminatorFound && schema.discriminant) {
-//             discriminatorFound = { schema: schema, property: schema.getProperty(schema.discriminant) };
-//         }
-//     }
-//
-//     return discriminatorFound ? discriminatorFound.property.name : undefined;
-// }
-
 import { ReflectionClass } from './reflection/reflection.js';
 import { ReflectionKind } from './reflection/type.js';
 
 export function findCommonLiteral(reflectionClasses: ReflectionClass<any>[]): string | undefined {
-    const candidates: { [name: string]: { found: number, values: any[], schemas: ReflectionClass<any>[] } } = {};
+    const candidates: { [name: string]: { found: number; values: any[]; schemas: ReflectionClass<any>[] } } = {};
 
     for (const schema of reflectionClasses) {
         for (const property of schema.getProperties()) {
@@ -47,7 +23,9 @@ export function findCommonLiteral(reflectionClasses: ReflectionClass<any>[]): st
                 if (candidate.values.includes(property.type.literal)) {
                     const usedBy = candidate.schemas[candidate.values.indexOf(property.type.literal)];
                     if (usedBy !== schema) {
-                        throw new Error(`${schema.getClassName()} has a literal on ${property.name} that is already used by ${usedBy.getClassName()}.`);
+                        throw new Error(
+                            `${schema.getClassName()} has a literal on ${property.name} that is already used by ${usedBy.getClassName()}.`,
+                        );
                     }
                 }
                 candidate.values.push(property.type.literal);

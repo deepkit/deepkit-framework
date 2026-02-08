@@ -1,21 +1,24 @@
 import {
     BaseParser,
+    Writer,
     deserializeBSONWithoutOptimiser,
     getBSONDeserializer,
     getBSONSerializer,
     getBSONSizer,
     stringByteLength,
-    Writer,
 } from '@deepkit/bson';
-import { AnalyticData, FrameData, FrameEnd, FrameStart, FrameType, getTypeOfCategory } from '@deepkit/stopwatch';
 import { createBuffer } from '@deepkit/core';
+import { AnalyticData, FrameData, FrameEnd, FrameStart, FrameType, getTypeOfCategory } from '@deepkit/stopwatch';
 
 export function encodeFrames(frames: (FrameStart | FrameEnd)[]): Uint8Array {
     //cid = id and worker, as compound key
     //<cid uint32><type uint8><timestamp uint64><context uint32><category uint8><labelSize uint8><label utf8string>.
     let size = 0;
     for (const frame of frames) {
-        size += frame.type === FrameType.end ? (32 + 8 + 64) / 8 : (((32 + 8 + 64 + 32 + 8 + 8) / 8) + Math.min(255, stringByteLength(frame.label)));
+        size +=
+            frame.type === FrameType.end
+                ? (32 + 8 + 64) / 8
+                : (32 + 8 + 64 + 32 + 8 + 8) / 8 + Math.min(255, stringByteLength(frame.label));
     }
 
     const buffer = createBuffer(size);
@@ -55,7 +58,7 @@ export function encodeFrameData(dataItems: FrameData[]): Uint8Array {
         let dataSize = 4; //always has uint32
         const type = getTypeOfCategory(data.category);
         if (type) dataSize = getBSONSizer(undefined, type)(data.data);
-        size += ((32 + 8) / 8) + dataSize;
+        size += (32 + 8) / 8 + dataSize;
     }
 
     const buffer = createBuffer(size);
@@ -66,7 +69,7 @@ export function encodeFrameData(dataItems: FrameData[]): Uint8Array {
         writer.writeByte(data.category);
         const type = getTypeOfCategory(data.category);
         if (type) {
-            getBSONSerializer(undefined, type)(data.data, { writer });
+            getBSONSerializer(type)(data.data, { writer });
         } else {
             writer.writeUint32(0);
         }
@@ -102,11 +105,10 @@ export function decodeAnalytic(buffer: Uint8Array, callback: (data: AnalyticData
     }
 }
 
-export function decodeFrameData(buffer: Uint8Array, callback: (data: {
-    cid: number,
-    category: number,
-    data: Uint8Array
-}) => void) {
+export function decodeFrameData(
+    buffer: Uint8Array,
+    callback: (data: { cid: number; category: number; data: Uint8Array }) => void,
+) {
     const parser = new BaseParser(buffer);
 
     while (parser.offset < buffer.byteLength) {
@@ -118,9 +120,9 @@ export function decodeFrameData(buffer: Uint8Array, callback: (data: {
     }
 }
 
-export function deserializeFrameData(data: { cid: number, category: number, data: Uint8Array }): any {
+export function deserializeFrameData(data: { cid: number; category: number; data: Uint8Array }): any {
     const classType = getTypeOfCategory(data.category);
-    const deserializer = classType ? getBSONDeserializer(undefined, classType) : deserializeBSONWithoutOptimiser;
+    const deserializer = classType ? getBSONDeserializer(classType) : deserializeBSONWithoutOptimiser;
     return deserializer(data.data);
 }
 

@@ -1,5 +1,6 @@
-import { ConnectionOptions } from 'tls';
 import { PoolConfig } from 'pg';
+import { ConnectionOptions } from 'tls';
+
 import { cast } from '@deepkit/type';
 
 interface AdapterClientConfig {
@@ -27,7 +28,7 @@ interface AdapterClientConfig {
 export function parseConnectionString(url: string): PoolConfig {
     const parsed = new URL(url);
 
-    const options: {[name: string]: any} = {};
+    const options: { [name: string]: any } = {};
     for (const [key, value] of parsed.searchParams.entries()) {
         options[key] = value;
     }

@@ -7,14 +7,22 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { DeepkitError } from '@deepkit/core';
 
-export class CircularDependencyException<T> extends Error {
-    constructor(public readonly nodes: T[]) {
-        super(`Circular reference found ${nodes.map(v => (v as any).constructor.name).join(' -> ')}`);
+export class CircularDependencyException<T> extends DeepkitError {
+    constructor(
+        public readonly nodes: T[],
+        options?: { cause?: Error },
+    ) {
+        super(
+            'DK-TS001',
+            `Circular reference found ${nodes.map(v => (v as any).constructor.name).join(' -> ')}`,
+            options,
+        );
     }
 
     public getStart(): T {
-        return this.nodes[0]
+        return this.nodes[0];
     }
 
     public getEnd(): T {
@@ -22,17 +30,20 @@ export class CircularDependencyException<T> extends Error {
     }
 }
 
-export class ElementNotFoundException<T> extends Error {
-    constructor(public readonly element: T, public readonly dependency: T) {
-        super('Element dependency not found');
+export class ElementNotFoundException<T> extends DeepkitError {
+    constructor(
+        public readonly element: T,
+        public readonly dependency: T,
+        options?: { cause?: Error },
+    ) {
+        super('DK-TS002', 'Element dependency not found', options);
     }
 }
 
 export abstract class BaseImplementation<T> {
     public circularInterceptor?: (items: T[]) => void;
 
-    constructor(public throwCircularDependency: boolean = true) {
-    }
+    constructor(public throwCircularDependency: boolean = true) {}
 
     protected throwCircularExceptionIfNeeded(element: T, parents: Set<T>) {
         if (!this.throwCircularDependency) return;

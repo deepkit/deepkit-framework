@@ -7,25 +7,29 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
 import { MongoClientConfig } from '../config.js';
-import { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
+import { Host } from '../host.js';
+import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
 
-type CommitTransaction = TransactionalMessage & WriteConcernMessage & {
-    $db: string;
-};
+type CommitTransaction = TransactionalMessage &
+    WriteConcernMessage & {
+        $db: string;
+    };
 
 export class CommitTransactionCommand extends Command<BaseResponse> {
     needsWritableHost() {
         return false;
     }
 
-    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<BaseResponse> {
+    async execute(
+        config: MongoClientConfig,
+        host: Host,
+        transaction?: MongoDatabaseTransaction,
+    ): Promise<BaseResponse> {
         const cmd: CommitTransaction = {
             commitTransaction: 1,
-            $db: 'admin'
+            $db: 'admin',
         };
 
         if (transaction) transaction.applyTransaction(cmd);

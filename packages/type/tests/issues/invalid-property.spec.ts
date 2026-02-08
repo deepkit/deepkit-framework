@@ -1,6 +1,7 @@
-import { test } from '@jest/globals';
+import { test } from 'node:test';
+
 import { typeOf } from '../../src/reflection/reflection';
-import { assertType, findMember, ReflectionKind } from '../../src/reflection/type';
+import { ReflectionKind, assertType, findMember } from '../../src/reflection/type';
 
 test('test', () => {
     class EmailService {

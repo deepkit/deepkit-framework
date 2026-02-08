@@ -7,15 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { SqlSerializer } from '@deepkit/sql';
-import { binaryTypes, isUUIDType, TemplateState, Type } from '@deepkit/type';
+import { TemplateState, Type, binaryTypes, isUUIDType } from '@deepkit/type';
 
 //for queries with `returning`, MySQL returns binary stuff as base64.
 function convertBinaryFromBase64(type: Type, state: TemplateState) {
     state.setContext({ Buffer });
     const offset = 'base64:type254:'.length;
-    state.addSetter(`typeof ${state.accessor} === 'string' && ${state.accessor}.startsWith('base64:') ? Buffer.from(${state.accessor}.substr(${offset}), 'base64') : ${state.accessor}`);
+    state.addSetter(
+        `typeof ${state.accessor} === 'string' && ${state.accessor}.startsWith('base64:') ? Buffer.from(${state.accessor}.substr(${offset}), 'base64') : ${state.accessor}`,
+    );
 }
 
 class MySQLSerializer extends SqlSerializer {
@@ -36,4 +37,4 @@ class MySQLSerializer extends SqlSerializer {
     }
 }
 
-export const mySqlSerializer = new MySQLSerializer;
+export const mySqlSerializer = new MySQLSerializer();

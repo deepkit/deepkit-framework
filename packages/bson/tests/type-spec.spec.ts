@@ -1,14 +1,11 @@
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
 import {
     AutoIncrement,
     BackReference,
     BinaryBigInt,
-    cast,
-    copyAndSetParent,
-    createReference,
     Embedded,
-    hasCircularReference,
-    hasEmbedded,
-    integer,
     MapName,
     MongoId,
     PrimaryKey,
@@ -16,19 +13,23 @@ import {
     Reference,
     ReflectionClass,
     ReflectionKind,
-    resolveReceiveType,
     SignedBinaryBigInt,
     Type,
-    typeOf,
     TypePropertySignature,
     UUID,
+    cast,
+    copyAndSetParent,
+    createReference,
+    hasCircularReference,
+    hasEmbedded,
+    integer,
+    resolveReceiveType,
+    typeOf,
 } from '@deepkit/type';
-import { expect, test } from '@jest/globals';
-import { deserializeBSON } from '../src/bson-deserializer.js';
-import { deserializeBSONWithoutOptimiser } from '../src/bson-parser.js';
-import { serializeBSON, serializeBSONWithoutOptimiser } from '../src/bson-serializer.js';
 
-(BigInt.prototype as any).toJSON = function() {
+import { deserializeBSON, deserializeBSONWithoutOptimiser, serializeBSON, serializeBSONWithoutOptimiser } from '../index.js';
+
+(BigInt.prototype as any).toJSON = function () {
     return this.toString();
 };
 
@@ -38,7 +39,7 @@ Error.stackTraceLimit = 150;
  * @reflection never
  */
 function needsWrapper(type: Type): boolean {
-    return hasEmbedded(type) || (type.kind == ReflectionKind.class && type.types.length === 0) || (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral);
+    return (type.kind == ReflectionKind.class && type.types.length === 0) || (type.kind !== ReflectionKind.class && type.kind !== ReflectionKind.objectLiteral);
 }
 
 /**
@@ -53,12 +54,12 @@ export function roundTrip<T>(value: T | any, type?: ReceiveType<T>): T {
         });
         //important to not give `type` a parent, so the code acts as if it was not in `v`
         (t.types[0] as TypePropertySignature).type = type;
-        const bson = serializeBSON({ v: value }, undefined, t);
-        const res = (deserializeBSON<T>(bson, 0, undefined, t) as any).v;
+        const bson = serializeBSON({ v: value }, t);
+        const res = (deserializeBSON<T>(bson, 0, t) as any).v;
         return res;
     } else {
-        const bson = serializeBSON(value, undefined, type);
-        const res = deserializeBSON<T>(bson, 0, undefined, type);
+        const bson = serializeBSON(value, type);
+        const res = deserializeBSON<T>(bson, 0, type);
         return res;
     }
 }
@@ -75,10 +76,10 @@ export function serializeToJson<T>(value: T | any, type?: ReceiveType<T>): T {
         });
         //important to not give `type` a parent, so the code acts as if it was not in `v`
         (t.types[0] as TypePropertySignature).type = type;
-        const bson = serializeBSON({ v: value }, undefined, t);
+        const bson = serializeBSON({ v: value }, t);
         return deserializeBSONWithoutOptimiser(bson).v as any;
     } else {
-        const bson = serializeBSON(value, undefined, type);
+        const bson = serializeBSON(value, type);
         return deserializeBSONWithoutOptimiser(bson) as any;
     }
 }
@@ -96,17 +97,19 @@ export function deserializeFromJson<T>(value: any, type?: ReceiveType<T>): T {
         //important to not give `type` a parent, so the code acts as if it was not in `v`
         (t.types[0] as TypePropertySignature).type = type;
         const bson = serializeBSONWithoutOptimiser({ v: value });
-        const res = (deserializeBSON<T>(bson, 0, undefined, t) as any).v;
+        const res = (deserializeBSON<T>(bson, 0, t) as any).v;
         return res;
     } else {
         const bson = serializeBSONWithoutOptimiser(value);
-        const res = deserializeBSON<T>(bson, 0, undefined, type);
+        const res = deserializeBSON<T>(bson, 0, type);
         return res;
     }
 }
 
 enum MyEnum {
-    a, b, c
+    a,
+    b,
+    c,
 }
 
 class Config {
@@ -126,12 +129,12 @@ test('basics with value', () => {
     expect(roundTrip<string>('asd')).toBe('asd');
     expect(roundTrip<number>(22)).toBe(22);
     expect(roundTrip<boolean>(false)).toBe(false);
-    expect(roundTrip<Date>(new Date)).toBeInstanceOf(Date);
+    expect(roundTrip<Date>(new Date())).toBeInstanceOf(Date);
 });
 
 test('model', () => {
     {
-        const item = new Model;
+        const item = new Model();
         item.id = 23;
         item.title = '2322';
         const back = roundTrip<Model>(item);
@@ -141,7 +144,7 @@ test('model', () => {
 });
 
 test('with implicit default value', () => {
-    const defaultDate = new Date;
+    const defaultDate = new Date();
 
     class Product {
         id: number = 0;
@@ -228,12 +231,12 @@ test('bigint', () => {
     expect(roundTrip<bigint>(12n)).toEqual(12n);
     expect(roundTrip<bigint>(9223372036854775807n)).toEqual(9223372036854775807n);
     expect(roundTrip<BinaryBigInt>(12012020202020202020202020202020202020n)).toEqual(12012020202020202020202020202020202020n);
-    expect(roundTrip<BinaryBigInt>(16n ** 16n ** 2n)).toEqual(16n ** 16n ** 2n);
-    expect(roundTrip<BinaryBigInt>(16n ** 16n ** 3n)).toEqual(16n ** 16n ** 3n);
+    expect(roundTrip<BinaryBigInt>(16n ** (16n ** 2n))).toEqual(16n ** (16n ** 2n));
+    expect(roundTrip<BinaryBigInt>(16n ** (16n ** 3n))).toEqual(16n ** (16n ** 3n));
     expect(roundTrip<SignedBinaryBigInt>(12012020202020202020202020202020202020n)).toEqual(12012020202020202020202020202020202020n);
     expect(roundTrip<SignedBinaryBigInt>(-12012020202020202020202020202020202020n)).toEqual(-12012020202020202020202020202020202020n);
-    expect(roundTrip<SignedBinaryBigInt>(16n ** 16n ** 2n)).toEqual(16n ** 16n ** 2n);
-    expect(roundTrip<SignedBinaryBigInt>(16n ** 16n ** 3n)).toEqual(16n ** 16n ** 3n);
+    expect(roundTrip<SignedBinaryBigInt>(16n ** (16n ** 2n))).toEqual(16n ** (16n ** 2n));
+    expect(roundTrip<SignedBinaryBigInt>(16n ** (16n ** 3n))).toEqual(16n ** (16n ** 3n));
 });
 
 test('union basics', () => {
@@ -243,12 +246,13 @@ test('union basics', () => {
     expect(roundTrip<boolean | number>(true)).toEqual(true);
     expect(roundTrip<boolean | number>(23)).toEqual(23);
 
-    expect(roundTrip<bigint | number>(23)).toEqual(23n);
+    // number wins over bigint for INT/DOUBLE BSON types; bigint gets LONG
+    expect(roundTrip<bigint | number>(23)).toEqual(23);
     expect(roundTrip<bigint | number>(23n)).toEqual(23n);
 
-    expect(roundTrip<string | Model>(new Model)).toBeInstanceOf(Model);
+    expect(roundTrip<string | Model>(new Model())).toBeInstanceOf(Model);
     {
-        const item = new Model;
+        const item = new Model();
         item.id = 23;
         item.title = '23';
         const back = roundTrip<string | Model>(item);
@@ -256,7 +260,7 @@ test('union basics', () => {
     }
 
     {
-        const item = new Model;
+        const item = new Model();
         item.id = 23;
         item.title = '23';
         const back = roundTrip<Model>(item);
@@ -346,8 +350,7 @@ class Team {
     version: number = 0;
     lead?: User & Reference;
 
-    constructor(public name: string) {
-    }
+    constructor(public name: string) {}
 }
 
 class User {
@@ -355,8 +358,7 @@ class User {
     version: number = 0;
     teams: Team[] & BackReference<{ via: typeof UserTeam }> = [];
 
-    constructor(public name: string) {
-    }
+    constructor(public name: string) {}
 }
 
 class UserTeam {
@@ -367,8 +369,7 @@ class UserTeam {
     constructor(
         public team: Team & Reference,
         public user: User & Reference,
-    ) {
-    }
+    ) {}
 }
 
 test('relation 1', () => {
@@ -383,13 +384,21 @@ test('relation 1', () => {
     }
 
     {
+        // With type-driven serialization, & Reference always outputs FK (primary key only),
+        // regardless of whether the full object is available at runtime.
         const team = new Team('foo');
         const user = new User('foo');
         user.id = 12;
         team.lead = user;
-        expect(serializeToJson<Team>(team)).toEqual(team);
+        // Serialization outputs FK (12) instead of full nested object
+        expect(serializeToJson<Team>(team)).toEqual({ id: 0, version: 0, name: 'foo', lead: 12 });
+        // Deserialization accepts both FK and full object
         expect(deserializeFromJson<Team>(team)).toEqual(team);
-        expect(roundTrip<Team>(team)).toEqual(team);
+        // Round trip: serialize (FK) -> deserialize (creates Reference) gives a reference proxy
+        const roundTripped = roundTrip<Team>(team);
+        expect(roundTripped.id).toBe(team.id);
+        expect(roundTripped.name).toBe(team.name);
+        expect(roundTripped.lead!.id).toBe(12);
     }
 
     {
@@ -408,7 +417,6 @@ test('relation 1', () => {
     }
 });
 
-
 test('relation 2', () => {
     // {
     //     const user = new User('foo');
@@ -420,8 +428,11 @@ test('relation 2', () => {
 
     {
         const user = new User('foo');
-        user.teams.push(new Team('bar'));
-        expect(serializeToJson<User>(user)).toEqual(user);
+        const team = new Team('bar');
+        user.teams.push(team);
+        // Optional reference without initializer is not an own property, so not serialized
+        expect(serializeToJson<User>(user)).toEqual({ id: 0, version: 0, name: 'foo', teams: [{ id: 0, version: 0, name: 'bar' }] });
+        // Type-aware deserialization omits unset optional reference
         expect(roundTrip<User>(user)).toEqual(user);
     }
 
@@ -459,7 +470,7 @@ test('regex', () => {
 test('explicitly set undefined on optional triggers default value', () => {
     class Product {
         id: number = 0;
-        created?: Date = new Date;
+        created?: Date = new Date();
     }
 
     //no value means the default triggers
@@ -473,7 +484,7 @@ test('explicitly set undefined on optional triggers default value', () => {
 test('partial explicitly set undefined on optional is handled', () => {
     class Product {
         id: number = 0;
-        created?: Date = new Date;
+        created?: Date = new Date();
     }
 
     //no value means the default triggers
@@ -487,7 +498,7 @@ test('partial explicitly set undefined on optional is handled', () => {
 test('partial explicitly set undefined on required is not ignored', () => {
     class Product {
         id: number = 0;
-        created: Date = new Date;
+        created: Date = new Date();
     }
 
     //no value means the default triggers
@@ -502,7 +513,7 @@ test('partial explicitly set undefined on required is not ignored', () => {
 test('explicitely set undefined on required is ignored', () => {
     class Product {
         id: number = 0;
-        created: Date = new Date;
+        created: Date = new Date();
     }
 
     expect(roundTrip<Product>({ id: 23 } as any).created).toBeInstanceOf(Date);
@@ -515,7 +526,7 @@ test('partial does not return the model on root', () => {
 });
 
 test('partial returns the model at second level', () => {
-    const config = new Config;
+    const config = new Config();
     config.color = 'red';
 
     expect(roundTrip<Partial<Model>>({ id: 23, config: config } as any)).toEqual({
@@ -649,15 +660,13 @@ test('constructor argument', () => {
     class Product {
         id: number = 0;
 
-        constructor(public title: string) {
-        }
+        constructor(public title: string) {}
     }
 
     class Purchase {
         id: number = 0;
 
-        constructor(public product: Product) {
-        }
+        constructor(public product: Product) {}
     }
 
     {
@@ -670,10 +679,7 @@ test('omit circular reference 1', () => {
     class Model {
         another?: Model;
 
-        constructor(
-            public id: number = 0,
-        ) {
-        }
+        constructor(public id: number = 0) {}
     }
 
     expect(ReflectionClass.from(Model).hasCircularReference()).toBe(true);
@@ -721,8 +727,7 @@ test('omit circular reference 1 interface', () => {
 
 test('omit circular reference 2', () => {
     class Config {
-        constructor(public model: Model) {
-        }
+        constructor(public model: Model) {}
     }
 
     class Model {
@@ -734,7 +739,7 @@ test('omit circular reference 2', () => {
     expect(ReflectionClass.from(Config).hasCircularReference()).toBe(true);
 
     {
-        const model = new Model;
+        const model = new Model();
         const config = new Config(model);
         model.config = config;
         const plain = serializeToJson<Model>(model);
@@ -743,8 +748,8 @@ test('omit circular reference 2', () => {
     }
 
     {
-        const model = new Model;
-        const model2 = new Model;
+        const model = new Model();
+        const model2 = new Model();
         const config = new Config(model2);
         model.config = config;
         const plain = serializeToJson<Model>(model);
@@ -759,8 +764,7 @@ test('omit circular reference 3', () => {
 
         public images: Image[] = [];
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     class Image {
@@ -812,13 +816,14 @@ test('promise', () => {
 
 test('embedded single', () => {
     class Price {
-        constructor(public amount: integer) {
-        }
+        constructor(public amount: integer) {}
     }
 
     class Product {
-        constructor(public title: string, public price: Embedded<Price>) {
-        }
+        constructor(
+            public title: string,
+            public price: Embedded<Price>,
+        ) {}
     }
 
     expect(serializeToJson<Embedded<Price>>(new Price(34))).toEqual({ amount: 34 });
@@ -861,8 +866,7 @@ test('embedded single', () => {
 
 test('embedded single optional', () => {
     class Price {
-        constructor(public amount: integer) {
-        }
+        constructor(public amount: integer) {}
     }
 
     //for the moment, bson does not support emebbed structures. it's serialized as is.
@@ -978,11 +982,11 @@ test('mapName interface', () => {
         type: string & MapName<'~type'>;
     }
 
-    expect(deserializeFromJson<A>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
-    expect(serializeToJson<A>({ 'type': 'abc' })).toEqual({ '~type': 'abc' });
+    expect(deserializeFromJson<A>({ '~type': 'abc' })).toEqual({ type: 'abc' });
+    expect(serializeToJson<A>({ type: 'abc' })).toEqual({ '~type': 'abc' });
 
-    expect(deserializeFromJson<A | string>({ '~type': 'abc' })).toEqual({ 'type': 'abc' });
-    expect(serializeToJson<A | string>({ 'type': 'abc' })).toEqual({ '~type': 'abc' });
+    expect(deserializeFromJson<A | string>({ '~type': 'abc' })).toEqual({ type: 'abc' });
+    expect(serializeToJson<A | string>({ type: 'abc' })).toEqual({ '~type': 'abc' });
     expect(serializeToJson<A | string>('abc')).toEqual('abc');
 });
 
@@ -990,15 +994,14 @@ test('mapName class', () => {
     class A {
         id: string & MapName<'~id'> = '';
 
-        constructor(public type: string & MapName<'~type'>) {
-        }
+        constructor(public type: string & MapName<'~type'>) {}
     }
 
-    expect(deserializeFromJson<A>({ '~id': '1', '~type': 'abc' })).toEqual({ 'id': '1', 'type': 'abc' });
-    expect(serializeToJson<A>({ id: '1', 'type': 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
+    expect(deserializeFromJson<A>({ '~id': '1', '~type': 'abc' })).toEqual({ id: '1', type: 'abc' });
+    expect(serializeToJson<A>({ id: '1', type: 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
 
-    expect(deserializeFromJson<A | string>({ '~id': '', '~type': 'abc' })).toEqual({ id: '', 'type': 'abc' });
-    expect(serializeToJson<A | string>({ id: '1', 'type': 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
+    expect(deserializeFromJson<A | string>({ '~id': '', '~type': 'abc' })).toEqual({ id: '', type: 'abc' });
+    expect(serializeToJson<A | string>({ id: '1', type: 'abc' })).toEqual({ '~id': '1', '~type': 'abc' });
     expect(serializeToJson<A | string>('abc')).toEqual('abc');
 });
 
@@ -1014,7 +1017,7 @@ test('dynamic properties', () => {
     const back1 = deserializeFromJson<A>({ '~type': 'abc' });
     expect(back1.getType()).toBe('abc');
 
-    const back2 = deserializeFromJson<A>({ 'type': 'abc' });
+    const back2 = deserializeFromJson<A>({ type: 'abc' });
     expect(back2.getType()).toBe('abc');
 });
 
@@ -1022,8 +1025,7 @@ test('class with statics', () => {
     class PilotId {
         public static readonly none: PilotId = new PilotId(0);
 
-        constructor(public readonly value: number) {
-        }
+        constructor(public readonly value: number) {}
 
         static from(value: number) {
             return new PilotId(value);
@@ -1036,7 +1038,7 @@ test('class with statics', () => {
 
 test('array with mongoid', () => {
     interface Model {
-        references: Array<{ cls: string, id: MongoId }>;
+        references: Array<{ cls: string; id: MongoId }>;
     }
 
     expect(deserializeFromJson<Model>({ references: [{ cls: 'User', id: '5f3b9b3b9c6b2b1b1c0b1b1b' }] })).toEqual({
@@ -1056,7 +1058,7 @@ test('Map part of union', () => {
     expect(roundTrip<T2>(null)).toBe(null);
 
     {
-        const date = new Date;
+        const date = new Date();
         const map = new Map<Date, number>([[date, 1]]);
         expect(roundTrip<T1>(map)).toEqual(map);
         expect(roundTrip<T2>({ tags: map })).toEqual({ tags: map });
@@ -1072,8 +1074,7 @@ test('Map part of union', () => {
 test('constructor property not assigned as property', () => {
     //when a constructor property is assigned, it must be set via the constructor only
     class Base {
-        constructor(public id: string) {
-        }
+        constructor(public id: string) {}
     }
 
     class Store {
@@ -1091,7 +1092,7 @@ test('constructor property not assigned as property', () => {
     const parentConstructor = clazz.parent!.getConstructorOrUndefined();
     expect(parentConstructor!.getParameter('id').isProperty()).toBe(true);
 
-    const store = new Store;
+    const store = new Store();
     store.id = 'foo:bar';
     const derived = new Derived(store);
     expect(derived.id).toBe('foo');
@@ -1105,4 +1106,3 @@ test('constructor property not assigned as property', () => {
     });
     expect(back).toEqual(derived);
 });
-

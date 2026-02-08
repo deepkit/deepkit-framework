@@ -1,10 +1,11 @@
 import { expect, jest, test } from '@jest/globals';
+
 import { Filesystem, FilesystemAdapter } from '../src/filesystem.js';
 import { FilesystemMemoryAdapter } from '../src/memory-adapter.js';
 
 jest.setTimeout(30000);
 
-export let adapterFactory: () => Promise<FilesystemAdapter> = async () => new FilesystemMemoryAdapter;
+export let adapterFactory: () => Promise<FilesystemAdapter> = async () => new FilesystemMemoryAdapter();
 
 export function setAdapterFactory(factory: () => Promise<FilesystemAdapter>) {
     adapterFactory = factory;
@@ -119,7 +120,6 @@ test('visibility', async () => {
 
         const folder2 = await filesystem.get('/folder2');
         expect(folder2).toMatchObject({ path: '/folder2', size: 0, visibility: 'private' });
-
     }
 
     await filesystem.setVisibility('file2.txt', 'public');
@@ -156,17 +156,7 @@ test('recursive', async () => {
     const files3 = await filesystem.allFiles('/');
     const fileNames3 = files3.map(f => f.path);
 
-    let expected = [
-        '/folder',
-        '/folder2',
-        '/folder2/folder3',
-        '/file1.txt',
-        '/folder/file1.txt',
-        '/folder/file2.txt',
-        '/folder2/file2.txt',
-        '/folder2/file3.txt',
-        '/folder2/folder3/file4.txt',
-    ];
+    let expected = ['/folder', '/folder2', '/folder2/folder3', '/file1.txt', '/folder/file1.txt', '/folder/file2.txt', '/folder2/file2.txt', '/folder2/file3.txt', '/folder2/folder3/file4.txt'];
 
     if (!filesystem.adapter.supportsDirectory()) {
         expected = expected.filter(v => v !== '/folder' && v !== '/folder2' && v !== '/folder2/folder3');
@@ -180,9 +170,7 @@ test('recursive', async () => {
     ]);
 
     const directories2 = await filesystem.directories('/folder2');
-    expect(directories2).toMatchObject([
-        { path: '/folder2/folder3', type: 'directory' },
-    ]);
+    expect(directories2).toMatchObject([{ path: '/folder2/folder3', type: 'directory' }]);
 
     if (filesystem.adapter.supportsDirectory()) {
         const directories3 = await filesystem.allDirectories('/');

@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+
 import { pathBasename, pathDirectory, pathNormalize, pathNormalizeDirectory } from '../src/path.js';
 
 test('pathNormalize', () => {

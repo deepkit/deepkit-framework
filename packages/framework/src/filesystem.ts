@@ -1,15 +1,14 @@
-import { Filesystem, FilesystemFile, FilesystemLocalAdapter } from '@deepkit/filesystem';
 import { AppModule } from '@deepkit/app';
 import { ClassType, pathJoin, pathNormalizeDirectory } from '@deepkit/core';
-import { InjectorContext } from '@deepkit/injector';
+import { Filesystem, FilesystemFile, FilesystemLocalAdapter } from '@deepkit/filesystem';
 import { HttpResponse, httpWorkflow } from '@deepkit/http';
+import { InjectorContext } from '@deepkit/injector';
 import { InlineRuntimeType, ReceiveType } from '@deepkit/type';
 
 export class FilesystemRegistry {
-    protected filesystems: { classType: ClassType, module: AppModule<any> }[] = [];
+    protected filesystems: { classType: ClassType; module: AppModule<any> }[] = [];
 
-    constructor(protected injectorContext: InjectorContext) {
-    }
+    constructor(protected injectorContext: InjectorContext) {}
 
     addFilesystem(classType: ClassType, module: AppModule<any>) {
         this.filesystems.push({ classType, module });
@@ -100,11 +99,10 @@ export class ServeFilesystemOptions {
 
 class FilesystemDataCache {
     dataSize: number = 0;
-    data = new Map<string, { created: number, size: number, promise: Promise<Uint8Array | undefined> }>;
-    files = new Map<string, { created: number, promise: Promise<FilesystemFile | undefined> }>();
+    data = new Map<string, { created: number; size: number; promise: Promise<Uint8Array | undefined> }>();
+    files = new Map<string, { created: number; promise: Promise<FilesystemFile | undefined> }>();
 
-    constructor(private options: ServeFilesystemOptions) {
-    }
+    constructor(private options: ServeFilesystemOptions) {}
 
     clear() {
         this.data.clear();
@@ -153,12 +151,15 @@ class FilesystemDataCache {
         const next = {
             created: Date.now(),
             size: 0,
-            promise: filesystem.read(path).catch(() => undefined).then(data => {
-                if (!data) return;
-                next.size = data.byteLength;
-                this.dataSize += data.byteLength;
-                return data;
-            }),
+            promise: filesystem
+                .read(path)
+                .catch(() => undefined)
+                .then(data => {
+                    if (!data) return;
+                    next.size = data.byteLength;
+                    this.dataSize += data.byteLength;
+                    return data;
+                }),
         };
         this.data.set(path, next);
         return next.promise;
@@ -175,13 +176,15 @@ export function serveFilesystem<T extends Filesystem>(
     resolved.directory = pathNormalizeDirectory(resolved.directory);
     const cache = new FilesystemDataCache(resolved);
 
-    module.addListener(httpWorkflow.onRoute.listen(async (event, filesystem: InlineRuntimeType<typeof type, Filesystem>) => {
-        const url = event.request.url || '/';
-        if (!url.startsWith(resolved.baseUrl)) return;
-        let path = url.substring(resolved.baseUrl.length) || '/';
-        if (resolved.directory) path = pathJoin(resolved.directory, path);
-        const file = await cache.getFile(filesystem, path);
-        if (!file) return;
-        event.routeFoundCallback(serveFile, [filesystem, cache, file, event.response, resolved]);
-    }));
+    module.addListener(
+        httpWorkflow.onRoute.listen(async (event, filesystem: InlineRuntimeType<typeof type, Filesystem>) => {
+            const url = event.request.url || '/';
+            if (!url.startsWith(resolved.baseUrl)) return;
+            let path = url.substring(resolved.baseUrl.length) || '/';
+            if (resolved.directory) path = pathJoin(resolved.directory, path);
+            const file = await cache.getFile(filesystem, path);
+            if (!file) return;
+            event.routeFoundCallback(serveFile, [filesystem, cache, file, event.response, resolved]);
+        }),
+    );
 }

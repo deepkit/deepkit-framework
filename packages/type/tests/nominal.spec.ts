@@ -1,11 +1,13 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
+
 import { getNominalId, typeOf } from '../src/reflection/reflection.js';
-import { assertType, ReflectionKind } from '../src/reflection/type.js';
+import { ReflectionKind, assertType } from '../src/reflection/type.js';
 
 test('nominal alias', () => {
     class Channel {
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     //A1.type.id == Channel.id
@@ -36,8 +38,7 @@ test('nominal alias', () => {
 
 test('nominal alias generic', () => {
     class User<T> {
-        constructor(public type: T) {
-        }
+        constructor(public type: T) {}
     }
 
     type A = User<string>;

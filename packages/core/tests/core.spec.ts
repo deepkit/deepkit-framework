@@ -1,10 +1,11 @@
 import { expect, test } from '@jest/globals';
+
 import {
+    CustomError,
     asyncOperation,
     changeClass,
     collectForMicrotask,
     createDynamicClass,
-    CustomError,
     escapeRegExp,
     getClassName,
     getClassTypeFromInstance,
@@ -23,24 +24,21 @@ import {
 import { isArray, isAsyncFunction, isClass, isClassInstance, isConstructable, isFunction, isGlobalClass, isIterable, isNumeric, isObject, isPlainObject, isPromise, isPrototypeOfBase, isUndefined } from '../src/type-guards.js';
 
 class SimpleClass {
-    constructor(public name: string) {
-    }
+    constructor(public name: string) {}
 }
 
 test('helper getClassName', () => {
     class User {
-        constructor(public readonly name: string) {
-        }
+        constructor(public readonly name: string) {}
     }
 
-    class MyError extends Error {
-    }
+    class MyError extends Error {}
 
     expect(getClassName(new User('peter'))).toBe('User');
     expect(getClassName(User)).toBe('User');
 
     expect(getClassName(MyError)).toBe('MyError');
-    expect(getClassName(new MyError)).toBe('MyError');
+    expect(getClassName(new MyError())).toBe('MyError');
 });
 
 test('error', () => {
@@ -54,10 +52,8 @@ test('helper isObject', () => {
     expect(isObject(true)).toBe(false);
     expect(isObject(null)).toBe(false);
     expect(isObject(undefined)).toBe(false);
-    expect(isObject(() => {
-    })).toBe(false);
-    expect(isObject(function() {
-    })).toBe(false);
+    expect(isObject(() => {})).toBe(false);
+    expect(isObject(function () {})).toBe(false);
     expect(isObject(1)).toBe(false);
     expect(isObject('1')).toBe(false);
 
@@ -72,26 +68,21 @@ test('helper isPromise', async () => {
     expect(isPromise(true)).toBe(false);
     expect(isPromise(null)).toBe(false);
     expect(isPromise(undefined)).toBe(false);
-    expect(isPromise(() => {
-    })).toBe(false);
-    expect(isPromise(function() {
-    })).toBe(false);
+    expect(isPromise(() => {})).toBe(false);
+    expect(isPromise(function () {})).toBe(false);
     expect(isPromise(1)).toBe(false);
     expect(isPromise('1')).toBe(false);
 
-    function foo1() {
-    }
+    function foo1() {}
 
-    const foo2 = () => {
-    };
+    const foo2 = () => {};
     expect(isPromise(foo1())).toBe(false);
     expect(isPromise(foo2())).toBe(false);
 
-    async function foo3() {
-    }
+    async function foo3() {}
 
     function foo4() {
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
             resolve(1);
         });
     }
@@ -99,8 +90,7 @@ test('helper isPromise', async () => {
     expect(isObject(foo3())).toBe(true);
     expect(isObject(foo4())).toBe(true);
     expect(isObject(await foo4())).toBe(false);
-    expect(isObject((async () => {
-    })())).toBe(true);
+    expect(isObject((async () => {})())).toBe(true);
 });
 
 test('helper isFunction', () => {
@@ -116,23 +106,15 @@ test('helper isFunction', () => {
     expect(isFunction(new SimpleClass('asd'))).toBe(false);
 
     expect(isFunction(isFunction)).toBe(true);
-    expect(isFunction(() => {
-    })).toBe(true);
-    expect(isFunction(async () => {
-    })).toBe(true);
-    expect(isFunction(function() {
-    })).toBe(true);
-    expect(isFunction(async function() {
-    })).toBe(true);
-    expect(isFunction(class Peter {
-    })).toBe(false);
-    expect(isFunction(class {
-    })).toBe(false);
-    expect(isFunction(class {
-    })).toBe(false);
+    expect(isFunction(() => {})).toBe(true);
+    expect(isFunction(async () => {})).toBe(true);
+    expect(isFunction(function () {})).toBe(true);
+    expect(isFunction(async function () {})).toBe(true);
+    expect(isFunction(class Peter {})).toBe(false);
+    expect(isFunction(class {})).toBe(false);
+    expect(isFunction(class {})).toBe(false);
 
-    const fn = function() {
-    };
+    const fn = function () {};
     fn.toString = () => 'class{}';
     expect(isFunction(fn)).toBe(false);
 });
@@ -150,14 +132,10 @@ test('helper isAsyncFunction', () => {
     expect(isAsyncFunction(new SimpleClass('asd'))).toBe(false);
 
     expect(isAsyncFunction(isFunction)).toBe(false);
-    expect(isAsyncFunction(() => {
-    })).toBe(false);
-    expect(isAsyncFunction(async () => {
-    })).toBe(true);
-    expect(isAsyncFunction(function() {
-    })).toBe(false);
-    expect(isAsyncFunction(async function() {
-    })).toBe(true);
+    expect(isAsyncFunction(() => {})).toBe(false);
+    expect(isAsyncFunction(async () => {})).toBe(true);
+    expect(isAsyncFunction(function () {})).toBe(false);
+    expect(isAsyncFunction(async function () {})).toBe(true);
 });
 
 test('helper isClass', () => {
@@ -172,14 +150,10 @@ test('helper isClass', () => {
     expect(isClass(new Date())).toBe(false);
     expect(isClass(new SimpleClass('asd'))).toBe(false);
     expect(isClass(isFunction)).toBe(false);
-    expect(isClass(() => {
-    })).toBe(false);
-    expect(isClass(async () => {
-    })).toBe(false);
-    expect(isClass(function() {
-    })).toBe(false);
-    expect(isClass(async function() {
-    })).toBe(false);
+    expect(isClass(() => {})).toBe(false);
+    expect(isClass(async () => {})).toBe(false);
+    expect(isClass(function () {})).toBe(false);
+    expect(isClass(async function () {})).toBe(false);
 
     expect(isClass(SimpleClass)).toBe(true);
 });
@@ -192,21 +166,18 @@ test('helper isPlainObject', () => {
     expect(isPlainObject(undefined)).toBe(false);
     expect(isPlainObject(1)).toBe(false);
     expect(isPlainObject('1')).toBe(false);
-    expect(isPlainObject(() => {
-    })).toBe(false);
-    expect(isPlainObject(function() {
-    })).toBe(false);
+    expect(isPlainObject(() => {})).toBe(false);
+    expect(isPlainObject(function () {})).toBe(false);
 
     expect(isPlainObject(new Date())).toBe(false);
     expect(isPlainObject(new SimpleClass('asd'))).toBe(false);
 
-    class O extends Object {
-    }
+    class O extends Object {}
 
-    expect(isPlainObject(new O)).toBe(false);
+    expect(isPlainObject(new O())).toBe(false);
 
     expect(isPlainObject({})).toBe(true);
-    expect(isPlainObject(new Object)).toBe(true);
+    expect(isPlainObject(new Object())).toBe(true);
 });
 
 test('helper is array', () => {
@@ -238,44 +209,74 @@ test('helper is isUndefined', () => {
 });
 
 test('test getPathValue', () => {
-    expect(getPathValue({
-        bla: 3,
-    }, 'bla')).toBe(3);
+    expect(
+        getPathValue(
+            {
+                bla: 3,
+            },
+            'bla',
+        ),
+    ).toBe(3);
 
-    expect(getPathValue({
-        bla: 3,
-    }, 'bla2', null)).toBe(null);
+    expect(
+        getPathValue(
+            {
+                bla: 3,
+            },
+            'bla2',
+            null,
+        ),
+    ).toBe(null);
 
     expect(getPathValue({}, 'bla', 'another')).toBe('another');
-
 });
 
 test('test getPathValue deep', () => {
-    expect(getPathValue({
-        bla: {
-            mowla: 5,
-        },
-    }, 'bla.mowla')).toBe(5);
-
-    expect(getPathValue({
-        'bla.mowla': 5,
-    }, 'bla.mowla')).toBe(5);
-
-    expect(getPathValue({
-        bla: {
-            mowla: {
-                evenDeeper: true,
+    expect(
+        getPathValue(
+            {
+                bla: {
+                    mowla: 5,
+                },
             },
-        },
-    }, 'bla.mowla.evenDeeper')).toBe(true);
+            'bla.mowla',
+        ),
+    ).toBe(5);
 
-    expect(getPathValue({
-        bla: {
-            mowla: {
-                evenDeeper: true,
+    expect(
+        getPathValue(
+            {
+                'bla.mowla': 5,
             },
-        },
-    }, 'bla.mowla')['evenDeeper']).toBe(true);
+            'bla.mowla',
+        ),
+    ).toBe(5);
+
+    expect(
+        getPathValue(
+            {
+                bla: {
+                    mowla: {
+                        evenDeeper: true,
+                    },
+                },
+            },
+            'bla.mowla.evenDeeper',
+        ),
+    ).toBe(true);
+
+    expect(
+        getPathValue(
+            {
+                bla: {
+                    mowla: {
+                        evenDeeper: true,
+                    },
+                },
+            },
+            'bla.mowla',
+        )['evenDeeper'],
+    ).toBe(true);
 });
 
 test('test setPathValue ', () => {
@@ -292,10 +293,8 @@ test('test setPathValue ', () => {
     }
 });
 
-
 test('asyncOperation maintain error stack trace', async () => {
-    class MyError extends Error {
-    }
+    class MyError extends Error {}
 
     let fetched = false;
     try {
@@ -318,13 +317,12 @@ test('asyncOperation maintain error stack trace', async () => {
 });
 
 test('asyncOperation catches async errors', async () => {
-    class MyError extends Error {
-    }
+    class MyError extends Error {}
 
     let fetched = false;
     try {
         async function doIt() {
-            await asyncOperation(async (resolve) => {
+            await asyncOperation(async resolve => {
                 await sleep(0.2);
                 throw new MyError('MyError1');
             });
@@ -344,15 +342,15 @@ test('asyncOperation deep', async () => {
     let fetched = false;
     try {
         async function doIt1() {
-            await asyncOperation(async (resolve) => {
+            await asyncOperation(async resolve => {
                 await sleep(0.2);
 
                 async function doIt2() {
-                    await asyncOperation(async (resolve) => {
+                    await asyncOperation(async resolve => {
                         await sleep(0.2);
                         throw new Error('MyError2');
                     });
-                };
+                }
                 await doIt2();
             });
         }
@@ -367,29 +365,22 @@ test('asyncOperation deep', async () => {
     expect(fetched).toBe(true);
 });
 
-
 test('getObjectKeysSize', async () => {
     expect(getObjectKeysSize({})).toBe(0);
     expect(getObjectKeysSize({ a: true })).toBe(1);
     expect(getObjectKeysSize({ a: 1, b: 1, c: 3, d: 4, e: {} })).toBe(5);
 });
 
-
 test('isPrototypeOfBase', () => {
-    class Base {
-    }
+    class Base {}
 
-    class Child1 extends Base {
-    }
+    class Child1 extends Base {}
 
-    class Child2 extends Base {
-    }
+    class Child2 extends Base {}
 
-    class Child1_1 extends Child1 {
-    }
+    class Child1_1 extends Child1 {}
 
-    class Child1_1_1 extends Child1_1 {
-    }
+    class Child1_1_1 extends Child1_1 {}
 
     expect(isPrototypeOfBase(Base, Base)).toBe(true);
     expect(isPrototypeOfBase(Child1, Base)).toBe(true);
@@ -401,24 +392,15 @@ test('isPrototypeOfBase', () => {
 });
 
 test('isConstructable', () => {
-    expect(isConstructable(class {
-    })).toBe(true);
-    expect(isConstructable(class {
-    }.bind(undefined))).toBe(true);
-    expect(isConstructable(function() {
-    })).toBe(true);
-    expect(isConstructable(function() {
-    }.bind(undefined))).toBe(true);
-    expect(isConstructable(() => {
-    })).toBe(false);
-    expect(isConstructable((() => {
-    }).bind(undefined))).toBe(false);
-    expect(isConstructable(async () => {
-    })).toBe(false);
-    expect(isConstructable(async function() {
-    })).toBe(false);
-    expect(isConstructable(function* () {
-    })).toBe(false);
+    expect(isConstructable(class {})).toBe(true);
+    expect(isConstructable(class {}.bind(undefined))).toBe(true);
+    expect(isConstructable(function () {})).toBe(true);
+    expect(isConstructable(function () {}.bind(undefined))).toBe(true);
+    expect(isConstructable(() => {})).toBe(false);
+    expect(isConstructable((() => {}).bind(undefined))).toBe(false);
+    expect(isConstructable(async () => {})).toBe(false);
+    expect(isConstructable(async function () {})).toBe(false);
+    expect(isConstructable(function* () {})).toBe(false);
     //the runtime type transformer converts this to `{foo: function() {}}.foo` which is constructable again :(
     // expect(isConstructable({foo() {}}.foo)).toBe(false);
     expect(isConstructable(URL)).toBe(true);
@@ -449,20 +431,29 @@ test('stringifyValueWithType', async () => {
         id = 1;
     }
 
-    expect(stringifyValueWithType(new Peter)).toBe(`Peter {id: number(1)}`);
-    expect(stringifyValueWithType({ id: 1 })).toBe(`object {id: number(1)}`);
-    expect(stringifyValueWithType('foo')).toBe(`string(foo)`);
-    expect(stringifyValueWithType(2)).toBe(`number(2)`);
-    expect(stringifyValueWithType(true)).toBe(`boolean(true)`);
-    expect(stringifyValueWithType(function Peter() {
-    })).toBe(`function Peter`);
+    expect(stringifyValueWithType(new Peter())).toBe(`Peter {id: 1}`);
+    expect(stringifyValueWithType({ id: 1 })).toBe(`object {id: 1}`);
+    expect(stringifyValueWithType('foo')).toBe(`string "foo"`);
+    expect(stringifyValueWithType(2)).toBe(`number 2`);
+    expect(stringifyValueWithType(true)).toBe(`boolean true`);
+    expect(stringifyValueWithType(function Peter() {})).toBe(`function Peter`);
+
+    // Additional tests for new format
+    expect(stringifyValueWithType(null)).toBe('null');
+    expect(stringifyValueWithType(undefined)).toBe('undefined');
+    expect(stringifyValueWithType(123n)).toBe('bigint 123n');
+    expect(stringifyValueWithType([1, 2, 3])).toBe('array [1, 2, 3]');
+    expect(stringifyValueWithType([1, 2, 3, 4, 5])).toBe('array [1, 2, 3, ...] (5 items)');
+    expect(stringifyValueWithType(new Date('2024-01-01T00:00:00.000Z'))).toBe('Date 2024-01-01T00:00:00.000Z');
+    expect(stringifyValueWithType(/test/gi)).toBe('RegExp /test/gi');
+    expect(stringifyValueWithType(new Set([1, 2]))).toBe('Set (2 items)');
+    expect(stringifyValueWithType(new Map([['a', 1]]))).toBe('Map (1 entries)');
 });
 
 test('getClassTypeFromInstance', async () => {
-    class Peter {
-    }
+    class Peter {}
 
-    expect(getClassTypeFromInstance(new Peter)).toBe(Peter);
+    expect(getClassTypeFromInstance(new Peter())).toBe(Peter);
     expect(() => getClassTypeFromInstance({})).toThrow('Value is not a class instance');
     expect(() => getClassTypeFromInstance('asd')).toThrow('Value is not a class instance');
     expect(() => getClassTypeFromInstance(23)).toThrow('Value is not a class instance');
@@ -470,10 +461,9 @@ test('getClassTypeFromInstance', async () => {
 });
 
 test('isClassInstance', async () => {
-    class Peter {
-    }
+    class Peter {}
 
-    expect(isClassInstance(new Peter)).toBe(true);
+    expect(isClassInstance(new Peter())).toBe(true);
     expect(isClassInstance({})).toBe(false);
     expect(isClassInstance('asd')).toBe(false);
     expect(isClassInstance(undefined)).toBe(false);
@@ -486,8 +476,7 @@ test('isClassInstance', async () => {
         id: number = 0;
     }
 
-    class Base {
-    }
+    class Base {}
 
     class Model2 extends Base {
         id: number = 0;
@@ -497,7 +486,7 @@ test('isClassInstance', async () => {
         }
     }
 
-    const model1 = new Model1;
+    const model1 = new Model1();
     model1.id = 22;
 
     changeClass(model1, Model2);
@@ -512,16 +501,15 @@ test('isClassInstance', async () => {
 test('createDynamicClass', () => {
     const class1 = createDynamicClass('Model');
     expect(getClassName(class1)).toBe('Model');
-    expect(getClassName(new class1)).toBe('Model');
+    expect(getClassName(new class1())).toBe('Model');
     expect(class1.toString()).toBe('class Model {}');
 
-    class Base {
-    }
+    class Base {}
 
     const class2 = createDynamicClass('Model2', Base);
     expect(getClassName(class2)).toBe('Model2');
-    expect(getClassName(new class2)).toBe('Model2');
-    expect(new class2).toBeInstanceOf(Base);
+    expect(getClassName(new class2())).toBe('Model2');
+    expect(new class2()).toBeInstanceOf(Base);
     expect(class2.toString()).toBe('class Model2 extends Base {}');
 });
 
@@ -535,14 +523,11 @@ test('isNumeric', () => {
 });
 
 test('getParentClass', () => {
-    class User {
-    }
+    class User {}
 
-    class Admin extends User {
-    }
+    class Admin extends User {}
 
-    class SuperAdmin extends Admin {
-    }
+    class SuperAdmin extends Admin {}
 
     expect(getParentClass({} as any)).toBe(undefined);
     expect(getParentClass(Object)).toBe(undefined);
@@ -574,10 +559,24 @@ test('range', () => {
 });
 
 test('zip', () => {
-    expect(zip([1, 2, 3], ['a', 'b', 'c'])).toEqual([[1, 'a'], [2, 'b'], [3, 'c']]);
-    expect(zip([1, 2, 3], ['a', 'b'])).toEqual([[1, 'a'], [2, 'b']]);
-    expect(zip([1, 2], ['a', 'b', 'c'])).toEqual([[1, 'a'], [2, 'b']]);
-    expect(zip([1, 2, 3], ['a', 'b', 'c'], [true, false, true])).toEqual([[1, 'a', true], [2, 'b', false], [3, 'c', true]]);
+    expect(zip([1, 2, 3], ['a', 'b', 'c'])).toEqual([
+        [1, 'a'],
+        [2, 'b'],
+        [3, 'c'],
+    ]);
+    expect(zip([1, 2, 3], ['a', 'b'])).toEqual([
+        [1, 'a'],
+        [2, 'b'],
+    ]);
+    expect(zip([1, 2], ['a', 'b', 'c'])).toEqual([
+        [1, 'a'],
+        [2, 'b'],
+    ]);
+    expect(zip([1, 2, 3], ['a', 'b', 'c'], [true, false, true])).toEqual([
+        [1, 'a', true],
+        [2, 'b', false],
+        [3, 'c', true],
+    ]);
 });
 
 test('isIterable', () => {
@@ -595,7 +594,14 @@ test('iterableSize', () => {
     expect(iterableSize([])).toBe(0);
     expect(iterableSize([1, 2, 3])).toBe(3);
     expect(iterableSize(new Map())).toBe(0);
-    expect(iterableSize(new Map([[1, 2], [3, 4]]) as any)).toBe(2);
+    expect(
+        iterableSize(
+            new Map([
+                [1, 2],
+                [3, 4],
+            ]) as any,
+        ),
+    ).toBe(2);
     expect(iterableSize(new Set())).toBe(0);
     expect(iterableSize(new Set([1, 2, 3]) as any)).toBe(3);
 });
@@ -608,8 +614,7 @@ test('isGlobalClass', () => {
     expect(isGlobalClass(Array)).toBe(true);
     expect(isGlobalClass(TextDecoder)).toBe(true);
 
-    class MyError extends Error {
-    }
+    class MyError extends Error {}
 
     expect(isGlobalClass(Error)).toBe(true);
     expect(isGlobalClass(MyError)).toBe(false);

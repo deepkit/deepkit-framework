@@ -7,16 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { ClassType } from '@deepkit/core';
 
+import { MongoClientConfig } from '../config.js';
+import { MongoError } from '../error.js';
+import { Host } from '../host.js';
+import { MongoAuth } from './auth/auth.js';
+import { Sha1ScramAuth, Sha256ScramAuth } from './auth/scram.js';
+import { X509Auth } from './auth/x509.js';
 import { Command } from './command.js';
 import { IsMasterResponse } from './ismaster.js';
-import { MongoClientConfig } from '../config.js';
-import { Host } from '../host.js';
-import { Sha1ScramAuth, Sha256ScramAuth } from './auth/scram.js';
-import { ClassType } from '@deepkit/core';
-import { MongoError } from '../error.js';
-import { MongoAuth } from './auth/auth.js';
-import { X509Auth } from './auth/x509.js';
 
 interface IsMasterSchema {
     isMaster: number;
@@ -25,15 +25,15 @@ interface IsMasterSchema {
     saslSupportedMechs?: string;
     client: {
         application: {
-            name: string,
-        },
+            name: string;
+        };
         driver: {
             name: string;
             version: string;
-        },
+        };
         os: {
             type: string;
-        }
+        };
     };
 }
 
@@ -44,12 +44,12 @@ enum AuthMechanism {
     MONGODB_PLAIN = 'plain', //enterprise shizzle
     MONGODB_GSSAPI = 'gssapi', //enterprise shizzle
     MONGODB_SCRAM_SHA1 = 'scram-sha-1', //default
-    MONGODB_SCRAM_SHA256 = 'scram-sha-256'
+    MONGODB_SCRAM_SHA256 = 'scram-sha-256',
 }
 
 class NotImplemented {
     constructor() {
-        throw new MongoError('Auth not implemented yet');
+        throw new MongoError('DK-MG001', 'Auth not implemented yet');
     }
 }
 
@@ -88,16 +88,16 @@ export class HandshakeCommand extends Command<boolean> {
             $db: db,
             client: {
                 application: {
-                    name: config.options.appName || 'deepkit'
+                    name: config.options.appName || 'deepkit',
                 },
                 driver: {
                     name: 'deepkit',
-                    version: '1.0.0'
+                    version: '1.0.0',
                 },
                 os: {
-                    type: 'Linux'
-                }
-            }
+                    type: 'Linux',
+                },
+            },
         };
 
         if (!config.options.authMechanism && config.authUser) {
@@ -122,7 +122,7 @@ export class HandshakeCommand extends Command<boolean> {
     protected async doAuth(config: MongoClientConfig, response: IsMasterResponse) {
         const authType = config.options.authMechanism || detectedAuthMechanismFromResponse(response);
         const authClassType = authClassTypes[authType];
-        const auth = new authClassType as MongoAuth;
+        const auth = new authClassType() as MongoAuth;
 
         await auth.auth(this, config);
     }

@@ -1,17 +1,19 @@
-import { createModuleClass, findParentPath } from '@deepkit/app';
-import { HttpRouteFilter, normalizeDirectory, registerStaticHttpController } from '@deepkit/http';
-import { ApiConsoleApi } from '@deepkit/api-console-api';
-import { Config } from './module.config.js';
-import { rpc } from '@deepkit/rpc';
-import { ApiConsoleController } from './controller.js';
 import { dirname } from 'path';
-import { getCurrentFileName } from '@deepkit/core';
+
+import { ApiConsoleApi } from '@deepkit/api-console-api';
+import { createModuleClass, findParentPath } from '@deepkit/app';
+import { DeepkitError, getCurrentFileName } from '@deepkit/core';
+import { HttpRouteFilter, normalizeDirectory, registerStaticHttpController } from '@deepkit/http';
+import { rpc } from '@deepkit/rpc';
+
+import { ApiConsoleController } from './controller.js';
+import { Config } from './module.config.js';
 
 export class ApiConsoleModule extends createModuleClass({
     name: 'apiConsole',
     config: Config,
 }) {
-    protected routeFilter = new HttpRouteFilter().excludeRoutes({group: 'app-static'});
+    protected routeFilter = new HttpRouteFilter().excludeRoutes({ group: 'app-static' });
 
     filter(cb: (filter: HttpRouteFilter) => any): this {
         cb(this.routeFilter);
@@ -19,12 +21,11 @@ export class ApiConsoleModule extends createModuleClass({
     }
 
     process() {
-        this.addProvider({provide: HttpRouteFilter, useValue: this.routeFilter});
+        this.addProvider({ provide: HttpRouteFilter, useValue: this.routeFilter });
 
         if (!this.config.listen) {
             @rpc.controller(ApiConsoleApi)
-            class NamedApiConsoleController extends ApiConsoleController {
-            }
+            class NamedApiConsoleController extends ApiConsoleController {}
 
             this.addController(NamedApiConsoleController);
             return;
@@ -33,13 +34,19 @@ export class ApiConsoleModule extends createModuleClass({
         const controllerName = '.deepkit/api-console' + normalizeDirectory(this.config.path);
 
         @rpc.controller(controllerName)
-        class NamedApiConsoleController extends ApiConsoleController {
-        }
+        class NamedApiConsoleController extends ApiConsoleController {}
 
         this.addController(NamedApiConsoleController);
 
-        const localPath = findParentPath('node_modules/@deepkit/api-console-gui/dist/api-console-gui', dirname(getCurrentFileName()));
-        if (!localPath) throw new Error('node_modules/@deepkit/api-console-gui not installed in ' + dirname(getCurrentFileName()));
+        const localPath = findParentPath(
+            'node_modules/@deepkit/api-console-gui/dist/api-console-gui',
+            dirname(getCurrentFileName()),
+        );
+        if (!localPath)
+            throw new DeepkitError(
+                'DK-ACM001',
+                'node_modules/@deepkit/api-console-gui not installed in ' + dirname(getCurrentFileName()),
+            );
 
         registerStaticHttpController(this, {
             path: this.config.path,
@@ -47,8 +54,8 @@ export class ApiConsoleModule extends createModuleClass({
             groups: ['app-static'],
             controllerName: 'ApiConsoleController',
             indexReplace: {
-                APP_CONTROLLER_NAME: controllerName
-            }
+                APP_CONTROLLER_NAME: controllerName,
+            },
         });
     }
 }

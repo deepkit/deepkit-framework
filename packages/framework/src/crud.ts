@@ -1,6 +1,6 @@
-import { ClassType, getObjectKeysSize, isArray } from '@deepkit/core';
 import { AppModule } from '@deepkit/app';
-import { http, HttpBody, httpClass, HttpQueries, JSONResponse } from '@deepkit/http';
+import { ClassType, DeepkitError, getObjectKeysSize, isArray } from '@deepkit/core';
+import { HttpBody, HttpQueries, JSONResponse, http, httpClass } from '@deepkit/http';
 import { Database, DatabaseRegistry, Query, UniqueConstraintFailure } from '@deepkit/orm';
 import {
     InlineRuntimeType,
@@ -8,8 +8,10 @@ import {
     Positive,
     ReflectionClass,
     ReflectionKind,
+    Type,
     TypeUnion,
     ValidationError,
+    typeAnnotation,
 } from '@deepkit/type';
 
 function applySelect(query: Query<any>, select: string[] | string): Query<any> {
@@ -23,7 +25,7 @@ function applySelect(query: Query<any>, select: string[] | string): Query<any> {
 
 function applyJoins(query: Query<any>, joins: { [name: string]: string }): Query<any> {
     for (const [field, projection] of Object.entries(joins)) {
-        if (!query.classSchema.hasProperty(field)) throw new Error(`Join '${field}' does not exist`);
+        if (!query.classSchema.hasProperty(field)) throw new DeepkitError('DK-F002', `Join '${field}' does not exist`);
         let join = query.useJoinWith(field);
         if (projection.length && projection !== '*') {
             join = join.select(...projection.split(','));
@@ -91,15 +93,40 @@ interface AutoCrudOptions {
 }
 
 function createController(schema: ReflectionClass<any>, options: AutoCrudOptions = {}): ClassType {
-    if (!schema.name) throw new Error(`Class ${schema.getClassName()} needs an entity name via @entity.name()`);
+    if (!schema.name)
+        throw new DeepkitError('DK-F003', `Class ${schema.getClassName()} needs an entity name via @entity.name()`);
 
-    const joinNames: string[] = options.joins || schema.getProperties().filter(v => v.isReference() || v.isBackReference()).map(v => v.name);
-    const sortNames: string[] = options.sortFields || schema.getProperties().filter(v => !v.isReference() && !v.isBackReference()).map(v => v.name);
-    const selectNames: string[] = options.selectableFields || schema.getProperties().filter(v => !v.isReference() && !v.isBackReference()).map(v => v.name);
+    const joinNames: string[] =
+        options.joins ||
+        schema
+            .getProperties()
+            .filter(v => v.isReference() || v.isBackReference())
+            .map(v => v.name);
+    const sortNames: string[] =
+        options.sortFields ||
+        schema
+            .getProperties()
+            .filter(v => !v.isReference() && !v.isBackReference())
+            .map(v => v.name);
+    const selectNames: string[] =
+        options.selectableFields ||
+        schema
+            .getProperties()
+            .filter(v => !v.isReference() && !v.isBackReference())
+            .map(v => v.name);
 
-    const joinNamesType: TypeUnion = { kind: ReflectionKind.union, types: joinNames.map(v => ({ kind: ReflectionKind.literal, literal: v })) };
-    const sortNamesType: TypeUnion = { kind: ReflectionKind.union, types: sortNames.map(v => ({ kind: ReflectionKind.literal, literal: v })) };
-    const selectNamesType: TypeUnion = { kind: ReflectionKind.union, types: selectNames.map(v => ({ kind: ReflectionKind.literal, literal: v })) };
+    const joinNamesType: TypeUnion = {
+        kind: ReflectionKind.union,
+        types: joinNames.map(v => ({ kind: ReflectionKind.literal, literal: v })),
+    };
+    const sortNamesType: TypeUnion = {
+        kind: ReflectionKind.union,
+        types: sortNames.map(v => ({ kind: ReflectionKind.literal, literal: v })),
+    };
+    const selectNamesType: TypeUnion = {
+        kind: ReflectionKind.union,
+        types: selectNames.map(v => ({ kind: ReflectionKind.literal, literal: v })),
+    };
 
     type JoinNames = InlineRuntimeType<typeof joinNamesType>;
     type SortNames = InlineRuntimeType<typeof sortNamesType>;
@@ -114,7 +141,7 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
             const foreign = property.getResolvedReflectionClass();
             selectSchema.addProperty({
                 ...property.property,
-                type: { kind: ReflectionKind.union, types: [foreign.getPrimary().type, property.type] }
+                type: { kind: ReflectionKind.union, types: [foreign.getPrimary().type, property.type] },
             });
         }
     }
@@ -122,7 +149,29 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
 
     const identifier = options.identifier ? schema.getProperty(options.identifier) : schema.getPrimary();
     const identifierType = identifier.type;
-    type IdentifierType = InlineRuntimeType<typeof identifierType>
+    type IdentifierType = InlineRuntimeType<typeof identifierType>;
+
+    // Create identifier type with HttpPath annotation for path parameter binding
+    // This allows the HTTP framework to map the dynamic path parameter (e.g., :username) to the method parameter
+    const identifierPathType: Type = {
+        ...identifierType,
+        annotations: { ...identifierType.annotations },
+    };
+    // Build the httpPath options object literal with proper parent references
+    const httpPathOptions: Type = { kind: ReflectionKind.objectLiteral, types: [] } as Type;
+    (httpPathOptions as any).types = [
+        {
+            kind: ReflectionKind.propertySignature,
+            parent: httpPathOptions,
+            name: 'name',
+            type: { kind: ReflectionKind.literal, literal: identifier.name },
+        },
+    ];
+    typeAnnotation.registerType(identifierPathType, {
+        name: 'httpPath',
+        options: httpPathOptions,
+    });
+    type IdentifierPathType = InlineRuntimeType<typeof identifierPathType>;
 
     const maxLimit = options.maxLimit || 1000;
 
@@ -157,14 +206,14 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
 
     @(http.controller('/entity/' + schema.name).group('crud'))
     class RestController {
-        constructor(protected registry: DatabaseRegistry) {
-        }
+        constructor(protected registry: DatabaseRegistry) {}
 
         protected getDatabase(): Database {
             return this.registry.getDatabaseForEntity(schema);
         }
 
-        @(http.GET('')
+        @(http
+            .GET('')
             .description(`A list of ${schema.name}.`)
             .response<SchemaType[]>(200, `List of ${schema.name}.`)
             .response<ValidationError>(400, `When parameter validation failed.`))
@@ -177,7 +226,8 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
 
             if (listQuery.orderBy && getObjectKeysSize(listQuery.orderBy) > 0) {
                 for (const field of Object.keys(listQuery.orderBy)) {
-                    if (!schema.hasProperty(field)) throw new Error(`Can not order by '${field}' since it does not exist.`);
+                    if (!schema.hasProperty(field))
+                        throw new DeepkitError('DK-F004', `Can not order by '${field}' since it does not exist.`);
                 }
                 query.model.sort = listQuery.orderBy;
             }
@@ -189,7 +239,8 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
                 .find();
         }
 
-        @(http.POST('')
+        @(http
+            .POST('')
             .description(`Add a new ${schema.name}.`)
             .response<SchemaType>(201, 'When successfully created.')
             .response<ValidationError>(400, `When parameter validation failed`)
@@ -210,25 +261,29 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
             return new JSONResponse(item).status(201);
         }
 
-        @(http.DELETE(':' + identifier.name)
+        @(http
+            .DELETE(':' + identifier.name)
             .description(`Delete a single ${schema.name}.`)
             .response<ValidationError>(400, `When parameter validation failed`)
             .response<{ deleted: number }>(200, `When deletion was successful`))
-        async delete(id: IdentifierType) {
-            const result = await this.getDatabase().query(schema).filter({ [identifier.name]: id }).deleteOne();
+        async delete(id: IdentifierPathType) {
+            const result = await this.getDatabase()
+                .query(schema)
+                .filter({ [identifier.name]: id })
+                .deleteOne();
             return { deleted: result.modified };
         }
 
-        @(http.GET(':' + identifier.name)
+        @(http
+            .GET(':' + identifier.name)
             .description(`Get a single ${schema.name}.`)
             .response<SchemaType>(200, `When ${schema.name} was found.`)
             .response<ValidationError>(400, `When parameter validation failed`)
             .response<ErrorMessage>(404, `When ${schema.name} was not found.`))
-        async read(
-            id: IdentifierType,
-            options: HttpQueries<GetQuery>
-        ) {
-            let query = this.getDatabase().query(schema).filter({ [identifier.name]: id });
+        async read(id: IdentifierPathType, options: HttpQueries<GetQuery>) {
+            let query = this.getDatabase()
+                .query(schema)
+                .filter({ [identifier.name]: id });
             if (options.select) query = applySelect(query, options.select);
             if (options.joins) query = applyJoins(query, options.joins as any);
 
@@ -238,16 +293,16 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
             return new JSONResponse({ message: `${schema.name} not found` }).status(404);
         }
 
-        @(http.PUT(':' + identifier.name)
+        @(http
+            .PUT(':' + identifier.name)
             .description(`Update a single ${schema.name}.`)
             .response<SchemaType>(200, `When ${schema.name} was successfully updated.`)
             .response<ValidationError>(400, `When parameter validation failed`)
             .response<ErrorMessage>(404, `When ${schema.name} was not found.`))
-        async update(
-            id: IdentifierType,
-            body: HttpBody<Partial<SchemaType>>,
-        ) {
-            let query = this.getDatabase().query(schema).filter({ [identifier.name]: id });
+        async update(id: IdentifierPathType, body: HttpBody<Partial<SchemaType>>) {
+            let query = this.getDatabase()
+                .query(schema)
+                .filter({ [identifier.name]: id });
 
             const item = await query.findOneOrUndefined();
             if (!item) return new JSONResponse({ message: `${schema.name} not found` }).status(404);
@@ -276,8 +331,7 @@ function createController(schema: ReflectionClass<any>, options: AutoCrudOptions
     return RestController;
 }
 
-export class CrudAppModule<T extends {}> extends AppModule<T> {
-}
+export class CrudAppModule<T extends {}> extends AppModule<T> {}
 
 /**
  * Create a module that provides CRUD routes for given entities.
@@ -285,8 +339,11 @@ export class CrudAppModule<T extends {}> extends AppModule<T> {
 export function createCrudRoutes(schemas: (ClassType | ReflectionClass<any>)[], options: AutoCrudOptions = {}) {
     const controllers = schemas.map(v => ReflectionClass.from(v)).map(v => createController(v, options));
 
-    return new CrudAppModule({}, {
-        name: 'autoCrud',
-        controllers: controllers
-    });
+    return new CrudAppModule(
+        {},
+        {
+            name: 'autoCrud',
+            controllers: controllers,
+        },
+    );
 }

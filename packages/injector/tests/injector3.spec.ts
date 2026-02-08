@@ -1,29 +1,24 @@
 import { expect, test } from '@jest/globals';
-import { InjectorModule } from '../src/module.js';
-import { Injector, InjectorContext } from '../src/injector.js';
-import { provide } from '../src/provider.js';
+
 import { Inject } from '@deepkit/core';
 import { Logger } from '@deepkit/logger';
 
+import { Injector, InjectorContext } from '../src/injector.js';
+import { InjectorModule } from '../src/module.js';
+import { provide } from '../src/provider.js';
+
 test('class + scope support', () => {
-    class ServiceA {
-    }
+    class ServiceA {}
 
     class ServiceB {
-        constructor(public serviceA: ServiceA) {
-        }
+        constructor(public serviceA: ServiceA) {}
     }
 
     class ScopedServiceC {
-        constructor(public serviceA: ServiceA) {
-        }
+        constructor(public serviceA: ServiceA) {}
     }
 
-    const providers = [
-        { provide: ServiceA },
-        { provide: ServiceB },
-        { provide: ScopedServiceC, scope: 'rpc' },
-    ];
+    const providers = [{ provide: ServiceA }, { provide: ServiceB }, { provide: ScopedServiceC, scope: 'rpc' }];
 
     const module = new InjectorModule(providers);
     const injector = new InjectorContext(module);
@@ -45,25 +40,17 @@ test('class + scope support', () => {
 });
 
 test('type + scope support', () => {
-    class ServiceA {
-    }
+    class ServiceA {}
 
     class ServiceB {
-        constructor(public serviceA: ServiceA) {
-        }
+        constructor(public serviceA: ServiceA) {}
     }
 
     class ScopedServiceC {
-        constructor(public scope: string) {
-        }
+        constructor(public scope: string) {}
     }
 
-    const providers = [
-        provide<ServiceA>(ServiceA),
-        provide<ServiceB>(ServiceB),
-        provide<ScopedServiceC>({ scope: 'rpc', useValue: new ScopedServiceC('rpc') }),
-        provide<ScopedServiceC>({ scope: 'http', useValue: new ScopedServiceC('http') }),
-    ];
+    const providers = [provide<ServiceA>(ServiceA), provide<ServiceB>(ServiceB), provide<ScopedServiceC>({ scope: 'rpc', useValue: new ScopedServiceC('rpc') }), provide<ScopedServiceC>({ scope: 'http', useValue: new ScopedServiceC('http') })];
 
     const module = new InjectorModule(providers);
     const injector = new InjectorContext(module);
@@ -94,34 +81,25 @@ test('type + scope support', () => {
 });
 
 test('exported provider', () => {
-    class ModuleA extends InjectorModule {
-    }
+    class ModuleA extends InjectorModule {}
 
-    class ModuleB extends InjectorModule {
-    }
+    class ModuleB extends InjectorModule {}
 
-    class ServiceA {
-    }
+    class ServiceA {}
 
     class ServiceB {
-        constructor(public serviceA: ServiceA) {
-        }
+        constructor(public serviceA: ServiceA) {}
     }
 
-    const moduleB = new ModuleB([
-        { provide: ServiceB, scope: 'rpc' },
-    ]).addExport(ServiceB);
+    const moduleB = new ModuleB([{ provide: ServiceB, scope: 'rpc' }]).addExport(ServiceB);
 
-    const moduleA = new ModuleA([
-        ServiceA,
-        { provide: ServiceB, scope: 'rpc' },
-    ]).addImport(moduleB);
+    const moduleA = new ModuleA([ServiceA, { provide: ServiceB, scope: 'rpc' }]).addImport(moduleB);
 
     const injector = new InjectorContext(moduleA);
     const a = injector.get(ServiceA);
     expect(a).toBeInstanceOf(ServiceA);
 
-    expect(() => injector.get(ServiceB)).toThrowError('Service \'ServiceB\' is known but is not available in scope global. Available in scopes: rpc');
+    expect(() => injector.get(ServiceB)).toThrowError("Service 'ServiceB' is known but is not available in scope global. Available in scopes: rpc");
 
     const scope = injector.createChildScope('rpc');
     const b1 = scope.get(ServiceB);
@@ -132,12 +110,10 @@ test('exported provider', () => {
 });
 
 test('optional forwarded to external module', () => {
-    class ScopedService {
-    }
+    class ScopedService {}
 
     class Service {
-        constructor(public scoped?: ScopedService) {
-        }
+        constructor(public scoped?: ScopedService) {}
     }
 
     const httpModule = new InjectorModule([
@@ -157,23 +133,14 @@ test('optional forwarded to external module', () => {
 
 test('scoped InjectorContext', () => {
     class HttpListener {
-        constructor(public injector: InjectorContext) {
-        }
+        constructor(public injector: InjectorContext) {}
     }
 
-    const httpModule = new InjectorModule([
-        HttpListener,
-    ]);
+    const httpModule = new InjectorModule([HttpListener]);
 
-    const frameworkModule = new InjectorModule([
-        { provide: InjectorContext, scope: 'rpc', useValue: undefined },
-    ])
-        .addImport(httpModule)
-        .addExport(InjectorContext, httpModule);
+    const frameworkModule = new InjectorModule([{ provide: InjectorContext, scope: 'rpc', useValue: undefined }]).addImport(httpModule).addExport(InjectorContext, httpModule);
 
-    const rootModule = new InjectorModule([
-        { provide: InjectorContext, useFactory: () => injector },
-    ]).addImport(frameworkModule);
+    const rootModule = new InjectorModule([{ provide: InjectorContext, useFactory: () => injector }]).addImport(frameworkModule);
 
     const injector = new InjectorContext(rootModule);
 
@@ -182,11 +149,9 @@ test('scoped InjectorContext', () => {
 });
 
 test('setter of unspecified scope', () => {
-    class HttpRequest {
-    }
+    class HttpRequest {}
 
-    class FrameworkModule extends InjectorModule {
-    }
+    class FrameworkModule extends InjectorModule {}
 
     const frameworkModule = new FrameworkModule([
         { provide: HttpRequest, scope: 'http', useValue: undefined },
@@ -206,34 +171,24 @@ test('setter of unspecified scope', () => {
 
 test('inject module', () => {
     class HttpRequest {
-        constructor(public module: InjectorModule) {
-        }
+        constructor(public module: InjectorModule) {}
     }
 
     class HttpListener {
-        constructor(public module: InjectorModule) {
-        }
+        constructor(public module: InjectorModule) {}
     }
 
     class HttpListener2 {
-        constructor(public injector: Injector) {
-        }
+        constructor(public injector: Injector) {}
     }
 
-    class HttpModule extends InjectorModule {
-    }
+    class HttpModule extends InjectorModule {}
 
-    class FrameworkModule extends InjectorModule {
-    }
+    class FrameworkModule extends InjectorModule {}
 
-    const httpModule = new HttpModule([
-        HttpListener,
-        HttpListener2,
-    ]).addExport(HttpListener, HttpListener2);
+    const httpModule = new HttpModule([HttpListener, HttpListener2]).addExport(HttpListener, HttpListener2);
 
-    const frameworkModule = new FrameworkModule([
-        { provide: HttpRequest, scope: 'http' },
-    ]).addImport(httpModule).addExport(httpModule, HttpRequest);
+    const frameworkModule = new FrameworkModule([{ provide: HttpRequest, scope: 'http' }]).addImport(httpModule).addExport(httpModule, HttpRequest);
 
     const rootModule = new InjectorModule([]).addImport(frameworkModule);
     const injector = new InjectorContext(rootModule);
@@ -255,15 +210,16 @@ test('constructor properties only handled once', () => {
     type InjectServiceB = Inject<any, 'scoped-logger'>;
 
     class ServiceA {
-        constructor(public serviceB: InjectServiceB) {
-        }
+        constructor(public serviceB: InjectServiceB) {}
     }
 
     const module = new InjectorModule([
         { provide: ServiceA },
         Logger,
         {
-            provide: 'scoped-logger', transient: true, useFactory() {
+            provide: 'scoped-logger',
+            transient: true,
+            useFactory() {
                 created++;
                 return {};
             },
@@ -277,8 +233,7 @@ test('constructor properties only handled once', () => {
 
 test('define a second provider in different scope in child module', () => {
     class ServiceA {
-        constructor(public injector: InjectorContext) {
-        }
+        constructor(public injector: InjectorContext) {}
     }
 
     const childModule = new InjectorModule([
@@ -286,9 +241,7 @@ test('define a second provider in different scope in child module', () => {
         { provide: InjectorContext, scope: 'rpc' },
     ]).addExport(ServiceA, InjectorContext);
 
-    const root = new InjectorModule([
-        { provide: InjectorContext, useFactory: () => injectorContext },
-    ]).addImport(childModule);
+    const root = new InjectorModule([{ provide: InjectorContext, useFactory: () => injectorContext }]).addImport(childModule);
 
     const injectorContext = new InjectorContext(root);
 

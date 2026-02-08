@@ -7,10 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType, isObject } from '@deepkit/core';
+
+import { UnpopulatedCheck, typeSettings, unpopulatedSymbol } from './core.js';
 import { ReflectionClass, reflectionClassSymbol } from './reflection/reflection.js';
-import { typeSettings, UnpopulatedCheck, unpopulatedSymbol } from './core.js';
 import { ReflectionKind, Type } from './reflection/type.js';
 
 export function isReferenceInstance(obj: any): boolean {
@@ -45,7 +45,7 @@ export interface ReferenceInfo<T> {
 }
 
 export interface ReferenceItemInfo<T> {
-    hydrated: boolean,
+    hydrated: boolean;
 }
 
 export const referenceSymbol = Symbol('reference');
@@ -66,21 +66,22 @@ export function createReference<T>(type: ClassType<T> | Type | ReflectionClass<a
     }
 }
 
-export function createReferenceClass<T>(
-    reflection: ReflectionClass<any>,
-): ClassType<T> {
+export function createReferenceClass<T>(reflection: ReflectionClass<any>): ClassType<T> {
     if (reflection.data.referenceClass) return reflection.data.referenceClass;
 
-    const Reference = reflection.type.kind === ReflectionKind.class ? class extends reflection.type.classType {
-    } : class {
-    };
+    const Reference =
+        reflection.type.kind === ReflectionKind.class ? class extends reflection.type.classType {} : class {};
 
     Object.defineProperty(Reference.prototype, referenceSymbol, { value: { hydrator: undefined }, enumerable: false });
     Object.defineProperty(Reference.prototype, referenceItemSymbol, { value: null, writable: true, enumerable: false });
-    Object.defineProperty(Reference.prototype, reflectionClassSymbol, { writable: true, enumerable: false, value: reflection });
+    Object.defineProperty(Reference.prototype, reflectionClassSymbol, {
+        writable: true,
+        enumerable: false,
+        value: reflection,
+    });
 
     Object.defineProperty(Reference, 'name', {
-        value: reflection.getClassName() + 'Reference'
+        value: reflection.getClassName() + 'Reference',
     });
 
     reflection.data.referenceClass = Reference;
@@ -93,10 +94,10 @@ export function createReferenceClass<T>(
 
         const name = String(property.getName());
 
-        const message = property.isReference() || property.isBackReference() ?
-            `Reference ${reflection.getClassName()}.${name} was not loaded. Use joinWith(), useJoinWith(), etc to populate the reference.`
-            :
-            `Can not access ${reflection.getClassName()}.${name} since class was not completely hydrated. Use 'await hydrateEntity(${reflection.getClassName()})' to completely load it.`;
+        const message =
+            property.isReference() || property.isBackReference()
+                ? `Reference ${reflection.getClassName()}.${name} was not loaded. Use joinWith(), useJoinWith(), etc to populate the reference.`
+                : `Can not access ${reflection.getClassName()}.${name} since class was not completely hydrated. Use 'await hydrateEntity(${reflection.getClassName()})' to completely load it.`;
 
         Object.defineProperty(Reference.prototype, property.name, {
             enumerable: true,
@@ -125,9 +126,9 @@ export function createReferenceClass<T>(
                 Object.defineProperty(this, property.symbol, {
                     enumerable: false,
                     writable: true,
-                    value: v
+                    value: v,
                 });
-            }
+            },
         });
     }
 

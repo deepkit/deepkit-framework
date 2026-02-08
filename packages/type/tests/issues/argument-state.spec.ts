@@ -1,7 +1,10 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+
+import { forwardTypeArguments } from '@deepkit/core';
+import { expect } from '@deepkit/run/expect';
+
 import { ReceiveType, resolveReceiveType } from '../../src/reflection/reflection';
 import { Type } from '../../src/reflection/type';
-import { forwardTypeArguments } from '@deepkit/core';
 
 test('function default', () => {
     class Clazz {
@@ -15,7 +18,7 @@ test('function default', () => {
 
         constructor() {
             this.create = (...args: any) => {
-                const clazz = new Clazz;
+                const clazz = new Clazz();
                 forwardTypeArguments(this.create, clazz.create);
                 return clazz.create.apply(clazz, args);
             };
@@ -23,6 +26,6 @@ test('function default', () => {
     }
 
     const clazz = new Fascade();
-    const t1 = clazz.create<{count1: string}>('');
+    const t1 = clazz.create<{ count1: string }>('');
     expect(() => clazz.create('')).toThrow('No type information received');
 });

@@ -7,11 +7,15 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { isAbsolute, join } from 'path';
 import { existsSync, readFileSync } from 'fs';
+import { isAbsolute, join } from 'path';
 
-class ConfigOptionNotFound extends Error {
+import { DeepkitError } from '@deepkit/core';
+
+export class ConfigOptionNotFound extends DeepkitError {
+    constructor(name: string, options?: { cause?: Error }) {
+        super('DK-A002', `Config option ${name} not found.`, options);
+    }
 }
 
 function resolveEnvFilePath(path: string): string | undefined {
@@ -63,7 +67,7 @@ export class EnvConfiguration {
             const end = value.length - 1;
 
             const isDoubleQuoted = value[0] === '"' && value[end] === '"';
-            const isSingleQuoted = value[0] === '\'' && value[end] === '\'';
+            const isSingleQuoted = value[0] === "'" && value[end] === "'";
 
             // if single or double quoted, remove quotes
             if (isSingleQuoted) {
@@ -97,7 +101,7 @@ export class EnvConfiguration {
 
         if (this.container[name] !== undefined) return this.container[name];
 
-        throw new ConfigOptionNotFound(`Config option ${name} not found.`);
+        throw new ConfigOptionNotFound(name);
     }
 
     /**

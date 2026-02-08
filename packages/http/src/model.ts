@@ -7,18 +7,19 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { IncomingMessage, OutgoingHttpHeader, OutgoingHttpHeaders, ServerResponse } from 'http';
-import { UploadedFile } from './router.js';
 import * as querystring from 'querystring';
 import { Writable } from 'stream';
-import { ReflectionKind, Type, typeAnnotation, ValidationErrorItem } from '@deepkit/type';
-import { asyncOperation, isArray, TypeAnnotation } from '@deepkit/core';
+
+import { DeepkitError, TypeAnnotation, asyncOperation, isArray } from '@deepkit/core';
+import { ReflectionKind, Type, ValidationErrorItem, typeAnnotation } from '@deepkit/type';
+
+import { UploadedFile } from './router.js';
 
 export class HttpResponse extends ServerResponse {
-    status(code: number) {
-        this.writeHead(code);
-        this.end();
+    status(code: number): this {
+        this.statusCode = code;
+        return this;
     }
 }
 
@@ -57,7 +58,7 @@ export function createRequestWithCachedBody(request: Partial<IncomingMessage>, b
         },
         writev(chunks, callback) {
             callback();
-        }
+        },
     });
     return new (class extends HttpRequest {
         url = url;
@@ -80,13 +81,10 @@ export function createRequestWithCachedBody(request: Partial<IncomingMessage>, b
 
 export type HttpRequestQuery = { [name: string]: string };
 export type HttpRequestResolvedParameters = { [name: string]: any };
-export type HttpRequestPositionedParameters = { arguments: any[], parameters: HttpRequestResolvedParameters };
+export type HttpRequestPositionedParameters = { arguments: any[]; parameters: HttpRequestResolvedParameters };
 
 export class BodyValidationError {
-    constructor(
-        public readonly errors: ValidationErrorItem[] = []
-    ) {
-    }
+    constructor(public readonly errors: ValidationErrorItem[] = []) {}
 
     hasErrors(prefix?: string): boolean {
         return this.getErrors(prefix).length > 0;
@@ -103,13 +101,17 @@ export class BodyValidationError {
     }
 
     getErrorMessageForPath(path: string): string {
-        return this.getErrorsForPath(path).map(v => v.toString()).join(', ');
+        return this.getErrorsForPath(path)
+            .map(v => v.toString())
+            .join(', ');
     }
 }
 
 export class ValidatedBody<T> {
-    constructor(public error: BodyValidationError, public value?: T) {
-    }
+    constructor(
+        public error: BodyValidationError,
+        public value?: T,
+    ) {}
 
     valid(): this is { value: T } {
         return this.value !== undefined;
@@ -178,7 +180,8 @@ export interface HttpRequestParserOptions {
  * HttpRequestParser is necessary in event listeners, since they are instantiated synchronously,
  * but body is parsed asynchronously. So use in event listeners HttpRequestParser instead of HttpBody.
  */
-export type HttpRequestParser<T> = ((options?: HttpRequestParserOptions) => Promise<T>) & TypeAnnotation<'httpRequestParser', T>;
+export type HttpRequestParser<T> = ((options?: HttpRequestParserOptions) => Promise<T>) &
+    TypeAnnotation<'httpRequestParser', T>;
 
 /**
  * Marks a parameter as HTTP path and reads the value from the request path.
@@ -294,8 +297,7 @@ export class RequestBuilder {
     constructor(
         protected path: string,
         protected method: string = 'GET',
-    ) {
-    }
+    ) {}
 
     getUrl() {
         if (this.queryPath) {
@@ -305,20 +307,26 @@ export class RequestBuilder {
     }
 
     build(): HttpRequest {
-        return createRequestWithCachedBody({
-            method: this.method,
-            url: this.getUrl(),
-            headers: this._headers,
-        }, this.contentBuffer);
+        return createRequestWithCachedBody(
+            {
+                method: this.method,
+                url: this.getUrl(),
+                headers: this._headers,
+            },
+            this.contentBuffer,
+        );
     }
 
     headers(headers: { [name: string]: string }): this {
-        this._headers = headers;
+        this._headers = {};
+        for (const [name, value] of Object.entries(headers)) {
+            this._headers[name.toLowerCase()] = value;
+        }
         return this;
     }
 
     header(name: string, value: string | number): this {
-        this._headers[name] = String(value);
+        this._headers[name.toLowerCase()] = String(value);
         return this;
     }
 
@@ -329,33 +337,44 @@ export class RequestBuilder {
         return this;
     }
 
-    multiPart(items: ({ name: string } & (
-        { file: Uint8Array, fileName?: string, contentType?: string } |
-        { json: any } |
-        { value: any }
-    ))[]): this {
+    multiPart(
+        items: ({ name: string } & (
+            | { file: Uint8Array; fileName?: string; contentType?: string }
+            | { json: any }
+            | { value: any }
+        ))[],
+    ): this {
         const boundary = '--------------------------' + Math.random().toString(36).substr(2, 10);
         this._headers['content-type'] = 'multipart/form-data; boundary=' + boundary;
         const parts = items.map(item => {
             if ('file' in item) {
-                const header = Buffer.from(`--${boundary}\r
+                const header = Buffer.from(
+                    `--${boundary}\r
 Content-Disposition: form-data; name="${item.name}"; filename="${item.fileName || 'file'}"\r
 Content-Type: ${item.contentType ?? 'application/octet-stream'}\r
-\r\n`, 'utf8');
+\r\n`,
+                    'utf8',
+                );
                 return Buffer.concat([header, item.file, Buffer.from('\r\n', 'utf8')]);
             } else if ('json' in item) {
-                const header = Buffer.from(`--${boundary}\r
+                const header = Buffer.from(
+                    `--${boundary}\r
 Content-Disposition: form-data; name="${item.name}"\r
 Content-Type: application/json\r
-\r\n`, 'utf8');
+\r\n`,
+                    'utf8',
+                );
                 return Buffer.concat([header, Buffer.from(JSON.stringify(item.json) + '\r\n', 'utf8')]);
             } else if ('value' in item) {
-                const header = Buffer.from(`--${boundary}\r
+                const header = Buffer.from(
+                    `--${boundary}\r
 Content-Disposition: form-data; name="${item.name}"\r
-\r\n`, 'utf8');
+\r\n`,
+                    'utf8',
+                );
                 return Buffer.concat([header, Buffer.from(item.value + '\r\n', 'utf8')]);
             } else {
-                throw new Error('Invalid multiPart item');
+                throw new DeepkitError('DK-H008', 'Invalid multiPart item');
             }
         });
         parts.push(Buffer.from(`--${boundary}--`, 'utf8'));
@@ -451,6 +470,39 @@ export class HttpRequest extends IncomingMessage {
     getRemoteAddress(): string {
         return this.socket.remoteAddress || '';
     }
+
+    /**
+     * Returns the specified HTTP request header field (case-insensitive match).
+     * Express-compatible method for middleware compatibility (#285).
+     *
+     * @example
+     * ```typescript
+     * req.get('Content-Type'); // => "text/plain"
+     * req.get('content-type'); // => "text/plain"
+     * ```
+     */
+    get(name: string): string | undefined {
+        const lc = name.toLowerCase();
+        let value: string | string[] | undefined;
+        switch (lc) {
+            case 'referer':
+            case 'referrer':
+                value = this.headers.referrer || this.headers.referer;
+                break;
+            default:
+                value = this.headers[lc];
+        }
+        if (value === undefined) return undefined;
+        return Array.isArray(value) ? value.join(', ') : value;
+    }
+
+    /**
+     * Alias for `get(name)`. Returns the specified HTTP request header field.
+     * Express-compatible method for middleware compatibility (#285).
+     */
+    header(name: string): string | undefined {
+        return this.get(name);
+    }
 }
 
 export function incomingMessageToHttpRequest(request: IncomingMessage): HttpRequest {
@@ -490,11 +542,16 @@ export class MemoryHttpResponse extends HttpResponse {
         return this.headers;
     }
 
-    writeHead(statusCode: number, headersOrReasonPhrase?: string | OutgoingHttpHeaders | OutgoingHttpHeader[], headers?: OutgoingHttpHeaders | OutgoingHttpHeader[]): this {
+    writeHead(
+        statusCode: number,
+        headersOrReasonPhrase?: string | OutgoingHttpHeaders | OutgoingHttpHeader[],
+        headers?: OutgoingHttpHeaders | OutgoingHttpHeader[],
+    ): this {
         headers = typeof headersOrReasonPhrase === 'string' ? headers : headersOrReasonPhrase;
         if (headers && !isArray(headers)) this.headers = headers;
 
-        if (typeof headersOrReasonPhrase === 'string') return super.writeHead(statusCode, headersOrReasonPhrase, headers);
+        if (typeof headersOrReasonPhrase === 'string')
+            return super.writeHead(statusCode, headersOrReasonPhrase, headers);
         return super.writeHead(statusCode, headers);
     }
 
@@ -503,7 +560,7 @@ export class MemoryHttpResponse extends HttpResponse {
         try {
             return JSON.parse(json);
         } catch (error: any) {
-            throw new Error(`Could not parse JSON: ${error.message}, body: ${json}`);
+            throw new DeepkitError('DK-H009', `Could not parse JSON: ${error.message}, body: ${json}`);
         }
     }
 
@@ -515,11 +572,7 @@ export class MemoryHttpResponse extends HttpResponse {
         return this.body.toString('utf8');
     }
 
-    write(
-        chunk: any,
-        encoding: any,
-        callback?: any
-    ): any {
+    write(chunk: any, encoding: any, callback?: any): any {
         if (typeof encoding === 'function') {
             callback = encoding;
             encoding = null;

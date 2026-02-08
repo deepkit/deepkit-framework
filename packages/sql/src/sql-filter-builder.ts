@@ -7,19 +7,20 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { isArray, isPlainObject } from '@deepkit/core';
 import {
-    isBackReferenceType,
-    isReferenceType,
     ReflectionClass,
     ReflectionKind,
-    resolvePath,
     Serializer,
     Type,
+    isBackReferenceType,
+    isReferenceType,
+    resolvePath,
 } from '@deepkit/type';
+
+import { SqlError } from './error.js';
 import { SqlPlaceholderStrategy } from './platform/default-platform.js';
-import { getPreparedEntity, PreparedAdapter, PreparedEntity } from './prepare.js';
+import { PreparedAdapter, PreparedEntity, getPreparedEntity } from './prepare.js';
 import { SqlReference } from './sql-builder.js';
 
 type Filter = { [name: string]: any };
@@ -85,12 +86,20 @@ export class SQLFilterBuilder {
     }
 
     requiresJson(type: Type): boolean {
-        return type.kind === ReflectionKind.class || type.kind === ReflectionKind.objectLiteral || type.kind === ReflectionKind.array;
+        return (
+            type.kind === ReflectionKind.class ||
+            type.kind === ReflectionKind.objectLiteral ||
+            type.kind === ReflectionKind.array
+        );
     }
 
-    protected condition(fieldName: string | undefined, value: any, comparison: 'eq' | 'gt' | 'gte' | 'in' | 'lt' | 'lte' | 'ne' | 'nin' | 'like' | string): string {
+    protected condition(
+        fieldName: string | undefined,
+        value: any,
+        comparison: 'eq' | 'gt' | 'gte' | 'in' | 'lt' | 'lte' | 'ne' | 'nin' | 'like' | string,
+    ): string {
         if (fieldName === undefined) {
-            throw new Error('No comparison operators at root level allowed');
+            throw new SqlError('DK-SQL001', 'No comparison operators at root level allowed');
         }
 
         if (isPlainObject(value)) {
@@ -110,7 +119,7 @@ export class SQLFilterBuilder {
         else if (comparison === 'nin') cmpSign = 'NOT IN';
         else if (comparison === 'like') cmpSign = 'LIKE';
         else if (comparison === 'regex') return this.regexpComparator(this.quoteIdWithTable(fieldName), value);
-        else throw new Error(`Comparator ${comparison} not supported.`);
+        else throw new SqlError('DK-SQL002', `Comparator ${comparison} not supported.`);
 
         let rvalue = '';
         if (value instanceof SqlReference) {
@@ -128,7 +137,13 @@ export class SQLFilterBuilder {
                         for (let item of value) {
                             params.push(this.placeholderStrategy.getPlaceholder());
 
-                            if ((fieldName.includes('.') && this.adapter.platform.deepColumnAccessorRequiresJsonString()) || !isReferenceType(property) && !isBackReferenceType(property) && this.requiresJson(property)) {
+                            if (
+                                (fieldName.includes('.') &&
+                                    this.adapter.platform.deepColumnAccessorRequiresJsonString()) ||
+                                (!isReferenceType(property) &&
+                                    !isBackReferenceType(property) &&
+                                    this.requiresJson(property))
+                            ) {
                                 item = JSON.stringify(item);
                             }
                             this.params.push(this.bindValue(item));
@@ -138,7 +153,10 @@ export class SQLFilterBuilder {
                 } else {
                     rvalue = this.placeholderStrategy.getPlaceholder();
 
-                    if ((fieldName.includes('.') && this.adapter.platform.deepColumnAccessorRequiresJsonString()) || !isReferenceType(property) && !isBackReferenceType(property) && this.requiresJson(property)) {
+                    if (
+                        (fieldName.includes('.') && this.adapter.platform.deepColumnAccessorRequiresJsonString()) ||
+                        (!isReferenceType(property) && !isBackReferenceType(property) && this.requiresJson(property))
+                    ) {
                         value = JSON.stringify(value);
                     }
                     this.params.push(this.bindValue(value));
@@ -175,4 +193,3 @@ export class SQLFilterBuilder {
         return sql.join(` AND `);
     }
 }
-

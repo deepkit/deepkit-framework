@@ -7,13 +7,13 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
 import { toFastProperties } from '@deepkit/core';
 import { InlineRuntimeType, ReflectionClass, typeOf } from '@deepkit/type';
+
 import type { MongoClientConfig } from '../config.js';
-import type { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
+import type { Host } from '../host.js';
+import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
 
 interface InsertResponse extends BaseResponse {
     n: number;
@@ -23,7 +23,8 @@ type InsertSchema = {
     insert: string;
     $db: string;
     documents: any[];
-} & WriteConcernMessage & TransactionalMessage;
+} & WriteConcernMessage &
+    TransactionalMessage;
 
 export class InsertCommand<T> extends Command<number> {
     constructor(

@@ -1,26 +1,57 @@
 import { test } from '@jest/globals';
+import { writeFileSync } from 'fs';
+import { homedir } from 'os';
+
 import { Filesystem } from '@deepkit/filesystem';
 import { adapterFactory, setAdapterFactory } from '@deepkit/filesystem/test';
+
 import { FilesystemGoogleAdapter } from '../src/google-adapter.js';
-import { homedir } from 'os';
-import { writeFileSync } from 'fs';
 
 Error.stackTraceLimit = 50;
+
+// Configure via environment variables or use defaults for docker compose (fake-gcs-server)
+// docker compose up -d  (uses port 10443)
+const GCS_ENDPOINT = process.env.GCS_ENDPOINT || 'http://localhost:10443';
+const GCS_BUCKET = process.env.GCS_BUCKET || 'deepkit-test';
+const GCS_PROJECT_ID = process.env.GCS_PROJECT_ID || 'test-project';
 
 setAdapterFactory(async () => {
     const folder = 'test-folder-dont-delete';
 
+    // Check if using fake-gcs-server (local testing) or real GCS
+    const useFakeGcs = GCS_ENDPOINT.includes('localhost');
+
+    if (useFakeGcs) {
+        // Use fake-gcs-server for local testing
+        const adapter = new FilesystemGoogleAdapter({
+            bucket: GCS_BUCKET,
+            path: folder,
+            projectId: GCS_PROJECT_ID,
+            apiEndpoint: GCS_ENDPOINT,
+        });
+
+        //reset all files
+        try {
+            const filesystem = new Filesystem(adapter);
+            await filesystem.deleteDirectory('/');
+        } catch (e) {
+            // Bucket might not exist yet, that's fine
+        }
+
+        return adapter;
+    }
+
+    // Real GCS configuration
     const keyFilename = homedir() + '/.google/deepkit-filesystem-integration-tests.json';
     if (process.env.GOOGLE_STORAGE_KEY) {
         writeFileSync(keyFilename, process.env.GOOGLE_STORAGE_KEY);
     }
 
-    let adapter = new FilesystemGoogleAdapter({
+    const adapter = new FilesystemGoogleAdapter({
         bucket: 'deepkit-integration-tests',
         path: folder,
         projectId: 'deepkit',
         keyFilename,
-        // jsonAuth: process.env.GOOGLE_STORAGE_KEY
     });
 
     //reset all files

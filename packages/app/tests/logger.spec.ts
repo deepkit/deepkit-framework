@@ -1,12 +1,14 @@
-import { Logger, MemoryLoggerTransport, ScopedLogger } from '@deepkit/logger';
 import { expect, test } from '@jest/globals';
+
+import { Logger, MemoryLoggerTransport, ScopedLogger } from '@deepkit/logger';
+
 import { App } from '../src/app.js';
 
 test('logger', () => {
     const memory = new MemoryLoggerTransport();
 
     const app = new App({
-        providers: [{ provide: Logger, useValue: new Logger([memory]) }]
+        providers: [{ provide: Logger, useValue: new Logger([memory]) }],
     });
 
     const logger = app.get<Logger>();
@@ -19,15 +21,11 @@ test('scoped logger', () => {
     const memory = new MemoryLoggerTransport();
 
     class Service {
-        constructor(public logger: ScopedLogger) {
-        }
+        constructor(public logger: ScopedLogger) {}
     }
 
     const app = new App({
-        providers: [
-            Service,
-            { provide: Logger, useValue: new Logger([memory]) },
-        ]
+        providers: [Service, { provide: Logger, useValue: new Logger([memory]) }],
     });
 
     const service = app.get<Service>();

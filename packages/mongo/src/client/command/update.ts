@@ -7,12 +7,12 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
+
 import type { MongoClientConfig } from '../config.js';
-import type { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
+import type { Host } from '../host.js';
+import { BaseResponse, Command, TransactionalMessage, WriteConcernMessage } from './command.js';
 
 interface UpdateResponse extends BaseResponse {
     n: number;
@@ -22,17 +22,18 @@ type UpdateSchema = {
     update: string;
     $db: string;
     updates: {
-        q: any,
+        q: any;
         // maybe in the future support classSchema. But `u` supports update statements https://docs.mongodb.com/manual/reference/operator/update/#id1
-        u: any,
-        multi: boolean,
-    }[],
-} & TransactionalMessage & WriteConcernMessage;
+        u: any;
+        multi: boolean;
+    }[];
+} & TransactionalMessage &
+    WriteConcernMessage;
 
 export class UpdateCommand<T extends ReflectionClass<any>> extends Command<number> {
     constructor(
         public schema: T,
-        public updates: { q: any, u: any, multi: boolean }[] = [],
+        public updates: { q: any; u: any; multi: boolean }[] = [],
     ) {
         super();
     }

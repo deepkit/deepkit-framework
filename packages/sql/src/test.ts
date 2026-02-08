@@ -1,10 +1,14 @@
 import { ClassType } from '@deepkit/core';
-import { SQLDatabaseAdapter } from './sql-adapter.js';
-import { DatabaseModel, TableComparator } from './schema/table.js';
 import { Database, DatabaseEntityRegistry } from '@deepkit/orm';
 import { ReflectionClass, Type } from '@deepkit/type';
 
-export async function schemaMigrationRoundTrip(types: (Type | ClassType | ReflectionClass<any>)[], adapter: SQLDatabaseAdapter) {
+import { DatabaseModel, TableComparator } from './schema/table.js';
+import { SQLDatabaseAdapter } from './sql-adapter.js';
+
+export async function schemaMigrationRoundTrip(
+    types: (Type | ClassType | ReflectionClass<any>)[],
+    adapter: SQLDatabaseAdapter,
+) {
     const originDatabaseModel = new DatabaseModel([], adapter.getName());
     adapter.platform.createTables(DatabaseEntityRegistry.from(types), originDatabaseModel);
 
@@ -22,11 +26,15 @@ export async function schemaMigrationRoundTrip(types: (Type | ClassType | Reflec
 
         const readDatabaseModel = new DatabaseModel([], adapter.getName());
         await schemaParser.parse(readDatabaseModel, originDatabaseModel.getTableNames());
-        if (readDatabaseModel.tables.length !== types.length) throw new Error(`Read wrong table count, ${readDatabaseModel.tables.length} !== ${types.length}`);
+        if (readDatabaseModel.tables.length !== types.length)
+            throw new Error(`Read wrong table count, ${readDatabaseModel.tables.length} !== ${types.length}`);
 
         for (const type of types) {
             const s = ReflectionClass.from(type);
-            const diff = TableComparator.computeDiff(originDatabaseModel.getTable(s.getCollectionName()), readDatabaseModel.getTable(s.getCollectionName()));
+            const diff = TableComparator.computeDiff(
+                originDatabaseModel.getTable(s.getCollectionName()),
+                readDatabaseModel.getTable(s.getCollectionName()),
+            );
             if (diff) {
                 console.log('diff', s.getClassName(), diff.toString());
                 throw new Error(`Diff detected ${s.getClassName()}\n${diff.toString()}`);

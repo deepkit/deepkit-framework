@@ -1,8 +1,8 @@
 export type DocCategory = {
     category: string | null;
     book?: boolean;
-    pages: { path: string; title: string, book?: boolean }[];
-}
+    pages: { path: string; title: string; book?: boolean }[];
+};
 
 export const texts = {
     banner1: 'Deepkit is a modular framework for TypeScript backend web applications.',
@@ -169,6 +169,13 @@ export const docs: DocCategory[] = [
         ],
     },
     {
+        category: 'Error Codes',
+        pages: [
+            { path: 'errors', title: 'Overview' },
+            { path: 'errors/type', title: 'Type (DK-T)' },
+        ],
+    },
+    {
         category: 'API',
         book: false,
         pages: [
@@ -223,8 +230,8 @@ export type LibraryCategory = {
         package: string;
         description: string;
         class?: string; // 'main' for main libraries, 'twice' for libraries
-    }[]
-}
+    }[];
+};
 
 export const libraries: LibraryCategory[] = [
     {
@@ -234,20 +241,23 @@ export const libraries: LibraryCategory[] = [
                 title: 'App',
                 path: 'documentation/app',
                 package: '@deepkit/app',
-                description: 'Command line interface (CLI) parser, config loader, dependency injection container, event system, modules system.',
+                description:
+                    'Command line interface (CLI) parser, config loader, dependency injection container, event system, modules system.',
                 class: 'main',
             },
             {
                 title: 'Framework',
                 path: 'documentation/framework',
                 package: '@deepkit/framework',
-                description: 'App module that provides application/HTTP/RPC server, worker, debugger, integration tests.',
+                description:
+                    'App module that provides application/HTTP/RPC server, worker, debugger, integration tests.',
             },
             {
                 title: 'HTTP',
                 path: 'documentation/http',
                 package: '@deepkit/http',
-                description: 'App module that provides HTTP server based on Node http module with validation and serialization.',
+                description:
+                    'App module that provides HTTP server based on Node http module with validation and serialization.',
             },
             {
                 title: 'Angular SSR',
@@ -337,7 +347,8 @@ export const libraries: LibraryCategory[] = [
                 title: 'ORM/DBAL',
                 path: 'documentation/orm',
                 package: '@deepkit/orm',
-                description: 'Object-relational Mapper (ORM) and data access library (DAL). MongoDB, SQLite, Postgres, MySQL.',
+                description:
+                    'Object-relational Mapper (ORM) and data access library (DAL). MongoDB, SQLite, Postgres, MySQL.',
                 class: 'main',
             },
             {
@@ -386,7 +397,8 @@ export const libraries: LibraryCategory[] = [
                 title: 'Dependency Injection',
                 path: 'documentation/dependency-injection',
                 package: '@deepkit/injector',
-                description: 'Dependency injection (DI) container with modules, config, scopes, and nominal type alias/interface support.',
+                description:
+                    'Dependency injection (DI) container with modules, config, scopes, and nominal type alias/interface support.',
                 class: 'twice',
             },
             {

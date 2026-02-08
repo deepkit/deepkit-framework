@@ -7,59 +7,64 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { asyncOperation, ClassType, toFastProperties } from '@deepkit/core';
 import { BehaviorSubject, Observable, Subject, Subscriber } from 'rxjs';
 import { skip } from 'rxjs/operators';
+
+import { ClassType, asyncOperation, toFastProperties } from '@deepkit/core';
+import { ProgressTracker, ProgressTrackerState } from '@deepkit/core-rxjs';
+import {
+    ReflectionKind,
+    Type,
+    TypeObjectLiteral,
+    ValidationError,
+    assertType,
+    deserializeType,
+    typeOf,
+} from '@deepkit/type';
+
 import { Collection, CollectionQueryModelInterface, CollectionState } from '../collection.js';
 import {
     ActionMode,
     ActionObservableTypes,
     IdInterface,
+    RpcError,
+    RpcTypes,
+    WrappedV,
     rpcActionObservableNext,
     rpcActionObservableSubscribeId,
     rpcActionType,
-    RpcError,
     rpcResponseActionCollectionRemove,
     rpcResponseActionCollectionSort,
     rpcResponseActionObservable,
     rpcResponseActionObservableSubscriptionError,
     rpcResponseActionType,
-    RpcTypes,
-    WrappedV,
 } from '../model.js';
-import { rpcDecodeError, RpcMessage } from '../protocol.js';
+import { ClientProgress, Progress } from '../progress.js';
+import { RpcMessage, rpcDecodeError } from '../protocol.js';
 import type { WritableClient } from './client.js';
 import { EntityState, EntitySubjectStore } from './entity-state.js';
-import { assertType, deserializeType, ReflectionKind, Type, TypeObjectLiteral, typeOf } from '@deepkit/type';
 import { RpcMessageSubject } from './message-subject.js';
-import { ClientProgress, Progress } from '../progress.js';
-import { ProgressTracker, ProgressTrackerState } from '@deepkit/core-rxjs';
 
 type ControllerStateActionTypes = {
     mode: ActionMode;
-    callSchema: TypeObjectLiteral, //with args, method, and controller as property
-    resultSchema: TypeObjectLiteral, //with v as property
-    observableNextSchema?: Type, //with v as property
-    collectionSchema?: Type, //with v as property
-    collectionQueryModel?: Type,
-    classType?: ClassType, //if method returns an classType, this is set here
+    callSchema: TypeObjectLiteral; //with args, method, and controller as property
+    resultSchema: TypeObjectLiteral; //with v as property
+    observableNextSchema?: Type; //with v as property
+    collectionSchema?: Type; //with v as property
+    collectionQueryModel?: Type;
+    classType?: ClassType; //if method returns an classType, this is set here
 };
 
 type ControllerStateActionState = {
-    promise?: Promise<ControllerStateActionTypes>,
-    types?: ControllerStateActionTypes
+    promise?: Promise<ControllerStateActionTypes>;
+    types?: ControllerStateActionTypes;
 };
 
 export class RpcControllerState {
     protected state: { [method: string]: ControllerStateActionState } = {};
     public peerId?: string;
 
-    constructor(
-        public controller: string,
-    ) {
-
-    }
+    constructor(public controller: string) {}
 
     getState(method: string): ControllerStateActionState {
         let state = this.state[method];
@@ -74,7 +79,7 @@ interface ActionState {
     action: string;
     progress?: Progress;
     finalizer: FinalizationRegistry<any>;
-    entityState?: EntityState,
+    entityState?: EntityState;
     observableRef?: WeakRef<Observable<any>>;
     observableSubjectRef?: WeakRef<Subject<any>>;
 
@@ -83,7 +88,7 @@ interface ActionState {
     firstObservableNext?: any;
 
     collectionRef?: WeakRef<Collection<any>> | undefined;
-    collectionEntityStore?: EntitySubjectStore<any>
+    collectionEntityStore?: EntitySubjectStore<any>;
     types: ControllerStateActionTypes;
 
     subscriberId?: number;
@@ -93,7 +98,12 @@ interface ActionState {
     reject?: (error: any) => void;
 }
 
-function handleCollection(entityStore: EntitySubjectStore<any>, types: ControllerStateActionTypes, collection: Collection<any>, messages: RpcMessage[]) {
+function handleCollection(
+    entityStore: EntitySubjectStore<any>,
+    types: ControllerStateActionTypes,
+    collection: Collection<any>,
+    messages: RpcMessage[],
+) {
     for (const next of messages) {
         switch (next.type) {
             case RpcTypes.ResponseActionCollectionState: {
@@ -181,7 +191,6 @@ function handleCollection(entityStore: EntitySubjectStore<any>, types: Controlle
     collection.loaded();
 }
 
-
 function rejectAction(state: ActionState, error: any) {
     if (!state.reject) return;
     state.reject(error);
@@ -225,10 +234,13 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
             break;
         }
 
-
         case RpcTypes.ResponseEntity: {
-            if (!state.types.classType || !state.entityState) throw new RpcError('No classType returned by the rpc action');
-            resolveAction(state, state.entityState.createEntitySubject(state.types.classType, state.types.resultSchema, reply));
+            if (!state.types.classType || !state.entityState)
+                throw new RpcError('No classType returned by the rpc action');
+            resolveAction(
+                state,
+                state.entityState.createEntitySubject(state.types.classType, state.types.resultSchema, reply),
+            );
             break;
         }
 
@@ -247,7 +259,8 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
 
         case RpcTypes.ResponseActionCollection: {
             if (!state.types.classType) throw new RpcError('No classType returned by the rpc action');
-            if (!state.types.collectionQueryModel) throw new RpcError('No collectionQueryModel returned by the rpc action');
+            if (!state.types.collectionQueryModel)
+                throw new RpcError('No collectionQueryModel returned by the rpc action');
             if (!state.entityState) throw new RpcError('No entityState set');
             const collection = new Collection(state.types.classType);
             state.collectionRef = new WeakRef(collection);
@@ -322,7 +335,7 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
             if (body.type === ActionObservableTypes.observable) {
                 state.subscriberId = 0;
                 state.subscribers = {};
-                const observable = new Observable((observer) => {
+                const observable = new Observable(observer => {
                     const id = state.subscriberId!++;
                     state.subscribers![id] = observer;
                     subject.send<rpcActionObservableSubscribeId>(RpcTypes.ActionObservableSubscribe, { id });
@@ -345,22 +358,42 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
                 let freed = false;
                 state.observableSubjectRef = new WeakRef(observableSubject);
 
+                // Track active subscriptions to prevent premature GC during toPromise() etc.
+                // When there are active subscriptions, keep a strong reference to prevent V8 from
+                // optimizing away the Subject during await.
+                let subscriptionCount = 0;
+                let subjectRef: Subject<any> | undefined;
+
+                const originalSubscribe = Subject.prototype.subscribe;
+                (observableSubject as any).subscribe = function (this: Subject<any>, ...args: any[]) {
+                    subscriptionCount++;
+                    if (!subjectRef) subjectRef = this; // Keep strong reference using 'this'
+                    const subscription = originalSubscribe.apply(this, args as [any?, any?, any?]);
+                    subscription.add(() => {
+                        subscriptionCount--;
+                        if (subscriptionCount === 0) subjectRef = undefined; // Allow GC when no subscriptions
+                    });
+                    return subscription;
+                };
+
                 // we have to monkey patch unsubscribe, because there is no other way to hook into that
                 // note: subject.subscribe().add(T), T is not called when subject.unsubscribe() is called.
-                observableSubject.unsubscribe = function() {
+                observableSubject.unsubscribe = function () {
                     Subject.prototype.unsubscribe.call(this);
                     if (!freed) {
                         freed = true;
+                        subjectRef = undefined;
                         subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
                         state.finalizer.unregister(this);
                         subject.release();
                     }
                 };
 
-                observableSubject.complete = function() {
+                observableSubject.complete = function () {
                     Subject.prototype.complete.call(this);
                     if (!freed) {
                         freed = true;
+                        subjectRef = undefined;
                         subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
                         state.finalizer.unregister(this);
                         subject.release();
@@ -378,28 +411,50 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
                     subject.release();
                 });
                 resolveAction(state, observableSubject);
-            } else if (body.type === ActionObservableTypes.behaviorSubject || body.type === ActionObservableTypes.progressTracker) {
-                const classType = body.type === ActionObservableTypes.progressTracker ? ProgressTracker : BehaviorSubject;
+            } else if (
+                body.type === ActionObservableTypes.behaviorSubject ||
+                body.type === ActionObservableTypes.progressTracker
+            ) {
+                const classType =
+                    body.type === ActionObservableTypes.progressTracker ? ProgressTracker : BehaviorSubject;
                 const observableSubject = new classType(state.firstObservableNext);
                 state.observableSubjectRef = new WeakRef(observableSubject);
                 state.firstObservableNext = undefined;
                 let freed = false;
 
+                // Track active subscriptions to prevent premature GC during toPromise() etc.
+                let subscriptionCount = 0;
+                let subjectRef: Subject<any> | undefined;
+
+                const originalSubscribe = Subject.prototype.subscribe;
+                (observableSubject as any).subscribe = function (this: Subject<any>, ...args: any[]) {
+                    subscriptionCount++;
+                    if (!subjectRef) subjectRef = this;
+                    const subscription = originalSubscribe.apply(this, args as [any?, any?, any?]);
+                    subscription.add(() => {
+                        subscriptionCount--;
+                        if (subscriptionCount === 0) subjectRef = undefined;
+                    });
+                    return subscription;
+                };
+
                 // we have to monkey patch unsubscribe, because there is no other way to hook into that
                 // note: subject.subscribe().add(T), T is not called when subject.unsubscribe() is called.
-                observableSubject.unsubscribe = function() {
+                observableSubject.unsubscribe = function () {
                     Subject.prototype.unsubscribe.call(this);
                     if (!freed) {
                         freed = true;
+                        subjectRef = undefined;
                         subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
                         state.finalizer.unregister(this);
                     }
                 };
 
-                observableSubject.complete = function() {
+                observableSubject.complete = function () {
                     Subject.prototype.complete.call(this);
                     if (!freed) {
                         freed = true;
+                        subjectRef = undefined;
                         subject.send(RpcTypes.ActionObservableSubjectUnsubscribe);
                         state.finalizer.unregister(this);
                     }
@@ -409,8 +464,12 @@ function actionProtocolFull(reply: RpcMessage, subject: RpcMessageSubject, state
                     // whenever the client changes something, it's synced back to the server.
                     // this is important to handle the stop signal.
                     const oldChanged = observableSubject.changed;
-                    observableSubject.changed = function(this: ProgressTracker) {
-                        subject.send(RpcTypes.ActionObservableProgressNext, this.value, typeOf<ProgressTrackerState[]>());
+                    observableSubject.changed = function (this: ProgressTracker) {
+                        subject.send(
+                            RpcTypes.ActionObservableProgressNext,
+                            this.value,
+                            typeOf<ProgressTrackerState[]>(),
+                        );
                         return oldChanged.apply(this);
                     };
                 }
@@ -444,24 +503,29 @@ function actionProtocol(reply: RpcMessage, subject: RpcMessageSubject, state: Ac
 }
 
 export class RpcActionClient {
-    public entityState = new EntityState;
+    public entityState = new EntityState();
 
-    private finalizer = new FinalizationRegistry<() => void>((heldValue) => {
+    private finalizer = new FinalizationRegistry<() => void>(heldValue => {
         heldValue();
     });
 
-    constructor(protected client: WritableClient) {
-    }
+    constructor(protected client: WritableClient) {}
 
-    public action<T>(controller: RpcControllerState, method: string, args: any[], options: {
-        timeout?: number,
-        dontWaitForConnection?: true,
-        typeReuseDisabled?: boolean
-    } = {}) {
+    public action<T>(
+        controller: RpcControllerState,
+        method: string,
+        args: any[],
+        options: {
+            timeout?: number;
+            dontWaitForConnection?: true;
+            typeReuseDisabled?: boolean;
+        } = {},
+    ) {
         const progress = ClientProgress.getNext();
 
         return asyncOperation<any>(async (resolve, reject) => {
-            const types = controller.getState(method)?.types || await this.loadActionTypes(controller, method, options);
+            const types =
+                controller.getState(method)?.types || (await this.loadActionTypes(controller, method, options));
 
             // forwarded caught progress to client sendMessage
             ClientProgress.nextProgress = progress;
@@ -476,27 +540,47 @@ export class RpcActionClient {
                 progress,
             };
 
-            this.client.sendMessage(RpcTypes.Action, {
-                controller: controller.controller,
-                method: method,
-                args,
-            }, types.callSchema, {
-                peerId: controller.peerId,
-                dontWaitForConnection: options.dontWaitForConnection,
-                timeout: options.timeout,
-            }).onRejected((error) => {
-                rejectAction(state, error);
-            }).onReply(function(reply: RpcMessage, subject: RpcMessageSubject) {
-                actionProtocol(reply, subject, state);
-            });
+            try {
+                this.client
+                    .sendMessage(
+                        RpcTypes.Action,
+                        {
+                            controller: controller.controller,
+                            method: method,
+                            args,
+                        },
+                        types.callSchema,
+                        {
+                            peerId: controller.peerId,
+                            dontWaitForConnection: options.dontWaitForConnection,
+                            timeout: options.timeout,
+                        },
+                    )
+                    .onRejected(error => {
+                        rejectAction(state, error);
+                    })
+                    .onReply(function (reply: RpcMessage, subject: RpcMessageSubject) {
+                        actionProtocol(reply, subject, state);
+                    });
+            } catch (error: any) {
+                // Add action context to serialization errors
+                if (error instanceof ValidationError) {
+                    error.message = `Argument serialization error for ${state.action}: ${error.message}`;
+                }
+                reject(error);
+            }
         });
     }
 
-    public async loadActionTypes(controller: RpcControllerState, method: string, options: {
-        timeout?: number,
-        dontWaitForConnection?: true,
-        typeReuseDisabled?: boolean
-    } = {}): Promise<ControllerStateActionTypes> {
+    public async loadActionTypes(
+        controller: RpcControllerState,
+        method: string,
+        options: {
+            timeout?: number;
+            dontWaitForConnection?: true;
+            typeReuseDisabled?: boolean;
+        } = {},
+    ): Promise<ControllerStateActionTypes> {
         const state = controller.getState(method);
         if (state.types) return state.types;
 
@@ -508,17 +592,27 @@ export class RpcActionClient {
 
         state.promise = asyncOperation<ControllerStateActionTypes>(async (resolve, reject) => {
             try {
-                const a = this.client.sendMessage<rpcActionType>(RpcTypes.ActionType, {
-                    controller: controller.controller,
-                    method: method,
-                    disableTypeReuse: typeReuseDisabled,
-                }, undefined, {
-                    peerId: controller.peerId,
-                    dontWaitForConnection: options.dontWaitForConnection,
-                    timeout: options.timeout,
-                }).onRejected(reject);
+                const a = this.client
+                    .sendMessage<rpcActionType>(
+                        RpcTypes.ActionType,
+                        {
+                            controller: controller.controller,
+                            method: method,
+                            disableTypeReuse: typeReuseDisabled,
+                        },
+                        undefined,
+                        {
+                            peerId: controller.peerId,
+                            dontWaitForConnection: options.dontWaitForConnection,
+                            timeout: options.timeout,
+                        },
+                    )
+                    .onRejected(reject);
 
-                const parsed = await a.firstThenClose<rpcResponseActionType>(RpcTypes.ResponseActionType, typeOf<rpcResponseActionType>());
+                const parsed = await a.firstThenClose<rpcResponseActionType>(
+                    RpcTypes.ResponseActionType,
+                    typeOf<rpcResponseActionType>(),
+                );
 
                 const returnType = deserializeType(parsed.type, { disableReuse: typeReuseDisabled });
 
@@ -526,7 +620,8 @@ export class RpcActionClient {
                 let collectionQueryModel: Type | undefined;
                 let unwrappedReturnType = returnType;
                 if (unwrappedReturnType.kind === ReflectionKind.promise) unwrappedReturnType = unwrappedReturnType.type;
-                const classType: ClassType | undefined = unwrappedReturnType.kind === ReflectionKind.class ? unwrappedReturnType.classType : undefined;
+                const classType: ClassType | undefined =
+                    unwrappedReturnType.kind === ReflectionKind.class ? unwrappedReturnType.classType : undefined;
 
                 const parameters: Type = deserializeType(parsed.parameters);
                 assertType(parameters, ReflectionKind.tuple);
@@ -534,16 +629,20 @@ export class RpcActionClient {
                 if (parsed.mode === 'observable') {
                 } else if (parsed.mode === 'entitySubject') {
                 } else if (parsed.mode === 'collection') {
-                    collectionQueryModel = typeOf<CollectionQueryModelInterface<unknown>>([unwrappedReturnType]) as TypeObjectLiteral;
+                    collectionQueryModel = typeOf<CollectionQueryModelInterface<unknown>>([
+                        unwrappedReturnType,
+                    ]) as TypeObjectLiteral;
                     collectionSchema = {
                         kind: ReflectionKind.objectLiteral,
-                        types: [{
-                            kind: ReflectionKind.propertySignature,
-                            name: 'v',
-                            parent: Object as any,
-                            optional: true,
-                            type: { kind: ReflectionKind.array, type: unwrappedReturnType },
-                        }],
+                        types: [
+                            {
+                                kind: ReflectionKind.propertySignature,
+                                name: 'v',
+                                parent: Object as any,
+                                optional: true,
+                                type: { kind: ReflectionKind.array, type: unwrappedReturnType },
+                            },
+                        ],
                     };
                 }
 
@@ -555,21 +654,31 @@ export class RpcActionClient {
                     callSchema: {
                         kind: ReflectionKind.objectLiteral,
                         types: [
-                            { kind: ReflectionKind.propertySignature, name: 'controller', type: { kind: ReflectionKind.string } },
-                            { kind: ReflectionKind.propertySignature, name: 'method', type: { kind: ReflectionKind.string } },
+                            {
+                                kind: ReflectionKind.propertySignature,
+                                name: 'controller',
+                                type: { kind: ReflectionKind.string },
+                            },
+                            {
+                                kind: ReflectionKind.propertySignature,
+                                name: 'method',
+                                type: { kind: ReflectionKind.string },
+                            },
                             { kind: ReflectionKind.propertySignature, name: 'args', type: parameters },
                         ],
                     } as TypeObjectLiteral,
                     resultSchema: {
                         kind: ReflectionKind.objectLiteral,
-                        types: [
-                            { kind: ReflectionKind.propertySignature, name: 'v', type: unwrappedReturnType },
-                        ],
+                        types: [{ kind: ReflectionKind.propertySignature, name: 'v', type: unwrappedReturnType }],
                     } as TypeObjectLiteral,
                     observableNextSchema: {
                         kind: ReflectionKind.objectLiteral,
                         types: [
-                            { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
+                            {
+                                kind: ReflectionKind.propertySignature,
+                                name: 'id',
+                                type: { kind: ReflectionKind.number },
+                            },
                             { kind: ReflectionKind.propertySignature, name: 'v', type: unwrappedReturnType },
                         ],
                     } as TypeObjectLiteral,
@@ -588,5 +697,4 @@ export class RpcActionClient {
             throw error;
         }
     }
-
 }

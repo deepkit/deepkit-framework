@@ -1,5 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { assertType, findMember, ReceiveType, ReflectionKind, resolveReceiveType, TypeClass, TypeObjectLiteral, typeOf } from '@deepkit/type';
+
+import { ReceiveType, ReflectionKind, TypeClass, TypeObjectLiteral, assertType, findMember, resolveReceiveType, typeOf } from '@deepkit/type';
+
 import { nominalCompatibility } from '../src/types.js';
 
 /**
@@ -10,14 +12,11 @@ function compatible<A, B>(token?: ReceiveType<A>, provider?: ReceiveType<B>): nu
 }
 
 test('nominal empty interface', () => {
-    interface A {
-    }
+    interface A {}
 
-    interface B {
-    }
+    interface B {}
 
-    interface B2 extends B {
-    }
+    interface B2 extends B {}
 
     interface C {
         a: A;
@@ -67,15 +66,13 @@ test('nominal extends interface', () => {
     class MyConnection1 implements Connection, Base2 {
         id: number = 0;
 
-        write(data: Uint16Array): void {
-        }
+        write(data: Uint16Array): void {}
     }
 
     class MyConnection2 {
         id: number = 0;
 
-        write(data: Uint16Array): void {
-        }
+        write(data: Uint16Array): void {}
     }
 
     expect(compatible<Connection, MyConnection1>()).toBe(2);

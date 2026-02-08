@@ -1,14 +1,85 @@
 # https://github.com/evilmartians/lefthook/blob/master/docs/configuration.md
+
+# Parallel execution for performance
+parallel: true
+
 commit-msg:
   commands:
     commitlint:
       run: npx commitlint --edit {1}
+
 pre-commit:
   commands:
-#    github-actions:
-#      glob: '*.{yaml,yml}'
-#      root: '.github'
-#      run: echo {staged_files} && actionlint
+    # Format staged files
     prettier:
       glob: '[*.{json,yml,yaml,html,ts,tsx,js,jsx},!./package-lock.json]'
       run: ./node_modules/.bin/prettier --write {staged_files} && git add {staged_files}
+
+    # Typecheck (skip by default - too slow for pre-commit, run manually or in CI)
+    typecheck:
+      glob: '*.{ts,tsx}'
+      run: npm run typecheck
+      skip: true
+      fail_text: |
+        ❌ TypeScript typecheck failed!
+        Fix type errors before committing.
+        Run: npm run typecheck
+
+    # Lint check (required - blocks commit on failure)
+    lint:
+      glob: '*.{ts,tsx,js,jsx}'
+      run: ./node_modules/.bin/prettier --check {staged_files}
+      fail_text: |
+        ❌ Lint check failed!
+        Run: ./node_modules/.bin/prettier --write <files>
+
+    # Block forbidden imports in type-compiler (circular dependency prevention)
+    no-core-in-type-compiler:
+      glob: 'packages/type-compiler/src/*.ts'
+      run: |
+        if grep -E "^import.*from ['\"]@deepkit/core" {staged_files} 2>/dev/null; then
+          echo ""
+          echo "❌ Found @deepkit/core import in type-compiler!"
+          echo "   type-compiler cannot depend on core (circular dependency)."
+          echo "   Use TypeCompilerError from ./error.js instead of DeepkitError."
+          exit 1
+        fi
+      fail_text: |
+        ❌ Forbidden import detected!
+        type-compiler cannot import from @deepkit/core.
+
+    # Block TODO/FIXME in newly added code (not existing code)
+    no-todo:
+      glob: '*.{ts,tsx,js,jsx}'
+      run: |
+        if git diff --cached --diff-filter=ACMR -U0 -- {staged_files} | grep -E '^\+.*(TODO|FIXME)' | grep -v '^+++'; then
+          echo ""
+          echo "❌ Found TODO/FIXME in added lines. Remove before committing."
+          exit 1
+        fi
+      fail_text: |
+        ❌ TODO/FIXME check failed!
+        Remove TODO/FIXME comments from your changes before committing.
+
+# Pre-push hooks for more thorough checks
+pre-push:
+  commands:
+    # Run tests for affected packages before pushing
+    # This is advisory - push proceeds but warns on failure
+    test-warning:
+      run: |
+        echo "⚠️  Remember to run tests for affected packages before pushing:"
+        echo "   npm run test packages/<affected-package>/"
+      skip: true  # Advisory only, enable when ready
+
+# Post-checkout hooks for maintaining build state
+post-checkout:
+  commands:
+    rebuild-compiler:
+      run: |
+        # Rebuild type-compiler if its source changed
+        if git diff --name-only HEAD@{1} HEAD | grep -q "packages/type-compiler/"; then
+          echo "🔨 Rebuilding type-compiler..."
+          npm run postinstall
+        fi
+      skip: true  # Enable when ready

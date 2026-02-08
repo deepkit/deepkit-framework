@@ -7,32 +7,44 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { DatabaseQueryModel, OrmEntity, SORT_ORDER } from '@deepkit/orm';
 import { MongoId, UUID } from '@deepkit/type';
+
 import { CommandOptions } from './client/options.js';
 
 type BSONTypeAlias =
     | 'number'
-    | 'double' | 'string' | 'object' | 'array'
-    | 'binData' | 'undefined' | 'objectId' | 'bool'
-    | 'date' | 'null' | 'regex' | 'dbPointer' | 'javascript'
-    | 'symbol' | 'javascriptWithScope' | 'int' | 'timestamp'
-    | 'long' | 'decimal' | 'minKey' | 'maxKey';
+    | 'double'
+    | 'string'
+    | 'object'
+    | 'array'
+    | 'binData'
+    | 'undefined'
+    | 'objectId'
+    | 'bool'
+    | 'date'
+    | 'null'
+    | 'regex'
+    | 'dbPointer'
+    | 'javascript'
+    | 'symbol'
+    | 'javascriptWithScope'
+    | 'int'
+    | 'timestamp'
+    | 'long'
+    | 'decimal'
+    | 'minKey'
+    | 'maxKey';
 
 /** https://docs.mongodb.com/manual/reference/operator/query-bitwise */
-type BitwiseQuery =
-    | number    /** <numeric bitmask> */
-    | number[];
+type BitwiseQuery = number /** <numeric bitmask> */ | number[];
 /** [ <position1>, <position2>, ... ] */
 
 // we can search using alternative types in mongodb e.g.
 // string types can be searched using a regex in mongo
 // array types can be searched using their element type
-type RegExpForString<T> = T extends string ? (RegExp | T) : T;
-type MongoAltQuery<T> =
-    T extends Array<infer U> ? (T | RegExpForString<U>) :
-        RegExpForString<T>;
+type RegExpForString<T> = T extends string ? RegExp | T : T;
+type MongoAltQuery<T> = T extends Array<infer U> ? T | RegExpForString<U> : RegExpForString<T>;
 
 /** https://docs.mongodb.com/manual/reference/operator/query/#query-selectors */
 export type QuerySelector<T> = {
@@ -46,7 +58,7 @@ export type QuerySelector<T> = {
     $ne?: T;
     $nin?: T[];
     // Logical
-    $not?: T extends string ? (QuerySelector<T> | RegExp) : QuerySelector<T>;
+    $not?: T extends string ? QuerySelector<T> | RegExp : QuerySelector<T>;
     // Element
     /**
      * When `true`, `$exists` matches the documents that contain the field,
@@ -58,7 +70,7 @@ export type QuerySelector<T> = {
     $expr?: any;
     $jsonSchema?: any;
     $mod?: T extends number ? [number, number] : never;
-    $regex?: T extends string ? (RegExp | string) : never;
+    $regex?: T extends string ? RegExp | string : never;
     $options?: T extends string ? string : never;
     // Geospatial
     // TODO: define better types for geo queries
@@ -112,8 +124,7 @@ export type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
 
 export type FilterQuery<T> = {
     [P in keyof T]?: Condition<T[P]>;
-} &
-    RootQuerySelector<T>;
+} & RootQuerySelector<T>;
 
 export type SORT_TYPE = SORT_ORDER | { $meta: 'textScore' };
 export type DEEP_SORT<T extends OrmEntity> = { [P in keyof T]?: SORT_TYPE } & { [P: string]: SORT_TYPE };

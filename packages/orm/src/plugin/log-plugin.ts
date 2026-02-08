@@ -7,14 +7,22 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType } from '@deepkit/core';
+import {
+    AutoIncrement,
+    InlineRuntimeType,
+    PrimaryKey,
+    PrimaryKeyFields,
+    ReflectionClass,
+    ResetAnnotation,
+    entity,
+} from '@deepkit/type';
+
 import { DatabaseSession } from '../database-session.js';
 import { Database } from '../database.js';
 import { Query } from '../query.js';
-import { AutoIncrement, entity, InlineRuntimeType, PrimaryKey, PrimaryKeyFields, ReflectionClass, ResetAnnotation } from '@deepkit/type';
-import { DatabasePlugin } from './plugin.js';
 import { OrmEntity } from '../type.js';
+import { DatabasePlugin } from './plugin.js';
 
 export enum LogType {
     Added,
@@ -24,13 +32,12 @@ export enum LogType {
 
 export class LogEntity {
     id: number & PrimaryKey & AutoIncrement = 0;
-    created: Date = new Date;
+    created: Date = new Date();
     author: string = '';
     changedFields: string[] = [];
     reference: any; // will be overridden in log entity for schema
 
-    constructor(public type: LogType) {
-    }
+    constructor(public type: LogType) {}
 }
 
 export class LogSession {
@@ -128,7 +135,9 @@ export class LogPlugin implements DatabasePlugin {
             @entity.collection(this.getLogEntityCollectionName(schema))
             class LogEntityForSchema extends this.options.entity {
                 //we can not work with references since that would mean we can not delete the parent without deleting the log entry.
-                reference: InlineRuntimeType<typeof primaryKey> & ResetAnnotation<'primaryKey'> & ResetAnnotation<'autoIncrement'>;
+                reference: InlineRuntimeType<typeof primaryKey> &
+                    ResetAnnotation<'primaryKey'> &
+                    ResetAnnotation<'autoIncrement'>;
             }
 
             entry = ReflectionClass.from(LogEntityForSchema);
@@ -138,7 +147,12 @@ export class LogPlugin implements DatabasePlugin {
         return entry.getClassType();
     }
 
-    createLog(databaseSession: DatabaseSession<any>, type: LogType, reflectionClass: ReflectionClass<any>, primaryKey: PrimaryKeyFields<any>): LogEntity {
+    createLog(
+        databaseSession: DatabaseSession<any>,
+        type: LogType,
+        reflectionClass: ReflectionClass<any>,
+        primaryKey: PrimaryKeyFields<any>,
+    ): LogEntity {
         const entity = this.getLogEntity(reflectionClass);
         const log = new entity(type);
         log.reference = primaryKey[reflectionClass.getPrimary().name];
@@ -195,7 +209,12 @@ export class LogPlugin implements DatabasePlugin {
             if (this.options.disableUpdate) return;
 
             for (const change of event.changeSets) {
-                const log = this.createLog(event.databaseSession, LogType.Updated, event.classSchema, change.primaryKey);
+                const log = this.createLog(
+                    event.databaseSession,
+                    LogType.Updated,
+                    event.classSchema,
+                    change.primaryKey,
+                );
                 log.changedFields = change.changes.fieldNames;
                 //author is set in LogSession listeners
                 event.databaseSession.add(log);

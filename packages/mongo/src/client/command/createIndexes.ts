@@ -7,21 +7,21 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { Command, WriteConcernMessage } from './command.js';
-import { ReflectionClass } from '@deepkit/type';
-import { MongoError } from '../error.js';
-import type { MongoClientConfig } from '../config.js';
-import type { Host } from '../host.js';
-import type { MongoDatabaseTransaction } from '../connection.js';
 import { formatError } from '@deepkit/core';
+import { ReflectionClass } from '@deepkit/type';
+
+import type { MongoClientConfig } from '../config.js';
+import type { MongoDatabaseTransaction } from '../connection.js';
+import { MongoError } from '../error.js';
+import type { Host } from '../host.js';
+import { Command, WriteConcernMessage } from './command.js';
 
 export interface CreateIndex {
-    key: { [name: string]: 1 },
-    name: string,
-    unique: boolean,
-    sparse: boolean,
-    expireAfterSeconds?: number
+    key: { [name: string]: 1 };
+    name: string;
+    unique: boolean;
+    sparse: boolean;
+    expireAfterSeconds?: number;
 }
 
 type RequestSchema = {
@@ -54,7 +54,7 @@ export class CreateIndexesCommand<T extends ReflectionClass<any>> extends Comman
                 // ignore when we get `Index already exists with a different name`
                 return;
             }
-            throw new MongoError(`Could not create indexes ${JSON.stringify(this.indexes)}: ${error}`);
+            throw new MongoError('DK-MG001', `Could not create indexes ${JSON.stringify(this.indexes)}: ${error}`);
         }
     }
 

@@ -7,12 +7,19 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BaseResponse, CollationMessage, Command, HintMessage, TransactionalMessage, WriteConcernMessage } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
+
 import type { MongoClientConfig } from '../config.js';
-import type { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
+import type { Host } from '../host.js';
+import {
+    BaseResponse,
+    CollationMessage,
+    Command,
+    HintMessage,
+    TransactionalMessage,
+    WriteConcernMessage,
+} from './command.js';
 
 interface FindAndModifyResponse extends BaseResponse {
     value: any;
@@ -28,7 +35,8 @@ type FindAndModifySchema = {
     fields: Record<string, number>;
     collation?: CollationMessage;
     hint?: HintMessage;
-} & WriteConcernMessage & TransactionalMessage;
+} & WriteConcernMessage &
+    TransactionalMessage;
 
 export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Command<FindAndModifyResponse> {
     upsert = false;
@@ -65,7 +73,11 @@ export class FindAndModifyCommand<T extends ReflectionClass<any>> extends Comman
         return cmd;
     }
 
-    async execute(config: MongoClientConfig, host: Host, transaction?: MongoDatabaseTransaction): Promise<FindAndModifyResponse> {
+    async execute(
+        config: MongoClientConfig,
+        host: Host,
+        transaction?: MongoDatabaseTransaction,
+    ): Promise<FindAndModifyResponse> {
         const cmd = this.getCommand(config, host, transaction);
         return await this.sendAndWait<FindAndModifySchema, FindAndModifyResponse>(cmd);
     }

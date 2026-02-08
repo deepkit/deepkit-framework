@@ -7,22 +7,22 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { test } from 'node:test';
 
 import { ClassType } from '@deepkit/core';
-import { expect, test } from '@jest/globals';
+import { expect } from '@deepkit/run/expect';
+
 import { t } from '../src/decorator.js';
+import { resolveRuntimeType } from '../src/reflection/processor.js';
 import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
 import { ReflectionKind, TypeClass, TypeMethod } from '../src/reflection/type.js';
-import { resolveRuntimeType } from '../src/reflection/processor.js';
 
 test('class typeName with extends', () => {
     class BaseResponse<T> {
-        constructor(public response: T) {
-        }
+        constructor(public response: T) {}
     }
 
-    class SubResponse extends BaseResponse<string> {
-    }
+    class SubResponse extends BaseResponse<string> {}
 
     const type = typeOf<SubResponse>();
     const reflection = ReflectionClass.from(SubResponse);
@@ -33,13 +33,11 @@ test('class typeName with extends', () => {
 
 test('constructor parameter t.type', () => {
     class Response {
-        constructor(public success: boolean) {
-        }
+        constructor(public success: boolean) {}
     }
 
     class StreamApiResponseClass<T> {
-        constructor(public response: T) {
-        }
+        constructor(public response: T) {}
     }
 
     // {
@@ -87,7 +85,6 @@ test('constructor parameter t.type', () => {
                 super(response);
             }
         }
-        console.log('A', A);
 
         return A;
     }

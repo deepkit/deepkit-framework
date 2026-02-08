@@ -1,6 +1,7 @@
 import { ExtractClassType } from '@deepkit/core';
 import { ClassType } from '@deepkit/core';
 import { AbstractClassType } from '@deepkit/core';
+
 import { ReflectionClass } from './reflection/reflection.js';
 
 type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x: infer R) => any ? R : never;
@@ -29,7 +30,9 @@ type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x
  *   }
  * ```
  */
-export function mixin<T extends AbstractClassType[]>(...classTypes: T): ClassType<UnionToIntersection<ExtractClassType<T[number]>>> {
+export function mixin<T extends AbstractClassType[]>(
+    ...classTypes: T
+): ClassType<UnionToIntersection<ExtractClassType<T[number]>>> {
     const base = classTypes.shift();
     if (!base) throw new Error('No classes given');
 

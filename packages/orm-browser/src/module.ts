@@ -1,15 +1,17 @@
-import { createModuleClass, findParentPath } from '@deepkit/app';
-import { OrmBrowserController } from '@deepkit/framework';
-import { Database, DatabaseRegistry } from '@deepkit/orm';
-import { Config } from './config.js';
-import { rpc } from '@deepkit/rpc';
-import { getCurrentFileName } from '@deepkit/core';
-import { InjectorContext } from '@deepkit/injector';
 import { dirname } from 'path';
+
+import { createModuleClass, findParentPath } from '@deepkit/app';
+import { DeepkitError, getCurrentFileName } from '@deepkit/core';
+import { OrmBrowserController } from '@deepkit/framework';
 import { registerStaticHttpController } from '@deepkit/http';
+import { InjectorContext } from '@deepkit/injector';
+import { Database, DatabaseRegistry } from '@deepkit/orm';
+import { rpc } from '@deepkit/rpc';
+
+import { Config } from './config.js';
 
 export class OrmBrowserModule extends createModuleClass({
-    config: Config
+    config: Config,
 }) {
     databases: Database[] = [];
 
@@ -21,11 +23,9 @@ export class OrmBrowserModule extends createModuleClass({
     process() {
         const controllerName = '.deepkit/orm-browser/' + this.config.path;
 
-
         @rpc.controller(controllerName)
         // @ts-ignore
-        class ScopedOrmBrowserController extends OrmBrowserController {
-        }
+        class ScopedOrmBrowserController extends OrmBrowserController {}
 
         this.addController(ScopedOrmBrowserController);
 
@@ -33,11 +33,18 @@ export class OrmBrowserModule extends createModuleClass({
             provide: ScopedOrmBrowserController,
             useFactory: (registry: DatabaseRegistry, injectorContext: InjectorContext) => {
                 return new ScopedOrmBrowserController(this.databases);
-            }
+            },
         });
 
-        const localPath = findParentPath('node_modules/@deepkit/orm-browser-gui/dist/orm-browser-gui', dirname(getCurrentFileName()));
-        if (!localPath) throw new Error('node_modules/@deepkit/orm-browser-gui not installed in ' + dirname(getCurrentFileName()));
+        const localPath = findParentPath(
+            'node_modules/@deepkit/orm-browser-gui/dist/orm-browser-gui',
+            dirname(getCurrentFileName()),
+        );
+        if (!localPath)
+            throw new DeepkitError(
+                'DK-OB001',
+                'node_modules/@deepkit/orm-browser-gui not installed in ' + dirname(getCurrentFileName()),
+            );
 
         registerStaticHttpController(this, {
             path: this.config.path,
@@ -45,8 +52,8 @@ export class OrmBrowserModule extends createModuleClass({
             groups: ['app-static'],
             controllerName: 'ScopedController',
             indexReplace: {
-                APP_CONTROLLER_NAME: controllerName
-            }
+                APP_CONTROLLER_NAME: controllerName,
+            },
         });
     }
 }

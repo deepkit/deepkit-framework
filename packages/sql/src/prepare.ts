@@ -1,4 +1,6 @@
-import { ReflectionClass, resolvePath, resolveProperty, Type, TypeClass, TypeObjectLiteral } from '@deepkit/type';
+import { ReflectionClass, Type, TypeClass, TypeObjectLiteral, resolvePath, resolveProperty } from '@deepkit/type';
+
+import { SqlError } from './error.js';
 import { DefaultPlatform } from './platform/default-platform.js';
 
 export type SqlTypeCast = (placeholder: string) => string;
@@ -18,7 +20,7 @@ export interface PreparedField {
 }
 
 export interface PreparedEntity {
-    platform: DefaultPlatform,
+    platform: DefaultPlatform;
     type: TypeClass | TypeObjectLiteral;
     name: string;
     tableName: string;
@@ -76,9 +78,19 @@ export function getPreparedEntity(adapter: PreparedAdapter, entity: ReflectionCl
         if (property.isPrimaryKey()) primaryKey = field;
     }
 
-    if (!primaryKey) throw new Error(`No primary key defined for ${name}.`);
+    if (!primaryKey) throw new SqlError('DK-SQL012', `No primary key defined for ${name}.`);
 
-    prepared = { platform: adapter.platform, type, primaryKey, name, tableName, tableNameEscaped, fieldMap, fields, sqlTypeCaster };
+    prepared = {
+        platform: adapter.platform,
+        type,
+        primaryKey,
+        name,
+        tableName,
+        tableNameEscaped,
+        fieldMap,
+        fields,
+        sqlTypeCaster,
+    };
     adapter.preparedEntities.set(entity, prepared);
     return prepared;
 }
@@ -87,5 +99,5 @@ export function getDeepTypeCaster(entity: PreparedEntity, path: string) {
     if (entity.sqlTypeCaster[path]) return entity.sqlTypeCaster[path];
 
     const forType = resolveProperty(resolvePath(path, entity.type));
-    return entity.sqlTypeCaster[path] = entity.platform.getSqlTypeCaster(forType);
+    return (entity.sqlTypeCaster[path] = entity.platform.getSqlTypeCaster(forType));
 }

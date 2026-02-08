@@ -7,8 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-/** @group Type Guards */
 
+/** @group Type Guards */
 import { AbstractClassType, ClassType, getClassName, identifyType } from './core.js';
 
 /**
@@ -25,11 +25,14 @@ export function isPlainObject(obj: any): obj is object {
  * Returns true when target is a class instance.
  */
 export function isClassInstance(target: any): boolean {
-    return target !== undefined && target !== null
-        && target['constructor']
-        && Object.getPrototypeOf(target) === (target as any)['constructor'].prototype
-        && !isPlainObject(target)
-        && isObject(target);
+    return (
+        target !== undefined &&
+        target !== null &&
+        target['constructor'] &&
+        Object.getPrototypeOf(target) === (target as any)['constructor'].prototype &&
+        !isPlainObject(target) &&
+        isObject(target)
+    );
 }
 
 /**
@@ -43,8 +46,7 @@ export function isFunction(obj: any): obj is Function {
     return false;
 }
 
-export const AsyncFunction = (async () => {
-}).constructor as { new(...args: string[]): Function };
+export const AsyncFunction = (async () => {}).constructor as { new (...args: string[]): Function };
 
 /**
  * Returns true if given obj is a async function.
@@ -60,8 +62,13 @@ export function isAsyncFunction(obj: any): obj is (...args: any[]) => Promise<an
  * there are a lot of different implementations around.
  */
 export function isPromise<T>(obj: any | Promise<T>): obj is Promise<T> {
-    return obj !== null && typeof obj === 'object' && typeof obj.then === 'function'
-        && typeof obj.catch === 'function' && typeof obj.finally === 'function';
+    return (
+        obj !== null &&
+        typeof obj === 'object' &&
+        typeof obj.then === 'function' &&
+        typeof obj.catch === 'function' &&
+        typeof obj.finally === 'function'
+    );
 }
 
 /**
@@ -97,7 +104,7 @@ export function isObject(obj: any): obj is { [key: string]: any } {
     if (obj === null) {
         return false;
     }
-    return (typeof obj === 'object' && !isArray(obj));
+    return typeof obj === 'object' && !isArray(obj);
 }
 
 /**
@@ -162,9 +169,11 @@ export function isNumeric(s: string | number): boolean {
     return true;
 }
 
-export const isInteger: (obj: any) => obj is number = Number.isInteger as any || function(obj: any) {
-    return (obj % 1) === 0;
-};
+export const isInteger: (obj: any) => obj is number =
+    (Number.isInteger as any) ||
+    function (obj: any) {
+        return obj % 1 === 0;
+    };
 
 export function isString(obj: any): obj is string {
     return 'string' === identifyType(obj);
@@ -172,7 +181,7 @@ export function isString(obj: any): obj is string {
 
 export function isConstructable(fn: any): boolean {
     try {
-        new new Proxy(fn, { construct: () => ({}) });
+        new new Proxy(fn, { construct: () => ({}) })();
         return true;
     } catch (err) {
         return false;

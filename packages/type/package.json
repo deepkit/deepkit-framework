@@ -18,7 +18,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json",
+    "test:node": "node --import @deepkit/run --test 'tests/**/*.spec.ts'"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -42,6 +43,9 @@
   },
   "jest": {
     "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/tests/jest-setup.ts"
+    ],
     "transform": {
       "^.+\\.(ts|tsx)$": [
         "ts-jest",

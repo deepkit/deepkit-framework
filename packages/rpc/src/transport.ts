@@ -1,7 +1,15 @@
-import { createRpcMessage, readBinaryRpcMessage, RpcBinaryMessageReader, RpcMessage, RpcMessageDefinition, serializeBinaryRpcMessage } from './protocol.js';
-import { SingleProgress } from './progress.js';
-import { rpcChunk, RpcError, RpcTransportStats, RpcTypes } from './model.js';
 import { asyncOperation } from '@deepkit/core';
+
+import { RpcError, RpcTransportStats, RpcTypes, rpcChunk } from './model.js';
+import { SingleProgress } from './progress.js';
+import {
+    RpcBinaryMessageReader,
+    RpcMessage,
+    RpcMessageDefinition,
+    createRpcMessage,
+    readBinaryRpcMessage,
+    serializeBinaryRpcMessage,
+} from './protocol.js';
 
 export class TransportOptions {
     /**
@@ -29,7 +37,12 @@ export class TransportOptions {
  * @see createWriter
  */
 export interface TransportMessageWriter {
-    (message: RpcMessageDefinition, options: TransportOptions, stats: RpcTransportStats, progress?: SingleProgress): void;
+    (
+        message: RpcMessageDefinition,
+        options: TransportOptions,
+        stats: RpcTransportStats,
+        progress?: SingleProgress,
+    ): void;
 }
 
 export interface TransportConnection {
@@ -86,19 +99,24 @@ export class TransportBinaryMessageChunkWriter {
     constructor(
         protected reader: RpcBinaryMessageReader,
         protected options: TransportOptions,
-    ) {
-    }
+    ) {}
 
     /**
      * Writes a message buffer to the connection and chunks if necessary.
      */
     write(writer: RpcBinaryWriter, message: Uint8Array, progress?: SingleProgress): void {
-        this.writeFull(writer, message, progress)
-            .catch(error => console.log('TransportBinaryMessageChunkWriter writeAsync error', error));
+        this.writeFull(writer, message, progress).catch(error =>
+            console.log('TransportBinaryMessageChunkWriter writeAsync error', error),
+        );
     }
 
-    protected sendChunks(writer: RpcBinaryWriter, message: RpcMessage, buffer: Uint8Array, progress?: SingleProgress): Promise<void> {
-        return asyncOperation(async (resolve) => {
+    protected sendChunks(
+        writer: RpcBinaryWriter,
+        message: RpcMessage,
+        buffer: Uint8Array,
+        progress?: SingleProgress,
+    ): Promise<void> {
+        return asyncOperation(async resolve => {
             let offset = 0;
             let currentResolve: undefined | ((active: boolean) => void);
             progress?.abortController.signal.addEventListener('abort', () => {
@@ -114,7 +132,7 @@ export class TransportBinaryMessageChunkWriter {
                     v: slice,
                 });
                 offset += slice.byteLength;
-                const promise = new Promise<boolean>((resolve) => {
+                const promise = new Promise<boolean>(resolve => {
                     currentResolve = resolve;
                     this.reader.onChunkAck(message.id, resolve);
                 });
@@ -152,7 +170,11 @@ export class TransportBinaryMessageChunkWriter {
     }
 }
 
-export function createWriter(transport: TransportConnection, options: TransportOptions, reader: RpcBinaryMessageReader): TransportMessageWriter {
+export function createWriter(
+    transport: TransportConnection,
+    options: TransportOptions,
+    reader: RpcBinaryMessageReader,
+): TransportMessageWriter {
     if (transport.writeBinary) {
         const chunkWriter = new TransportBinaryMessageChunkWriter(reader, options);
         const writeBinary = transport.writeBinary;

@@ -1,11 +1,12 @@
 import { expect, test } from '@jest/globals';
-import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, EventOfEventToken, EventToken, EventTokenSync } from '../src/event.js';
+
 import { sleep } from '@deepkit/core';
+
+import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, EventOfEventToken, EventToken, EventTokenSync } from '../src/event.js';
 
 type TypeA = 'asd' | void;
 
-function a(a: string, b: TypeA, c?: string) {
-}
+function a(a: string, b: TypeA, c?: string) {}
 
 a('asd');
 
@@ -16,7 +17,7 @@ test('functional api', async () => {
     const MyEvent = new EventToken('my-event');
     let calls = 0;
 
-    dispatcher.listen(MyEvent, (event) => {
+    dispatcher.listen(MyEvent, event => {
         calls++;
     });
 
@@ -29,13 +30,12 @@ test('functional api', async () => {
 test('data event', async () => {
     const dispatcher = new EventDispatcher();
 
-    class User {
-    }
+    class User {}
 
     const MyEvent = new DataEventToken<User>('my-event');
     let calls = 0;
 
-    dispatcher.listen(MyEvent, (event) => {
+    dispatcher.listen(MyEvent, event => {
         expect(event.data).toBeInstanceOf(User);
         calls++;
     });
@@ -47,17 +47,16 @@ test('data event', async () => {
 test('custom event', async () => {
     const dispatcher = new EventDispatcher();
 
-    class User {
-    }
+    class User {}
 
     class MyEvent extends BaseEvent {
-        user: User = new User;
+        user: User = new User();
     }
 
     const MyEventToken = new EventToken<MyEvent>('my-event');
     let calls = 0;
 
-    dispatcher.listen(MyEventToken, (event) => {
+    dispatcher.listen(MyEventToken, event => {
         expect(event).toBeInstanceOf(MyEvent);
         expect(event.user).toBeInstanceOf(User);
         calls++;
@@ -74,7 +73,7 @@ test('rebuild if necessary', async () => {
     let called = 0;
     await dispatcher.dispatch(MyEvent);
 
-    dispatcher.listen(MyEvent, (event) => {
+    dispatcher.listen(MyEvent, event => {
         called++;
     });
     await dispatcher.dispatch(MyEvent);
@@ -86,7 +85,7 @@ test('rebuild', async () => {
     const MyEvent = new EventToken('my-event');
     let callsA = 0;
 
-    const sub1 = dispatcher.listen(MyEvent, (event) => {
+    const sub1 = dispatcher.listen(MyEvent, event => {
         callsA++;
     });
 
@@ -94,7 +93,7 @@ test('rebuild', async () => {
     expect(callsA).toBe(1);
 
     let callsB = 0;
-    const sub2 = dispatcher.listen(MyEvent, (event) => {
+    const sub2 = dispatcher.listen(MyEvent, event => {
         callsB++;
     });
 
@@ -129,7 +128,6 @@ test('sync not doing async stuff', async () => {
     await sleep(0.1);
     expect(calls).toBe(1);
 });
-
 
 test('sync', async () => {
     const dispatcher = new EventDispatcher();
@@ -244,11 +242,11 @@ test('immediatePropagationStopped', () => {
 
     let called = 0;
 
-    dispatcher.listen(eventToken, (event) => {
+    dispatcher.listen(eventToken, event => {
         event.stopImmediatePropagation();
     });
 
-    dispatcher.listen(eventToken, (event) => {
+    dispatcher.listen(eventToken, event => {
         called++;
     });
 
@@ -264,7 +262,7 @@ test('mergeContextsFrom', () => {
 
     let called = 0;
 
-    dispatcher1.listen(eventToken, (event) => {
+    dispatcher1.listen(eventToken, event => {
         called++;
     });
 
@@ -272,4 +270,4 @@ test('mergeContextsFrom', () => {
 
     dispatcher2.dispatch(eventToken, new BaseEvent());
     expect(called).toBe(1);
-})
+});

@@ -43,7 +43,7 @@ export enum TypeIntrinsic {
     Uppercase,
     Lowercase,
     Capitalize,
-    Uncapitalize
+    Uncapitalize,
 }
 
 /**
@@ -211,7 +211,7 @@ export enum ReflectionOp {
     call, //has one parameter, the next program address. creates a new stack frame with current program address as first stack entry, and jumps back to that + 1.
     inline,
     inlineCall,
-    distribute,//has one parameter, the co-routine program index.
+    distribute, //has one parameter, the co-routine program index.
 
     extends, //X extends Y in a conditional type, XY popped from the stack, pushes boolean on the stack
 

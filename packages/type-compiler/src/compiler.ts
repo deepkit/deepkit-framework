@@ -7,9 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
+import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
 import ts, {
-    __String,
     ArrayTypeNode,
     ArrowFunction,
     Block,
@@ -23,9 +22,9 @@ import ts, {
     CompilerOptions,
     ConciseBody,
     ConditionalTypeNode,
+    ConstructSignatureDeclaration,
     ConstructorDeclaration,
     ConstructorTypeNode,
-    ConstructSignatureDeclaration,
     CustomTransformer,
     CustomTransformerFactory,
     Declaration,
@@ -39,12 +38,11 @@ import ts, {
     FunctionTypeNode,
     Identifier,
     ImportDeclaration,
-    IndexedAccessTypeNode,
     IndexSignatureDeclaration,
+    IndexedAccessTypeNode,
     InferTypeNode,
     InterfaceDeclaration,
     IntersectionTypeNode,
-    isJSDocImportTag,
     JSDocImportTag,
     LiteralTypeNode,
     MappedTypeNode,
@@ -77,9 +75,18 @@ import ts, {
     TypeQueryNode,
     TypeReferenceNode,
     UnionTypeNode,
+    __String,
+    isJSDocImportTag,
 } from 'typescript';
 
+import { MappedModifier, ReflectionOp, TypeIntrinsic, TypeNumberBrand } from '@deepkit/type-spec';
+
+import { ConfigResolver, MatchResult, ReflectionConfig, ReflectionConfigCache, ResolvedConfig, getConfigResolver, reflectionModeMatcher } from './config.js';
+import { debug, debug2 } from './debug.js';
+import { TypeCompilerError } from './error.js';
 import {
+    NodeConverter,
+    PackExpression,
     ensureImportIsEmitted,
     extractJSDocAttribute,
     findSourceFile,
@@ -90,16 +97,10 @@ import {
     getPropertyName,
     hasModifier,
     isNodeWithLocals,
-    NodeConverter,
-    PackExpression,
     serializeEntityNameAsExpression,
 } from './reflection-ast.js';
-import { SourceFile } from './ts-types.js';
-import { MappedModifier, ReflectionOp, TypeIntrinsic, TypeNumberBrand } from '@deepkit/type-spec';
 import { Resolver } from './resolver.js';
-import { knownLibFilesForCompilerOptions } from '@typescript/vfs';
-import { debug, debug2 } from './debug.js';
-import { ConfigResolver, getConfigResolver, MatchResult, ReflectionConfig, ReflectionConfigCache, reflectionModeMatcher, ResolvedConfig } from './config.js';
+import { SourceFile } from './ts-types.js';
 
 const {
     visitEachChild,
@@ -140,6 +141,10 @@ const {
     isParenthesizedExpression,
     isParenthesizedTypeNode,
     isPropertyAccessExpression,
+    isPropertyAccessChain,
+    isCallChain,
+    isElementAccessChain,
+    isElementAccessExpression,
     isQualifiedName,
     isSourceFile,
     isStringLiteral,
@@ -214,7 +219,7 @@ const OPs: { [op in ReflectionOp]?: { params: number } } = {
     [ReflectionOp.implements]: { params: 1 },
 };
 
-export function debugPackStruct(sourceFile: SourceFile, forType: Node, pack: { ops: ReflectionOp[], stack: PackExpression[] }): void {
+export function debugPackStruct(sourceFile: SourceFile, forType: Node, pack: { ops: ReflectionOp[]; stack: PackExpression[] }): void {
     const items: any[] = [];
 
     for (let i = 0; i < pack.ops.length; i++) {
@@ -242,13 +247,13 @@ export function debugPackStruct(sourceFile: SourceFile, forType: Node, pack: { o
 }
 
 interface Frame {
-    variables: { name: string, index: number }[],
+    variables: { name: string; index: number }[];
     opIndex: number;
     conditional?: true;
     previous?: Frame;
 }
 
-function findVariable(frame: Frame, name: string, frameOffset: number = 0): { frameOffset: number, stackIndex: number } | undefined {
+function findVariable(frame: Frame, name: string, frameOffset: number = 0): { frameOffset: number; stackIndex: number } | undefined {
     const variable = frame.variables.find(v => v.name === name);
     if (variable) {
         return { frameOffset, stackIndex: variable.index };
@@ -280,8 +285,10 @@ class CompilerProgram {
     protected activeCoRoutines: { ops: ReflectionOp[] }[] = [];
     protected coRoutines: { ops: ReflectionOp[] }[] = [];
 
-    constructor(public forNode: Node, public sourceFile?: SourceFile) {
-    }
+    constructor(
+        public forNode: Node,
+        public sourceFile?: SourceFile,
+    ) {}
 
     buildPackStruct() {
         const ops: ReflectionOp[] = [...this.ops];
@@ -320,7 +327,7 @@ class CompilerProgram {
 
     popCoRoutine(): number {
         const coRoutine = this.activeCoRoutines.pop();
-        if (!coRoutine) throw new Error('No active co routine found');
+        if (!coRoutine) throw new TypeCompilerError('DK-TC001', 'No active co-routine found');
         this.popFrameImplicit();
         if (this.mainOffset === 0) {
             this.mainOffset = 2; //we add JUMP + index when building the program
@@ -335,7 +342,7 @@ class CompilerProgram {
     pushOp(...ops: ReflectionOp[]): void {
         for (const op of ops) {
             if ('number' !== typeof op) {
-                throw new Error('No valid OP added');
+                throw new TypeCompilerError('DK-TC002', 'No valid OP added');
             }
             // if (op + 33 > 126) {
             //todo: encode as var int
@@ -458,11 +465,47 @@ function getReceiveTypeParameter(type: TypeNode): TypeReferenceNode | undefined 
             const rfn = getReceiveTypeParameter(t);
             if (rfn) return rfn;
         }
-    } else if (isTypeReferenceNode(type) && isIdentifier(type.typeName)
-        && getIdentifierName(type.typeName) === 'ReceiveType' && !!type.typeArguments
-        && type.typeArguments.length === 1) return type;
+    } else if (isTypeReferenceNode(type) && isIdentifier(type.typeName) && getIdentifierName(type.typeName) === 'ReceiveType' && !!type.typeArguments && type.typeArguments.length === 1) return type;
 
     return;
+}
+
+interface ReceiveTypeInfo {
+    /** Maps type argument index → function parameter index for ReceiveType params */
+    typeArgToParamIndex: Map<number, number>;
+    totalParams: number;
+}
+
+/** Result of resolving a call target's ReceiveType info */
+type CallReceiveTypeResult =
+    | { kind: 'direct'; info: ReceiveTypeInfo } // Has ReceiveType params → pass directly
+    | { kind: 'skip' }; // Resolved, no ReceiveType → skip Ω entirely
+// undefined = can't resolve → fall back to Ω
+
+/**
+ * For a function/constructor with type parameters and parameters,
+ * build a mapping from type parameter index to the parameter index where ReceiveType<T> appears.
+ */
+function extractReceiveTypeMapping(typeParameters: readonly TypeParameterDeclaration[] | undefined, parameters: readonly ts.ParameterDeclaration[]): ReceiveTypeInfo | undefined {
+    if (!typeParameters || typeParameters.length === 0) return undefined;
+
+    const mapping = new Map<number, number>();
+    for (let paramIdx = 0; paramIdx < parameters.length; paramIdx++) {
+        const param = parameters[paramIdx];
+        if (!param.type) continue;
+        const receiveType = getReceiveTypeParameter(param.type);
+        if (!receiveType || !receiveType.typeArguments) continue;
+        const first = receiveType.typeArguments[0];
+        if (!first || !isTypeReferenceNode(first) || !isIdentifier(first.typeName)) continue;
+        const name = getIdentifierName(first.typeName);
+        const typeParamIdx = typeParameters.findIndex(v => getIdentifierName(v.name) === name);
+        if (typeParamIdx >= 0) {
+            mapping.set(typeParamIdx, paramIdx);
+        }
+    }
+
+    if (mapping.size === 0) return undefined;
+    return { typeArgToParamIndex: mapping, totalParams: parameters.length };
 }
 
 export class Cache {
@@ -498,24 +541,36 @@ export class ReflectionTransformer implements CustomTransformer {
      * Types added to this map will get a type program directly under it.
      * This is for types used in the very same file.
      */
-    protected compileDeclarations = new Map<
-        TypeAliasDeclaration | InterfaceDeclaration | EnumDeclaration,
-        { name: EntityName, sourceFile: SourceFile, compiled?: Statement[] }
-    >();
+    protected compileDeclarations = new Map<TypeAliasDeclaration | InterfaceDeclaration | EnumDeclaration, { name: EntityName; sourceFile: SourceFile; compiled?: Statement[] }>();
 
     /**
      * Types added to this map will get a type program at the top root level of the program.
      * This is for imported types, which need to be inlined into the current file, as we do not emit type imports (TS will omit them).
      */
-    protected embedDeclarations = new Map<Node, { name: EntityName, sourceFile?: SourceFile }>();
+    protected embedDeclarations = new Map<Node, { name: EntityName; sourceFile?: SourceFile }>();
 
     /**
      * When a node was embedded or compiled (from the maps above), we store it here to know to not add it again.
      */
     protected compiledDeclarations = new Set<Node>();
 
-    protected addImports: { importDeclaration: ImportDeclaration | JSDocImportTag, identifier: Identifier }[] = [];
+    protected addImports: { importDeclaration: ImportDeclaration | JSDocImportTag; identifier: Identifier }[] = [];
     protected additionalImports = new Map<ImportDeclaration | JSDocImportTag, Statement>();
+
+    /**
+     * Module-level function __type assignments that should be hoisted to the top of the file.
+     * This allows ReflectionFunction.from(fn) to work when called before the function declaration.
+     */
+    protected functionTypeAssignments: Statement[] = [];
+
+    /**
+     * Re-exports of __Ω symbols that need to be added when named re-exports are found.
+     * For `export { X } from './module'`, we also need to re-export `__ΩX` if it exists.
+     */
+    protected pendingReExports: Array<{
+        exportDeclaration: ExportDeclaration;
+        symbols: Array<{ originalName: string; exportedName: string }>;
+    }> = [];
 
     protected nodeConverter: NodeConverter;
     protected typeChecker?: TypeChecker;
@@ -536,7 +591,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
     constructor(
         protected context: TransformationContext,
-        protected cache: Cache = new Cache,
+        protected cache: Cache = new Cache(),
     ) {
         this.f = context.factory;
         this.nodeConverter = new NodeConverter(this.f);
@@ -564,24 +619,13 @@ export class ReflectionTransformer implements CustomTransformer {
             this.intrinsicMetaDeclaration = this.f.createTypeAliasDeclaration(
                 [],
                 'TypeAnnotation',
-                [
-                    this.f.createTypeParameterDeclaration([], T),
-                    this.f.createTypeParameterDeclaration([], Options, undefined, this.f.createTypeReferenceNode('never')),
-                ],
+                [this.f.createTypeParameterDeclaration([], T), this.f.createTypeParameterDeclaration([], Options, undefined, this.f.createTypeReferenceNode('never'))],
                 this.f.createTypeLiteralNode([
                     this.f.createPropertySignature(
                         undefined,
                         '__meta',
                         this.f.createToken(SyntaxKind.QuestionToken),
-                        this.f.createIntersectionTypeNode(
-                            [
-                                this.f.createTypeReferenceNode('never'),
-                                this.f.createTupleTypeNode([
-                                    this.f.createTypeReferenceNode(T),
-                                    this.f.createTypeReferenceNode(Options),
-                                ]),
-                            ],
-                        ),
+                        this.f.createIntersectionTypeNode([this.f.createTypeReferenceNode('never'), this.f.createTupleTypeNode([this.f.createTypeReferenceNode(T), this.f.createTypeReferenceNode(Options)])]),
                     ),
                 ]),
             );
@@ -627,6 +671,27 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.tempResultIdentifier;
     }
 
+    /**
+     * Recursively checks if an expression contains optional chaining (?.)
+     * Used to detect patterns like: this.service?.getClient().method<T>()
+     * where the optional chain is in a nested call expression.
+     */
+    protected expressionContainsOptionalChain(expr: ts.Expression): boolean {
+        if (isPropertyAccessChain(expr) || isCallChain(expr) || isElementAccessChain(expr)) {
+            return true;
+        }
+        if (isCallExpression(expr)) {
+            return this.expressionContainsOptionalChain(expr.expression);
+        }
+        if (isPropertyAccessExpression(expr)) {
+            return this.expressionContainsOptionalChain(expr.expression);
+        }
+        if (isParenthesizedExpression(expr)) {
+            return this.expressionContainsOptionalChain(expr.expression);
+        }
+        return false;
+    }
+
     protected getConfigResolver(sourceFile: { fileName: string }): ConfigResolver {
         if (this.overriddenConfigResolver) return this.overriddenConfigResolver;
         return getConfigResolver(this.cache.resolver, this.parseConfigHost, this.compilerOptions, sourceFile);
@@ -657,6 +722,7 @@ export class ReflectionTransformer implements CustomTransformer {
         this.embedAssignType = false;
         this.addImports = [];
         this.additionalImports.clear();
+        this.pendingReExports = [];
 
         const start = Date.now();
         const configResolver = this.getConfigResolver(sourceFile);
@@ -680,21 +746,139 @@ export class ReflectionTransformer implements CustomTransformer {
 
         if (sourceFile.kind !== SyntaxKind.SourceFile) {
             if ('undefined' === typeof require) {
-                throw new Error(`Invalid TypeScript library imported. SyntaxKind different ${sourceFile.kind} !== ${SyntaxKind.SourceFile}.`);
+                throw new TypeCompilerError('DK-TC003', `Invalid TypeScript library imported. SyntaxKind different ${sourceFile.kind} !== ${SyntaxKind.SourceFile}.`);
             }
             const path = require.resolve('typescript');
-            throw new Error(`Invalid TypeScript library imported. SyntaxKind different ${sourceFile.kind} !== ${SyntaxKind.SourceFile}. typescript package path: ${path}`);
+            throw new TypeCompilerError('DK-TC003', `Invalid TypeScript library imported. SyntaxKind different ${sourceFile.kind} !== ${SyntaxKind.SourceFile}. typescript package path: ${path}`);
         }
 
         const visitor = (node: Node): any => {
+            // Capture parent before transformation since visitEachChild may create new nodes without parent references
+            const originalParent = node.parent;
             node = visitEachChild(node, visitor, this.context);
 
-            if ((isInterfaceDeclaration(node) || isTypeAliasDeclaration(node) || isEnumDeclaration(node))) {
-                if (this.isWithReflection(sourceFile, node)) {
+            // Handle chain continuations on our optional chain transformation.
+            // When we transformed x?.method<T>() to (r = x, r == null ? void 0 : (...)),
+            // any chain continuation like .catch() needs to be moved inside the ternary.
+            if (isCallExpression(node) || isPropertyAccessExpression(node)) {
+                const innerExpr = isCallExpression(node) ? node.expression : node;
+                let baseExpr: ts.Expression = innerExpr;
+                const accessChain: Array<{ type: 'call'; args: ts.NodeArray<ts.Expression>; typeArgs?: ts.NodeArray<ts.TypeNode> } | { type: 'prop'; name: ts.MemberName } | { type: 'elem'; arg: ts.Expression }> = [];
+
+                // Walk down to find our transformation marker
+                while (baseExpr) {
+                    if (isPropertyAccessExpression(baseExpr) && !isPropertyAccessChain(baseExpr)) {
+                        accessChain.unshift({ type: 'prop', name: baseExpr.name });
+                        baseExpr = baseExpr.expression;
+                    } else if (isCallExpression(baseExpr) && baseExpr !== node) {
+                        accessChain.unshift({ type: 'call', args: baseExpr.arguments, typeArgs: baseExpr.typeArguments });
+                        baseExpr = baseExpr.expression;
+                    } else if (isElementAccessExpression(baseExpr) && !isElementAccessChain(baseExpr)) {
+                        accessChain.unshift({ type: 'elem', arg: baseExpr.argumentExpression });
+                        baseExpr = baseExpr.expression;
+                    } else if (isParenthesizedExpression(baseExpr) && (baseExpr as any).__optionalChainTransform) {
+                        // Found our marker! Restructure the expression.
+                        const transform = (baseExpr as any).__optionalChainTransform;
+                        const { tempVar, conditional } = transform;
+
+                        // Build the chain continuation on the temp var
+                        let newInnerExpr: ts.Expression = conditional.whenFalse; // The (assign, call) part
+                        // Unwrap the parentheses to get the comma expression
+                        if (isParenthesizedExpression(newInnerExpr)) {
+                            newInnerExpr = newInnerExpr.expression;
+                        }
+                        // Get the actual call from the comma expression
+                        if (ts.isBinaryExpression(newInnerExpr) && newInnerExpr.operatorToken.kind === SyntaxKind.CommaToken) {
+                            let chainTarget = newInnerExpr.right;
+
+                            // Apply the access chain
+                            for (const access of accessChain) {
+                                if (access.type === 'prop') {
+                                    chainTarget = this.f.createPropertyAccessExpression(chainTarget, access.name);
+                                } else if (access.type === 'call') {
+                                    chainTarget = this.f.createCallExpression(chainTarget, access.typeArgs, access.args);
+                                } else if (access.type === 'elem') {
+                                    chainTarget = this.f.createElementAccessExpression(chainTarget, access.arg);
+                                }
+                            }
+
+                            // If original node was a call, add that too
+                            if (isCallExpression(node) && accessChain.length === 0) {
+                                // This was a direct call on the paren, like (transformed)()
+                                chainTarget = this.f.createCallExpression(chainTarget, node.typeArguments, node.arguments);
+                            } else if (isCallExpression(node)) {
+                                chainTarget = this.f.createCallExpression(chainTarget, node.typeArguments, node.arguments);
+                            }
+
+                            // Rebuild: (r = x, r == null ? void 0 : (assign, chain.continuation()))
+                            const newAssignAndChain = this.f.createParenthesizedExpression(
+                                this.f.createBinaryExpression(
+                                    newInnerExpr.left, // The assignment part
+                                    this.f.createToken(SyntaxKind.CommaToken),
+                                    chainTarget,
+                                ),
+                            );
+
+                            const newConditional = this.f.createConditionalExpression(conditional.condition, this.f.createToken(SyntaxKind.QuestionToken), conditional.whenTrue, this.f.createToken(SyntaxKind.ColonToken), newAssignAndChain);
+
+                            // Get the assignment part (r = x) from the outer binary expression
+                            const outerBinary = (baseExpr as ts.ParenthesizedExpression).expression as ts.BinaryExpression;
+                            const result = this.f.createParenthesizedExpression(this.f.createBinaryExpression(outerBinary.left, this.f.createToken(SyntaxKind.CommaToken), newConditional));
+                            return result;
+                        }
+                        break;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            // Fix orphaned optional chain continuation nodes: when a child transformation
+            // removes the optional chain root, parent chain continuation nodes become invalid.
+            // A chain continuation is a chain node WITHOUT its own ?. token - it depends on
+            // an ancestor having the ?. Only convert continuations, not chain roots.
+            if (isPropertyAccessChain(node) && !node.questionDotToken) {
+                const expr = node.expression;
+                if (!isPropertyAccessChain(expr) && !isCallChain(expr) && !isElementAccessChain(expr)) {
+                    node = this.f.createPropertyAccessExpression(node.expression, node.name);
+                }
+            } else if (isCallChain(node) && !node.questionDotToken) {
+                const expr = node.expression;
+                if (!isPropertyAccessChain(expr) && !isCallChain(expr) && !isElementAccessChain(expr)) {
+                    node = this.f.createCallExpression(node.expression, node.typeArguments, node.arguments);
+                }
+            } else if (isElementAccessChain(node) && !node.questionDotToken) {
+                const expr = node.expression;
+                if (!isPropertyAccessChain(expr) && !isCallChain(expr) && !isElementAccessChain(expr)) {
+                    node = this.f.createElementAccessExpression(node.expression, node.argumentExpression);
+                }
+            }
+
+            if (isInterfaceDeclaration(node) || isTypeAliasDeclaration(node) || isEnumDeclaration(node)) {
+                if (!hasModifier(node, SyntaxKind.DeclareKeyword) && this.isWithReflection(sourceFile, node)) {
                     this.compileDeclarations.set(node, {
                         name: node.name,
                         sourceFile: this.sourceFile,
                     });
+                }
+            }
+
+            // Handle named re-exports: export { X, Y as Z } from './module'
+            // We need to also re-export __ΩX, __ΩY (as __ΩZ) if they exist in the source module
+            if (isExportDeclaration(node) && node.moduleSpecifier && isStringLiteral(node.moduleSpecifier) && node.exportClause && isNamedExports(node.exportClause)) {
+                const symbols: Array<{ originalName: string; exportedName: string }> = [];
+                for (const element of node.exportClause.elements) {
+                    // element.propertyName is the original name (if aliased), element.name is the exported name
+                    const originalName = element.propertyName ? getIdentifierName(element.propertyName) : getIdentifierName(element.name);
+                    const exportedName = getIdentifierName(element.name);
+                    // Check if the source module has a type declaration that would generate __Ω{originalName}
+                    const shouldReExport = this.shouldReExportOmegaSymbol(originalName, node, this.sourceFile);
+                    if (shouldReExport) {
+                        symbols.push({ originalName, exportedName });
+                    }
+                }
+                if (symbols.length > 0) {
+                    this.pendingReExports.push({ exportDeclaration: node, symbols });
                 }
             }
 
@@ -707,10 +891,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (node.name.kind === SyntaxKind.Identifier && getIdentifierName(node.name) === 'default') valid = false;
                 if (valid) {
                     const method = this.decorateFunctionExpression(
-                        this.f.createFunctionExpression(
-                            node.modifiers as ReadonlyArray<Modifier>, node.asteriskToken, isIdentifier(node.name) ? node.name : undefined,
-                            node.typeParameters, node.parameters, node.type, node.body,
-                        ),
+                        this.f.createFunctionExpression(node.modifiers as ReadonlyArray<Modifier>, node.asteriskToken, isIdentifier(node.name) ? node.name : undefined, node.typeParameters, node.parameters, node.type, node.body),
                     );
                     node = this.f.createPropertyAssignment(node.name, method);
                 }
@@ -744,16 +925,14 @@ export class ReflectionTransformer implements CustomTransformer {
                             container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), 'constructor');
                         }
 
-                        return this.f.updateParameterDeclaration(node, node.modifiers as ReadonlyArray<Modifier>, node.dotDotDotToken, node.name,
-                            node.questionToken, receiveType, this.f.createElementAccessChain(
-                                this.f.createPropertyAccessExpression(
-                                    container,
-                                    this.f.createIdentifier('Ω'),
-                                ),
-                                this.f.createToken(SyntaxKind.QuestionDotToken),
-                                this.f.createNumericLiteral(index),
-                            ),
-                        );
+                        // For single type param, read Ω directly (no array wrapper).
+                        // For multiple type params, use element access Ω?.[index].
+                        const defaultValue =
+                            typeParameters.length === 1
+                                ? this.f.createPropertyAccessExpression(container, this.f.createIdentifier('Ω'))
+                                : this.f.createElementAccessChain(this.f.createPropertyAccessExpression(container, this.f.createIdentifier('Ω')), this.f.createToken(SyntaxKind.QuestionDotToken), this.f.createNumericLiteral(index));
+
+                        return this.f.updateParameterDeclaration(node, node.modifiers as ReadonlyArray<Modifier>, node.dotDotDotToken, node.name, node.questionToken, receiveType, defaultValue);
                     }
                 }
             } else if (isClassExpression(node)) {
@@ -761,13 +940,12 @@ export class ReflectionTransformer implements CustomTransformer {
             } else if (isFunctionExpression(node)) {
                 return this.decorateFunctionExpression(this.injectResetΩ(node));
             } else if (isFunctionDeclaration(node)) {
-                return this.decorateFunctionDeclaration(this.injectResetΩ(node));
+                return this.decorateFunctionDeclaration(this.injectResetΩ(node), originalParent);
             } else if (isMethodDeclaration(node) || isConstructorDeclaration(node)) {
                 return this.injectResetΩ(node);
             } else if (isArrowFunction(node)) {
                 return this.decorateArrowFunction(this.injectResetΩ(node));
             } else if ((isNewExpression(node) || isCallExpression(node)) && node.typeArguments && node.typeArguments.length > 0) {
-
                 if (isCallExpression(node)) {
                     const autoTypeFunctions = ['valuesOf', 'propertiesOf', 'typeOf'];
                     if (isIdentifier(node.expression) && autoTypeFunctions.includes(getIdentifierName(node.expression))) {
@@ -799,6 +977,107 @@ export class ReflectionTransformer implements CustomTransformer {
                     typeExpressions.push(type || this.f.createIdentifier('undefined'));
                 }
 
+                // For single type arg, pass the packed type directly (skip array wrapper)
+                const packedTypeExpr: Expression = typeExpressions.length === 1 ? typeExpressions[0] : this.f.createArrayLiteralExpression(typeExpressions);
+
+                // Try direct argument passing: if we can resolve the call target and confirm
+                // it has ReceiveType parameters, pass the packed type directly as a function argument
+                // instead of going through the Ω side-channel. This eliminates V8 hidden class transitions.
+                // If resolved but no ReceiveType, skip Ω entirely (no point setting it).
+                const callResult = this.resolveCallReceiveTypeInfo(node);
+                if (callResult) {
+                    if (callResult.kind === 'skip') {
+                        // Resolved target has no ReceiveType params — skip type passing entirely
+                        return node;
+                    }
+                    // Direct passing: place type args at the correct parameter positions.
+                    // Returns undefined if user already passed args at ReceiveType positions → fall through to Ω.
+                    const newArgs = this.buildDirectPassingArgs(node.arguments || this.f.createNodeArray<Expression>(), typeExpressions, callResult.info);
+                    if (newArgs) {
+                        if (isNewExpression(node)) {
+                            return this.f.updateNewExpression(node, node.expression, node.typeArguments, newArgs);
+                        }
+                        return this.f.updateCallExpression(node as CallExpression, node.expression, node.typeArguments, newArgs);
+                    }
+                }
+
+                // Check if this is an optional chain (has ?. somewhere in the expression)
+                // e.g. this.service?.doSomething<string>()
+                if (isPropertyAccessExpression(node.expression) && isPropertyAccessChain(node.expression)) {
+                    // Handle optional chaining: this.service?.method<T>()
+                    // Transform to: (Ωr = this.service, Ωr == null ? void 0 : (Ωr.method.Ω = [types], Ωr.method<T>()))
+                    const r = this.getTempResultIdentifier();
+                    const propertyChain = node.expression as ts.PropertyAccessChain;
+
+                    // Get the base expression before the optional access
+                    // e.g., for this.service?.method, base is this.service
+                    const baseExpression = propertyChain.expression;
+                    const methodName = propertyChain.name;
+
+                    // Ωr = this.service
+                    const assignBase = this.f.createBinaryExpression(r, this.f.createToken(SyntaxKind.EqualsToken), baseExpression);
+
+                    // Ωr.method.Ω = types
+                    const assignTypes = this.f.createBinaryExpression(this.f.createPropertyAccessExpression(this.f.createPropertyAccessExpression(r, methodName), 'Ω'), this.f.createToken(SyntaxKind.EqualsToken), packedTypeExpr);
+
+                    // Ωr.method<T>() - regular call
+                    const regularCall = this.f.createCallExpression(this.f.createPropertyAccessExpression(r, methodName), node.typeArguments, node.arguments);
+
+                    // (Ωr.method.Ω = [types], Ωr.method<T>())
+                    const assignAndCall = this.f.createParenthesizedExpression(this.f.createBinaryExpression(assignTypes, this.f.createToken(SyntaxKind.CommaToken), regularCall));
+
+                    // Ωr == null ? void 0 : (...)
+                    const conditional = this.f.createConditionalExpression(
+                        this.f.createBinaryExpression(r, this.f.createToken(SyntaxKind.EqualsEqualsToken), this.f.createNull()),
+                        this.f.createToken(SyntaxKind.QuestionToken),
+                        this.f.createVoidZero(),
+                        this.f.createToken(SyntaxKind.ColonToken),
+                        assignAndCall,
+                    );
+
+                    // Mark this transformation for chain continuation handling
+                    const result = this.f.createParenthesizedExpression(this.f.createBinaryExpression(assignBase, this.f.createToken(SyntaxKind.CommaToken), conditional));
+                    (result as any).__optionalChainTransform = { tempVar: r, conditional };
+                    return result;
+                }
+
+                // Check for optional chaining in nested call expressions
+                // e.g. this.service?.getClient().method<T>()
+                if (isPropertyAccessExpression(node.expression) && isCallExpression(node.expression.expression) && this.expressionContainsOptionalChain(node.expression.expression)) {
+                    // The base call contains optional chaining
+                    // e.g. this.service?.getClient().method<T>()
+                    // Transform to: (Ωr = this.service?.getClient(), Ωr == null ? void 0 : (Ωr.method.Ω = [types], Ωr.method<T>()))
+                    const r = this.getTempResultIdentifier();
+                    const methodName = node.expression.name;
+                    const baseCall = node.expression.expression;
+
+                    // Ωr = this.service?.getClient()
+                    const assignBase = this.f.createBinaryExpression(r, this.f.createToken(SyntaxKind.EqualsToken), baseCall);
+
+                    // Ωr.method.Ω = types
+                    const assignTypes = this.f.createBinaryExpression(this.f.createPropertyAccessExpression(this.f.createPropertyAccessExpression(r, methodName), 'Ω'), this.f.createToken(SyntaxKind.EqualsToken), packedTypeExpr);
+
+                    // Ωr.method<T>() - regular call
+                    const regularCall = this.f.createCallExpression(this.f.createPropertyAccessExpression(r, methodName), node.typeArguments, node.arguments);
+
+                    // (Ωr.method.Ω = [types], Ωr.method<T>())
+                    const assignAndCall = this.f.createParenthesizedExpression(this.f.createBinaryExpression(assignTypes, this.f.createToken(SyntaxKind.CommaToken), regularCall));
+
+                    // Ωr == null ? void 0 : (...)
+                    const conditional = this.f.createConditionalExpression(
+                        this.f.createBinaryExpression(r, this.f.createToken(SyntaxKind.EqualsEqualsToken), this.f.createNull()),
+                        this.f.createToken(SyntaxKind.QuestionToken),
+                        this.f.createVoidZero(),
+                        this.f.createToken(SyntaxKind.ColonToken),
+                        assignAndCall,
+                    );
+
+                    // Mark this transformation for chain continuation handling
+                    const result = this.f.createParenthesizedExpression(this.f.createBinaryExpression(assignBase, this.f.createToken(SyntaxKind.CommaToken), conditional));
+                    (result as any).__optionalChainTransform = { tempVar: r, conditional };
+                    return result;
+                }
+
                 let container: Expression = this.f.createIdentifier('globalThis');
                 if (isIdentifier(node.expression)) {
                     container = node.expression;
@@ -806,11 +1085,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     container = node.expression;
                 }
 
-                const assignQ = this.f.createBinaryExpression(
-                    this.f.createPropertyAccessExpression(container, 'Ω'),
-                    this.f.createToken(SyntaxKind.EqualsToken),
-                    this.f.createArrayLiteralExpression(typeExpressions),
-                );
+                const assignQ = this.f.createBinaryExpression(this.f.createPropertyAccessExpression(container, 'Ω'), this.f.createToken(SyntaxKind.EqualsToken), packedTypeExpr);
 
                 const update: any = isNewExpression(node) ? this.f.updateNewExpression : this.f.updateCallExpression;
 
@@ -820,36 +1095,23 @@ export class ReflectionTransformer implements CustomTransformer {
                         //e.g. http.deep().response();
                         //change to (Ωr = http.deep(), Ωr.response.Ω = [], Ωr).response()
                         const r = this.getTempResultIdentifier();
-                        const assignQ = this.f.createBinaryExpression(
-                            this.f.createPropertyAccessExpression(
-                                this.f.createPropertyAccessExpression(r, node.expression.name),
-                                'Ω',
-                            ),
-                            this.f.createToken(SyntaxKind.EqualsToken),
-                            this.f.createArrayLiteralExpression(typeExpressions),
-                        );
+                        const assignQ = this.f.createBinaryExpression(this.f.createPropertyAccessExpression(this.f.createPropertyAccessExpression(r, node.expression.name), 'Ω'), this.f.createToken(SyntaxKind.EqualsToken), packedTypeExpr);
 
-                        return update(node,
+                        return update(
+                            node,
                             this.f.createPropertyAccessExpression(
-                                this.f.createParenthesizedExpression(this.f.createBinaryExpression(
+                                this.f.createParenthesizedExpression(
                                     this.f.createBinaryExpression(
-                                        this.f.createBinaryExpression(
-                                            r,
-                                            this.f.createToken(ts.SyntaxKind.EqualsToken),
-                                            node.expression.expression,
-                                        ),
+                                        this.f.createBinaryExpression(this.f.createBinaryExpression(r, this.f.createToken(ts.SyntaxKind.EqualsToken), node.expression.expression), this.f.createToken(ts.SyntaxKind.CommaToken), assignQ),
                                         this.f.createToken(ts.SyntaxKind.CommaToken),
-                                        assignQ,
+                                        r,
                                     ),
-                                    this.f.createToken(ts.SyntaxKind.CommaToken),
-                                    r,
-                                )),
+                                ),
                                 node.expression.name,
                             ),
                             node.typeArguments,
                             node.arguments,
                         );
-
                     } else if (isParenthesizedExpression(node.expression.expression)) {
                         //e.g. (http.deep()).response();
                         //only work necessary when `http.deep()` is using type args and was converted to:
@@ -860,14 +1122,7 @@ export class ReflectionTransformer implements CustomTransformer {
                         //(r = (obj.method.Ω = [['a']], obj.method()), obj.method.Ω = [['b']], r).method());
 
                         const r = this.getTempResultIdentifier();
-                        const assignQ = this.f.createBinaryExpression(
-                            this.f.createPropertyAccessExpression(
-                                this.f.createPropertyAccessExpression(r, node.expression.name),
-                                'Ω',
-                            ),
-                            this.f.createToken(SyntaxKind.EqualsToken),
-                            this.f.createArrayLiteralExpression(typeExpressions),
-                        );
+                        const assignQ = this.f.createBinaryExpression(this.f.createPropertyAccessExpression(this.f.createPropertyAccessExpression(r, node.expression.name), 'Ω'), this.f.createToken(SyntaxKind.EqualsToken), packedTypeExpr);
 
                         const updatedNode = update(
                             node,
@@ -876,15 +1131,7 @@ export class ReflectionTransformer implements CustomTransformer {
                                 this.f.updateParenthesizedExpression(
                                     node.expression.expression,
                                     this.f.createBinaryExpression(
-                                        this.f.createBinaryExpression(
-                                            this.f.createBinaryExpression(
-                                                r,
-                                                this.f.createToken(SyntaxKind.EqualsToken),
-                                                node.expression.expression.expression,
-                                            ),
-                                            this.f.createToken(SyntaxKind.CommaToken),
-                                            assignQ,
-                                        ),
+                                        this.f.createBinaryExpression(this.f.createBinaryExpression(r, this.f.createToken(SyntaxKind.EqualsToken), node.expression.expression.expression), this.f.createToken(SyntaxKind.CommaToken), assignQ),
                                         this.f.createToken(SyntaxKind.CommaToken),
                                         r,
                                     ),
@@ -903,11 +1150,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
 
                 //(fn.Ω = [], call())
-                return this.f.createParenthesizedExpression(this.f.createBinaryExpression(
-                    assignQ,
-                    this.f.createToken(SyntaxKind.CommaToken),
-                    node,
-                ));
+                return this.f.createParenthesizedExpression(this.f.createBinaryExpression(assignQ, this.f.createToken(SyntaxKind.CommaToken), node));
             }
 
             return node;
@@ -947,7 +1190,7 @@ export class ReflectionTransformer implements CustomTransformer {
         const compileDeclarations = (node: Node): any => {
             node = visitEachChild(node, compileDeclarations, this.context);
 
-            if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node) || isEnumDeclaration(node))) {
+            if (isTypeAliasDeclaration(node) || isInterfaceDeclaration(node) || isEnumDeclaration(node)) {
                 const d = this.compileDeclarations.get(node);
                 if (!d) {
                     return node;
@@ -980,44 +1223,32 @@ export class ReflectionTransformer implements CustomTransformer {
 
             for (const [importDeclaration, identifiers] of importMap.entries()) {
                 if (this.additionalImports.has(importDeclaration)) {
-                    throw new Error('Internal error: additional import already exists');
+                    throw new TypeCompilerError('DK-TC004', 'Internal error: additional import already exists');
                 }
                 if (this.getModuleType() === 'cjs') {
                     // var {a, b, c} = require('./bar')
                     const varDeclaration = this.f.createVariableStatement(
                         undefined,
                         this.f.createVariableDeclarationList(
-                            [this.f.createVariableDeclaration(
-                                this.f.createObjectBindingPattern(identifiers.map(identifier => this.f.createBindingElement(
-                                    undefined, undefined, identifier, undefined
-                                ))),
-                                undefined,
-                                undefined,
-                                this.f.createCallExpression(this.f.createIdentifier("require"), undefined, [importDeclaration.moduleSpecifier])
-                            )],
-                            ts.NodeFlags.None
-                        )
+                            [
+                                this.f.createVariableDeclaration(
+                                    this.f.createObjectBindingPattern(identifiers.map(identifier => this.f.createBindingElement(undefined, undefined, identifier, undefined))),
+                                    undefined,
+                                    undefined,
+                                    this.f.createCallExpression(this.f.createIdentifier('require'), undefined, [importDeclaration.moduleSpecifier]),
+                                ),
+                            ],
+                            ts.NodeFlags.None,
+                        ),
                     );
 
-                    const typeDeclWithComment = addSyntheticLeadingComment(
-                        varDeclaration,
-                        SyntaxKind.MultiLineCommentTrivia,
-                        '@ts-ignore',
-                        true,
-                    );
+                    const typeDeclWithComment = addSyntheticLeadingComment(varDeclaration, SyntaxKind.MultiLineCommentTrivia, '@ts-ignore', true);
                     this.additionalImports.set(importDeclaration, typeDeclWithComment);
                 } else {
                     // import {a, b, c} from './bar.js'
                     const namedImports = this.f.createNamedImports(identifiers.map(identifier => this.f.createImportSpecifier(false, undefined, identifier)));
-                    const importStatement = this.f.createImportDeclaration(undefined,
-                        this.f.createImportClause(false, undefined, namedImports), importDeclaration.moduleSpecifier,
-                    );
-                    const typeDeclWithComment = addSyntheticLeadingComment(
-                        importStatement,
-                        SyntaxKind.MultiLineCommentTrivia,
-                        '@ts-ignore',
-                        true,
-                    );
+                    const importStatement = this.f.createImportDeclaration(undefined, this.f.createImportClause(false, undefined, namedImports), importDeclaration.moduleSpecifier);
+                    const typeDeclWithComment = addSyntheticLeadingComment(importStatement, SyntaxKind.MultiLineCommentTrivia, '@ts-ignore', true);
                     this.additionalImports.set(importDeclaration, typeDeclWithComment);
                 }
             }
@@ -1050,14 +1281,9 @@ export class ReflectionTransformer implements CustomTransformer {
                 undefined, //this.f.createKeywordTypeNode(SyntaxKind.AnyKeyword),
                 this.f.createBlock(
                     [
-                        this.f.createExpressionStatement(this.f.createBinaryExpression(
-                            this.f.createPropertyAccessExpression(
-                                this.f.createIdentifier('fn'),
-                                this.f.createIdentifier('__type'),
-                            ),
-                            this.f.createToken(SyntaxKind.EqualsToken),
-                            this.f.createIdentifier('args'),
-                        )),
+                        this.f.createExpressionStatement(
+                            this.f.createBinaryExpression(this.f.createPropertyAccessExpression(this.f.createIdentifier('fn'), this.f.createIdentifier('__type')), this.f.createToken(SyntaxKind.EqualsToken), this.f.createIdentifier('args')),
+                        ),
                         this.f.createReturnStatement(this.f.createIdentifier('fn')),
                     ],
                     true,
@@ -1067,32 +1293,22 @@ export class ReflectionTransformer implements CustomTransformer {
         }
 
         if (this.tempResultIdentifier) {
-            newTopStatements.push(
-                this.f.createVariableStatement(
-                    undefined,
-                    this.f.createVariableDeclarationList(
-                        [this.f.createVariableDeclaration(
-                            this.tempResultIdentifier,
-                            undefined,
-                            undefined,
-                            undefined,
-                        )],
-                        ts.NodeFlags.None,
-                    ),
-                ),
-            );
+            newTopStatements.push(this.f.createVariableStatement(undefined, this.f.createVariableDeclarationList([this.f.createVariableDeclaration(this.tempResultIdentifier, undefined, undefined, undefined)], ts.NodeFlags.None)));
+        }
+
+        // Add hoisted function __type assignments
+        // This allows ReflectionFunction.from(fn) to work when called before the function declaration
+        if (this.functionTypeAssignments.length > 0) {
+            newTopStatements.push(...this.functionTypeAssignments);
         }
 
         // we want to keep "use strict", or "use client", etc at the very top
         const indexOfFirstLiteralExpression = this.sourceFile.statements.findIndex(v => isExpressionStatement(v) && isStringLiteral(v.expression));
 
-        const newStatements = indexOfFirstLiteralExpression === -1
-            ? [...newTopStatements, ...this.attachAdditionalStatements(this.sourceFile.statements)]
-            : [
-                ...this.sourceFile.statements.slice(0, indexOfFirstLiteralExpression + 1),
-                ...newTopStatements,
-                ...this.attachAdditionalStatements(this.sourceFile.statements.slice(indexOfFirstLiteralExpression + 1)),
-            ];
+        const newStatements =
+            indexOfFirstLiteralExpression === -1
+                ? [...newTopStatements, ...this.attachAdditionalStatements(this.sourceFile.statements)]
+                : [...this.sourceFile.statements.slice(0, indexOfFirstLiteralExpression + 1), ...newTopStatements, ...this.attachAdditionalStatements(this.sourceFile.statements.slice(indexOfFirstLiteralExpression + 1))];
         this.sourceFile = this.f.updateSourceFile(this.sourceFile, newStatements);
 
         // console.log(createPrinter().printNode(EmitHint.SourceFile, this.sourceFile, this.sourceFile));
@@ -1112,6 +1328,24 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
             }
             result.push(statement);
+            // Add __Ω re-exports after the original export declaration
+            if (isExportDeclaration(statement)) {
+                const pending = this.pendingReExports.find(p => p.exportDeclaration === statement);
+                if (pending && pending.symbols.length > 0) {
+                    // Create: export { __ΩX, __ΩY as __ΩZ } from './module'
+                    const exportSpecifiers = pending.symbols.map(sym => {
+                        const originalOmegaName = '__Ω' + sym.originalName;
+                        const exportedOmegaName = '__Ω' + sym.exportedName;
+                        if (originalOmegaName === exportedOmegaName) {
+                            return this.f.createExportSpecifier(false, undefined, this.f.createIdentifier(exportedOmegaName));
+                        } else {
+                            return this.f.createExportSpecifier(false, this.f.createIdentifier(originalOmegaName), this.f.createIdentifier(exportedOmegaName));
+                        }
+                    });
+                    const reExportDeclaration = this.f.createExportDeclaration(undefined, false, this.f.createNamedExports(exportSpecifiers), statement.moduleSpecifier);
+                    result.push(reExportDeclaration);
+                }
+            }
         }
         return result;
     }
@@ -1150,6 +1384,250 @@ export class ReflectionTransformer implements CustomTransformer {
         return;
     }
 
+    /**
+     * Cache for resolved ReceiveType info, keyed by declaration node.
+     * false means "resolved but no ReceiveType params found".
+     */
+    protected receiveTypeInfoCache = new Map<Node, ReceiveTypeInfo | false>();
+
+    /**
+     * Resolve a value identifier to its declaration node by walking scope chains,
+     * similar to resolveDeclaration but for value-space identifiers (not type names).
+     * Follows imports to their source declarations in other files.
+     */
+    protected resolveValueDeclaration(identifier: Identifier): Node | undefined {
+        let current: Node = identifier.parent;
+        const name = getIdentifierName(identifier) as __String;
+
+        let declaration: Node | undefined = undefined;
+
+        while (current) {
+            if (isNodeWithLocals(current) && current.locals) {
+                const found = current.locals.get(name);
+                if (found && found.declarations && found.declarations[0]) {
+                    if (!isParameter(found.declarations[0])) {
+                        declaration = found.declarations[0];
+                        break;
+                    }
+                }
+            }
+            if (current.kind === SyntaxKind.SourceFile) break;
+            current = current.parent;
+        }
+
+        if (!declaration) return undefined;
+
+        // Follow imports to their source declaration, same as resolveDeclaration
+        let importDeclaration: ImportDeclaration | JSDocImportTag | undefined = undefined;
+
+        if (isImportSpecifier(declaration)) {
+            importDeclaration = declaration.parent.parent.parent as ImportDeclaration;
+        } else if (isImportDeclaration(declaration)) {
+            importDeclaration = declaration;
+        } else if (isImportClause(declaration)) {
+            importDeclaration = declaration.parent;
+        }
+
+        if (importDeclaration) {
+            declaration = this.resolveImportSpecifier(name as string, importDeclaration, this.sourceFile);
+            if (!declaration) return undefined;
+        }
+
+        return declaration;
+    }
+
+    /**
+     * Given a function/method/constructor declaration, extract ReceiveType mapping.
+     * Uses cache to avoid re-scanning the same declaration.
+     * Returns the ReceiveTypeInfo if ReceiveType params exist, or false if resolved but none found.
+     */
+    protected getReceiveTypeInfoFromDecl(decl: Node, typeParameters: readonly TypeParameterDeclaration[] | undefined, parameters: readonly ts.ParameterDeclaration[]): ReceiveTypeInfo | false {
+        const cached = this.receiveTypeInfoCache.get(decl);
+        if (cached !== undefined) return cached;
+
+        const info = extractReceiveTypeMapping(typeParameters, parameters);
+        const result = info || false;
+        this.receiveTypeInfoCache.set(decl, result);
+        return result;
+    }
+
+    /**
+     * Convert a ReceiveTypeInfo|false from getReceiveTypeInfoFromDecl to a CallReceiveTypeResult.
+     */
+    protected toCallResult(result: ReceiveTypeInfo | false): CallReceiveTypeResult {
+        if (result === false) return { kind: 'skip' };
+        return { kind: 'direct', info: result };
+    }
+
+    /**
+     * Try to resolve a call/new expression's target to extract ReceiveType parameter info.
+     * Returns:
+     *   - { kind: 'direct', info } → has ReceiveType params, pass directly as arguments
+     *   - { kind: 'skip' } → resolved, no ReceiveType params, skip Ω entirely
+     *   - undefined → can't resolve target, fall back to Ω
+     */
+    protected resolveCallReceiveTypeInfo(node: CallExpression | NewExpression): CallReceiveTypeResult | undefined {
+        const expression = node.expression;
+
+        // Case 1: Simple identifier call — fn<T>(args) or new Cls<T>(args)
+        if (isIdentifier(expression)) {
+            const decl = this.resolveValueDeclaration(expression);
+            if (!decl) return undefined;
+
+            // FunctionDeclaration: function fn<T>(type: ReceiveType<T>) {}
+            if (isFunctionDeclaration(decl)) {
+                if (!decl.typeParameters) return { kind: 'skip' };
+                return this.toCallResult(this.getReceiveTypeInfoFromDecl(decl, decl.typeParameters, decl.parameters));
+            }
+
+            // VariableDeclaration: const fn = <T>(type: ReceiveType<T>) => {}
+            if (isVariableDeclaration(decl) && decl.parent && decl.parent.flags & NodeFlags.Const) {
+                let init = decl.initializer;
+                if (!init) return undefined;
+
+                // Unwrap __assignType(fn, ...) wrapper
+                const unwrapped = getAssignTypeExpression(init);
+                if (unwrapped) init = unwrapped;
+
+                // Unwrap parenthesized expression
+                while (isParenthesizedExpression(init)) init = init.expression;
+
+                if (isArrowFunction(init)) {
+                    if (!init.typeParameters) return { kind: 'skip' };
+                    return this.toCallResult(this.getReceiveTypeInfoFromDecl(init, init.typeParameters, init.parameters));
+                }
+                if (isFunctionExpression(init)) {
+                    if (!init.typeParameters) return { kind: 'skip' };
+                    return this.toCallResult(this.getReceiveTypeInfoFromDecl(init, init.typeParameters, init.parameters));
+                }
+
+                // For new expressions: const Cls is a class declaration
+                if (isNewExpression(node)) {
+                    if (isClassExpression(init)) {
+                        const ctor = init.members.find(isConstructorDeclaration);
+                        if (ctor && init.typeParameters) {
+                            return this.toCallResult(this.getReceiveTypeInfoFromDecl(init, init.typeParameters, ctor.parameters));
+                        }
+                        return { kind: 'skip' };
+                    }
+                }
+                return undefined;
+            }
+
+            // ClassDeclaration: new Cls<T>(args) — resolve constructor
+            if (isNewExpression(node) && isClassDeclaration(decl)) {
+                if (!decl.typeParameters) return { kind: 'skip' };
+                const ctor = decl.members.find(isConstructorDeclaration);
+                if (ctor) {
+                    return this.toCallResult(this.getReceiveTypeInfoFromDecl(decl, decl.typeParameters, ctor.parameters));
+                }
+                return { kind: 'skip' };
+            }
+
+            // FunctionDeclaration without type params (call with explicit type args but function doesn't use them)
+            if (isFunctionDeclaration(decl)) return { kind: 'skip' };
+
+            return undefined;
+        }
+
+        // Case 2: Property access — this.method<T>() or obj.method<T>()
+        if (isPropertyAccessExpression(expression) && isIdentifier(expression.name)) {
+            const methodName = getIdentifierName(expression.name);
+            const obj = expression.expression;
+
+            // this.method<T>() — walk up to enclosing class
+            if (obj.kind === SyntaxKind.ThisKeyword) {
+                let parent: Node = node;
+                while (parent) {
+                    if (isClassDeclaration(parent) || isClassExpression(parent)) {
+                        const method = parent.members.find(m => isMethodDeclaration(m) && isIdentifier(m.name) && getIdentifierName(m.name) === methodName) as MethodDeclaration | undefined;
+                        if (method) {
+                            if (!method.typeParameters) return { kind: 'skip' };
+                            return this.toCallResult(this.getReceiveTypeInfoFromDecl(method, method.typeParameters, method.parameters));
+                        }
+                        return undefined;
+                    }
+                    parent = parent.parent;
+                }
+                return undefined;
+            }
+
+            // obj.method<T>() — resolve obj to const variable, then find class/type
+            if (isIdentifier(obj)) {
+                const decl = this.resolveValueDeclaration(obj);
+                if (!decl || !isVariableDeclaration(decl) || !decl.parent || !(decl.parent.flags & NodeFlags.Const)) return undefined;
+
+                // Check initializer for `new ClassName()` or object literal
+                const init = decl.initializer;
+                if (init && isNewExpression(init) && isIdentifier(init.expression)) {
+                    // obj = new SomeClass() — resolve SomeClass and find method
+                    const classDecl = this.resolveValueDeclaration(init.expression);
+                    if (classDecl && isClassDeclaration(classDecl)) {
+                        const method = classDecl.members.find(m => isMethodDeclaration(m) && isIdentifier(m.name) && getIdentifierName(m.name) === methodName) as MethodDeclaration | undefined;
+                        if (method) {
+                            if (!method.typeParameters) return { kind: 'skip' };
+                            return this.toCallResult(this.getReceiveTypeInfoFromDecl(method, method.typeParameters, method.parameters));
+                        }
+                    }
+                    return undefined;
+                }
+
+                // Object literal: const obj = { method: <T>(type: ReceiveType<T>) => {} }
+                if (init && isObjectLiteralExpression(init)) {
+                    for (const prop of init.properties) {
+                        if (!isPropertyAssignment(prop)) continue;
+                        if (!isIdentifier(prop.name) || getIdentifierName(prop.name) !== methodName) continue;
+                        let propInit = prop.initializer;
+                        // Unwrap __assignType
+                        const unwrapped = getAssignTypeExpression(propInit);
+                        if (unwrapped) propInit = unwrapped;
+                        while (isParenthesizedExpression(propInit)) propInit = propInit.expression;
+
+                        if (isArrowFunction(propInit) || isFunctionExpression(propInit)) {
+                            if (!propInit.typeParameters) return { kind: 'skip' };
+                            return this.toCallResult(this.getReceiveTypeInfoFromDecl(propInit, propInit.typeParameters, propInit.parameters));
+                        }
+                    }
+                    return undefined;
+                }
+
+                return undefined;
+            }
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Build args array with type expressions placed at their ReceiveType parameter positions.
+     * Pads with void 0 for any gaps between existing args and the ReceiveType param position.
+     * Never overwrites an argument the user already provided — if a ReceiveType param position
+     * already has an explicit arg (e.g. `get<T>(token)` where token is ReceiveType<T> | Token<T>),
+     * the type goes in the next empty slot or we fall back to Ω.
+     */
+    protected buildDirectPassingArgs(existingArgs: NodeArray<Expression>, typeExpressions: Expression[], info: ReceiveTypeInfo): Expression[] | undefined {
+        const args: Expression[] = [...existingArgs];
+
+        for (const [typeArgIdx, paramIdx] of info.typeArgToParamIndex) {
+            if (typeArgIdx >= typeExpressions.length) continue;
+
+            // If the user already passed an argument at this position, we can't place the type here.
+            // Fall back to Ω for this call.
+            if (paramIdx < existingArgs.length) {
+                return undefined;
+            }
+
+            // Pad with void 0 up to paramIdx
+            while (args.length < paramIdx) {
+                args.push(this.f.createVoidZero());
+            }
+
+            args[paramIdx] = typeExpressions[typeArgIdx];
+        }
+
+        return args;
+    }
+
     protected injectResetΩ<T extends FunctionDeclaration | FunctionExpression | MethodDeclaration | ConstructorDeclaration | ArrowFunction>(node: T): T {
         let hasReceiveType = false;
         for (const param of node.parameters) {
@@ -1170,14 +1648,9 @@ export class ReflectionTransformer implements CustomTransformer {
             container = this.f.createPropertyAccessExpression(this.f.createIdentifier('this'), 'constructor');
         }
 
-        const reset: Statement = this.f.createExpressionStatement(this.f.createBinaryExpression(
-            this.f.createPropertyAccessExpression(
-                container,
-                this.f.createIdentifier('Ω'),
-            ),
-            this.f.createToken(ts.SyntaxKind.EqualsToken),
-            this.f.createIdentifier('undefined'),
-        ));
+        const reset: Statement = this.f.createExpressionStatement(
+            this.f.createBinaryExpression(this.f.createPropertyAccessExpression(container, this.f.createIdentifier('Ω')), this.f.createToken(ts.SyntaxKind.EqualsToken), this.f.createIdentifier('undefined')),
+        );
 
         // convert expression into statements array
         let body = node.body && isBlock(node.body) ? node.body : undefined;
@@ -1192,14 +1665,11 @@ export class ReflectionTransformer implements CustomTransformer {
         if (isArrowFunction(node)) {
             return this.f.updateArrowFunction(node, node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, body as ConciseBody) as T;
         } else if (isFunctionDeclaration(node)) {
-            return this.f.updateFunctionDeclaration(node, node.modifiers, node.asteriskToken, node.name,
-                node.typeParameters, node.parameters, node.type, body) as T;
+            return this.f.updateFunctionDeclaration(node, node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, body) as T;
         } else if (isFunctionExpression(node)) {
-            return this.f.updateFunctionExpression(node, node.modifiers, node.asteriskToken, node.name,
-                node.typeParameters, node.parameters, node.type, body || node.body) as T;
+            return this.f.updateFunctionExpression(node, node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, body || node.body) as T;
         } else if (isMethodDeclaration(node)) {
-            return this.f.updateMethodDeclaration(node, node.modifiers as ReadonlyArray<Modifier>, node.asteriskToken, node.name,
-                node.questionToken, node.typeParameters, node.parameters, node.type, body) as T;
+            return this.f.updateMethodDeclaration(node, node.modifiers as ReadonlyArray<Modifier>, node.asteriskToken, node.name, node.questionToken, node.typeParameters, node.parameters, node.type, body) as T;
         } else if (isConstructorDeclaration(node)) {
             return this.f.updateConstructorDeclaration(node, node.modifiers, node.parameters, body) as T;
         }
@@ -1227,17 +1697,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
         const typeProgramExpression = this.packOpsAndStack(typeProgram);
 
-        const variable = this.f.createVariableStatement(
-            [],
-            this.f.createVariableDeclarationList([
-                this.f.createVariableDeclaration(
-                    this.getDeclarationVariableName(name),
-                    undefined,
-                    undefined,
-                    typeProgramExpression,
-                ),
-            ], NodeFlags.Const),
-        );
+        const variable = this.f.createVariableStatement([], this.f.createVariableDeclarationList([this.f.createVariableDeclaration(this.getDeclarationVariableName(name), undefined, undefined, typeProgramExpression)], NodeFlags.Const));
 
         //when its commonJS, the `variable` would be exported as `exports.$name = $value`, but all references point just to $name.
         //so the idea is, that we create a normal variable and export it via `export {$name}`.
@@ -1245,9 +1705,7 @@ export class ReflectionTransformer implements CustomTransformer {
             //propertyName in ExportSpecifier is set to avoid a TS compile error:
             // TypeError: Cannot read properties of undefined (reading 'escapedText')
             //   at Object.idText (/Users/marc/bude/deepkit-framework/packages/benchmark/node_modules/typescript/lib/typescript.js:11875:67)
-            const exportNode = this.f.createExportDeclaration(undefined, false, this.f.createNamedExports([
-                this.f.createExportSpecifier(false, this.getDeclarationVariableName(name), this.getDeclarationVariableName(name)),
-            ]));
+            const exportNode = this.f.createExportDeclaration(undefined, false, this.f.createNamedExports([this.f.createExportSpecifier(false, this.getDeclarationVariableName(name), this.getDeclarationVariableName(name))]));
             return [variable, exportNode];
         }
 
@@ -1287,18 +1745,18 @@ export class ReflectionTransformer implements CustomTransformer {
                 const call = node as NewExpression;
                 if (isIdentifier(call.expression)) {
                     const map: { [name: string]: ReflectionOp } = {
-                        'Date': ReflectionOp.date,
-                        'RegExp': ReflectionOp.regexp,
-                        'Uint8Array': ReflectionOp.uint8Array,
-                        'Uint8ClampedArray': ReflectionOp.uint8ClampedArray,
-                        'Uint16Array': ReflectionOp.uint16Array,
-                        'Uint32Array': ReflectionOp.uint32Array,
-                        'Int8Array': ReflectionOp.int8Array,
-                        'Int16Array': ReflectionOp.int16Array,
-                        'Int32Array': ReflectionOp.int32Array,
-                        'Float32Array': ReflectionOp.float32Array,
-                        'Float64Array': ReflectionOp.float64Array,
-                        'ArrayBuffer': ReflectionOp.arrayBuffer,
+                        Date: ReflectionOp.date,
+                        RegExp: ReflectionOp.regexp,
+                        Uint8Array: ReflectionOp.uint8Array,
+                        Uint8ClampedArray: ReflectionOp.uint8ClampedArray,
+                        Uint16Array: ReflectionOp.uint16Array,
+                        Uint32Array: ReflectionOp.uint32Array,
+                        Int8Array: ReflectionOp.int8Array,
+                        Int16Array: ReflectionOp.int16Array,
+                        Int32Array: ReflectionOp.int32Array,
+                        Float32Array: ReflectionOp.float32Array,
+                        Float64Array: ReflectionOp.float64Array,
+                        ArrayBuffer: ReflectionOp.arrayBuffer,
                     };
                     const op = map[getIdentifierName(call.expression)];
                     if (op) {
@@ -1403,9 +1861,7 @@ export class ReflectionTransformer implements CustomTransformer {
                                             this.extractPackStructOfType(typeArgument, program);
                                         }
                                     }
-                                    const index = program.pushStack(
-                                        this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.nodeConverter.toExpression(extendType.expression)),
-                                    );
+                                    const index = program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, this.nodeConverter.toExpression(extendType.expression)));
                                     program.pushOp(ReflectionOp.classReference, index);
                                     program.popFrameImplicit();
                                 }
@@ -1664,10 +2120,10 @@ export class ReflectionTransformer implements CustomTransformer {
 
                 if (narrowed.initializer) {
                     //important to use Function, since it will be called using a different `this`
-                    program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(
-                        this.f.createFunctionExpression(undefined, undefined, undefined, undefined, undefined, undefined,
-                            this.f.createBlock([this.f.createReturnStatement(narrowed.initializer)])),
-                    ));
+                    program.pushOp(
+                        ReflectionOp.defaultValue,
+                        program.findOrAddStackEntry(this.f.createFunctionExpression(undefined, undefined, undefined, undefined, undefined, undefined, this.f.createBlock([this.f.createReturnStatement(narrowed.initializer)]))),
+                    );
                 }
 
                 const description = extractJSDocAttribute(this.sourceFile, narrowed, 'description');
@@ -1682,8 +2138,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 // Depending on whether this a distributive conditional type or not, it has to be moved to its own function
                 // my understanding of when a distributive conditional type is used is:
                 // 1. the `checkType` is a simple identifier (just `T`, no `[T]`, no `T | x`, no `{a: T}`, etc)
-                const distributiveOverIdentifier: Identifier | undefined = isTypeReferenceNode(narrowed.checkType) && isIdentifier(narrowed.checkType.typeName)
-                    ? narrowed.checkType.typeName : undefined;
+                const distributiveOverIdentifier: Identifier | undefined = isTypeReferenceNode(narrowed.checkType) && isIdentifier(narrowed.checkType.typeName) ? narrowed.checkType.typeName : undefined;
 
                 if (distributiveOverIdentifier) {
                     program.pushFrame();
@@ -1731,7 +2186,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     if (!variable) {
                         program.pushVariable(typeParameterName, frame);
                         variable = program.findVariable(typeParameterName);
-                        if (!variable) throw new Error('Could not find inserted infer variable');
+                        if (!variable) throw new TypeCompilerError('DK-TC005', 'Could not find inserted infer variable');
                     }
                     program.pushOp(ReflectionOp.infer, variable.frameOffset, variable.stackIndex);
                 } else {
@@ -1750,8 +2205,17 @@ export class ReflectionTransformer implements CustomTransformer {
             case SyntaxKind.CallSignature:
             case SyntaxKind.FunctionDeclaration: {
                 //TypeScript does not narrow types down
-                const narrowed = node as MethodSignature | MethodDeclaration | CallSignatureDeclaration | ConstructorTypeNode
-                    | ConstructSignatureDeclaration | ConstructorDeclaration | ArrowFunction | FunctionExpression | FunctionTypeNode | FunctionDeclaration;
+                const narrowed = node as
+                    | MethodSignature
+                    | MethodDeclaration
+                    | CallSignatureDeclaration
+                    | ConstructorTypeNode
+                    | ConstructSignatureDeclaration
+                    | ConstructorDeclaration
+                    | ArrowFunction
+                    | FunctionExpression
+                    | FunctionTypeNode
+                    | FunctionDeclaration;
 
                 // if the function was explicitly marked as `@reflection no`, we ignore it
                 if (false === this.getExplicitReflectionMode(program.sourceFile, narrowed)) {
@@ -1759,9 +2223,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     return;
                 }
 
-                const name = isCallSignatureDeclaration(node)
-                    ? '' : isConstructorTypeNode(narrowed) || isConstructSignatureDeclaration(node)
-                        ? 'new' : isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
+                const name = isCallSignatureDeclaration(node) ? '' : isConstructorTypeNode(narrowed) || isConstructSignatureDeclaration(node) ? 'new' : isConstructorDeclaration(narrowed) ? 'constructor' : getPropertyName(this.f, narrowed.name);
                 if (!narrowed.type && narrowed.parameters.length === 0 && !name) return;
 
                 program.pushFrame();
@@ -1769,8 +2231,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     const parameter = narrowed.parameters[i];
                     const parameterName = isIdentifier(parameter.name) ? getNameAsString(parameter.name) : 'param' + i;
 
-                    const type = parameter.type
-                        ? (parameter.dotDotDotToken && isArrayTypeNode(parameter.type) ? parameter.type.elementType : parameter.type) : undefined;
+                    const type = parameter.type ? (parameter.dotDotDotToken && isArrayTypeNode(parameter.type) ? parameter.type.elementType : parameter.type) : undefined;
 
                     if (type) {
                         this.extractPackStructOfType(type, program);
@@ -1792,10 +2253,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     const description = extractJSDocAttribute(this.sourceFile, parameter, 'description');
                     if (description) program.pushOp(ReflectionOp.description, program.findOrAddStackEntry(description));
                     if (parameter.initializer && parameter.type && !getReceiveTypeParameter(parameter.type)) {
-                        program.pushOp(
-                            ReflectionOp.defaultValue,
-                            program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, parameter.initializer)),
-                        );
+                        program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, parameter.initializer)));
                     }
                 }
 
@@ -1806,11 +2264,14 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
 
                 program.pushOp(
-                    isCallSignatureDeclaration(node) ? ReflectionOp.callSignature :
-                        isMethodSignature(narrowed) || isConstructSignatureDeclaration(narrowed)
-                            ? ReflectionOp.methodSignature
-                            : isMethodDeclaration(narrowed) || isConstructorDeclaration(narrowed)
-                                ? ReflectionOp.method : ReflectionOp.function, program.findOrAddStackEntry(name),
+                    isCallSignatureDeclaration(node)
+                        ? ReflectionOp.callSignature
+                        : isMethodSignature(narrowed) || isConstructSignatureDeclaration(narrowed)
+                          ? ReflectionOp.methodSignature
+                          : isMethodDeclaration(narrowed) || isConstructorDeclaration(narrowed)
+                            ? ReflectionOp.method
+                            : ReflectionOp.function,
+                    program.findOrAddStackEntry(name),
                 );
 
                 if ((isMethodSignature(narrowed) || isMethodDeclaration(narrowed)) && narrowed.questionToken) {
@@ -1890,10 +2351,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     const name = getPropertyName(this.f, type.name);
                     program.pushOp(ReflectionOp.enumMember, program.findOrAddStackEntry(name));
                     if (type.initializer) {
-                        program.pushOp(
-                            ReflectionOp.defaultValue,
-                            program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, type.initializer)),
-                        );
+                        program.pushOp(ReflectionOp.defaultValue, program.findOrAddStackEntry(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, type.initializer)));
                     }
                 }
                 program.pushOp(ReflectionOp.enum);
@@ -2006,10 +2464,10 @@ export class ReflectionTransformer implements CustomTransformer {
                 }
                 const name = getNameAsString(parent.name);
                 const mapping: Record<string, TypeIntrinsic> = {
-                    'Capitalize': TypeIntrinsic.Capitalize,
-                    'Uppercase': TypeIntrinsic.Uppercase,
-                    'Lowercase': TypeIntrinsic.Lowercase,
-                    'Uncapitalize': TypeIntrinsic.Uncapitalize,
+                    Capitalize: TypeIntrinsic.Capitalize,
+                    Uppercase: TypeIntrinsic.Uppercase,
+                    Lowercase: TypeIntrinsic.Lowercase,
+                    Uncapitalize: TypeIntrinsic.Uncapitalize,
                 };
                 const intrinsic = mapping[name];
                 if (intrinsic === undefined) {
@@ -2027,23 +2485,23 @@ export class ReflectionTransformer implements CustomTransformer {
     }
 
     protected knownClasses: { [name: string]: ReflectionOp } = {
-        'Int8Array': ReflectionOp.int8Array,
-        'Uint8Array': ReflectionOp.uint8Array,
-        'Uint8ClampedArray': ReflectionOp.uint8ClampedArray,
-        'Int16Array': ReflectionOp.int16Array,
-        'Uint16Array': ReflectionOp.uint16Array,
-        'Int32Array': ReflectionOp.int32Array,
-        'Uint32Array': ReflectionOp.uint32Array,
-        'Float32Array': ReflectionOp.float32Array,
-        'Float64Array': ReflectionOp.float64Array,
-        'ArrayBuffer': ReflectionOp.arrayBuffer,
-        'BigInt64Array': ReflectionOp.bigInt64Array,
-        'Date': ReflectionOp.date,
-        'RegExp': ReflectionOp.regexp,
-        'String': ReflectionOp.string,
-        'Number': ReflectionOp.number,
-        'BigInt': ReflectionOp.bigint,
-        'Boolean': ReflectionOp.boolean,
+        Int8Array: ReflectionOp.int8Array,
+        Uint8Array: ReflectionOp.uint8Array,
+        Uint8ClampedArray: ReflectionOp.uint8ClampedArray,
+        Int16Array: ReflectionOp.int16Array,
+        Uint16Array: ReflectionOp.uint16Array,
+        Int32Array: ReflectionOp.int32Array,
+        Uint32Array: ReflectionOp.uint32Array,
+        Float32Array: ReflectionOp.float32Array,
+        Float64Array: ReflectionOp.float64Array,
+        ArrayBuffer: ReflectionOp.arrayBuffer,
+        BigInt64Array: ReflectionOp.bigInt64Array,
+        Date: ReflectionOp.date,
+        RegExp: ReflectionOp.regexp,
+        String: ReflectionOp.string,
+        Number: ReflectionOp.number,
+        BigInt: ReflectionOp.bigint,
+        Boolean: ReflectionOp.boolean,
     };
 
     protected getGlobalLibs(): SourceFile[] {
@@ -2056,7 +2514,7 @@ export class ReflectionTransformer implements CustomTransformer {
         //currently knownLibFilesForCompilerOptions from @typescript/vfs doesn't return correct lib files for esnext,
         //so we switch here to es2022 if bigger than es2022.
         const options = { ...this.compilerOptions };
-        if (options.target && (options.target === ScriptTarget.ESNext)) {
+        if (options.target && options.target === ScriptTarget.ESNext) {
             options.target = ScriptTarget.ES2022;
         }
         const libs = knownLibFilesForCompilerOptions(options, ts);
@@ -2074,7 +2532,7 @@ export class ReflectionTransformer implements CustomTransformer {
      * This is a custom resolver based on populated `locals` from the binder. It uses a custom resolution algorithm since
      * we have no access to the binder/TypeChecker directly and instantiating a TypeChecker per file/transformer is incredible slow.
      */
-    protected resolveDeclaration(typeName: EntityName): { declaration: Node, importDeclaration?: ImportDeclaration | JSDocImportTag, typeOnly?: boolean } | void {
+    protected resolveDeclaration(typeName: EntityName): { declaration: Node; importDeclaration?: ImportDeclaration | JSDocImportTag; typeOnly?: boolean } | void {
         let current: Node = typeName.parent;
         if (typeName.kind === SyntaxKind.QualifiedName) return; //namespace access not supported yet, e.g. type a = Namespace.X;
 
@@ -2176,11 +2634,7 @@ export class ReflectionTransformer implements CustomTransformer {
     }
 
     protected extractPackStructOfTypeReference(type: Identifier | TypeReferenceNode | ExpressionWithTypeArguments, program: CompilerProgram): void {
-        const typeName: EntityName | undefined = isIdentifier(type)
-            ? type
-            : isTypeReferenceNode(type)
-                ? type.typeName
-                : (isIdentifier(type.expression) ? type.expression : undefined);
+        const typeName: EntityName | undefined = isIdentifier(type) ? type : isTypeReferenceNode(type) ? type.typeName : isIdentifier(type.expression) ? type.expression : undefined;
         const typeArguments: readonly TypeNode[] | undefined = isTypeReferenceNode(type) || isExpressionWithTypeArguments(type) ? type.typeArguments : undefined;
 
         if (!typeName) {
@@ -2239,9 +2693,7 @@ export class ReflectionTransformer implements CustomTransformer {
                                         program.pushOp(ReflectionOp.arg, program.pushStack(this.nodeConverter.toExpression(member.initializer)));
                                     } else if (lastExpression) {
                                         const exp = this.nodeConverter.toExpression(lastExpression);
-                                        program.pushOp(ReflectionOp.arg, program.pushStack(
-                                            this.f.createBinaryExpression(exp, SyntaxKind.PlusToken, this.nodeConverter.toExpression(indexValue)),
-                                        ));
+                                        program.pushOp(ReflectionOp.arg, program.pushStack(this.f.createBinaryExpression(exp, SyntaxKind.PlusToken, this.nodeConverter.toExpression(indexValue))));
                                     } else {
                                         program.pushOp(ReflectionOp.arg, program.pushStack(this.nodeConverter.toExpression(indexValue)));
                                     }
@@ -2289,10 +2741,7 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (isIdentifier(typeName)) ensureImportIsEmitted(resolved.importDeclaration, typeName);
 
                 //we can not infer from module declaration, so do `typeof T` in runtime
-                program.pushOp(
-                    ReflectionOp.typeof,
-                    program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, serializeEntityNameAsExpression(this.f, typeName))),
-                );
+                program.pushOp(ReflectionOp.typeof, program.pushStack(this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, serializeEntityNameAsExpression(this.f, typeName))));
             } else if (isTypeAliasDeclaration(declaration) || isInterfaceDeclaration(declaration) || isEnumDeclaration(declaration)) {
                 //Set/Map are interface declarations
                 const name = getNameAsString(typeName);
@@ -2371,11 +2820,7 @@ export class ReflectionTransformer implements CustomTransformer {
                                 // returns the index.d.ts file of the module, not the actual file where XY is exported.
                                 // this is necessary since we emit an additional import `import { __ΩXY } from 'my-module'`,
                                 // so we check if whatever file we get from resolve() actually exports __ΩXY.
-                                const resolverDecVariable = this.resolveImportSpecifier(
-                                    getEscapedText(runtimeTypeName),
-                                    resolved.importDeclaration,
-                                    this.sourceFile,
-                                );
+                                const resolverDecVariable = this.resolveImportSpecifier(getEscapedText(runtimeTypeName), resolved.importDeclaration, this.sourceFile);
 
                                 if (!resolverDecVariable) {
                                     debug2(`Symbol ${runtimeTypeName.escapedText} not found in ${declarationSourceFile.fileName}`);
@@ -2404,6 +2849,12 @@ export class ReflectionTransformer implements CustomTransformer {
                         }
                     } else {
                         //it's a reference type inside the same file. Make sure its type is reflected
+                        // Skip declare statements - they have no implementation to compile
+                        if (hasModifier(declaration, SyntaxKind.DeclareKeyword)) {
+                            this.resolveTypeOnlyImport(typeName, program);
+                            return;
+                        }
+
                         const reflection = this.isWithReflection(program.sourceFile, declaration);
                         if (!reflection) {
                             this.resolveTypeOnlyImport(typeName, program);
@@ -2417,9 +2868,7 @@ export class ReflectionTransformer implements CustomTransformer {
                     }
                 }
 
-                const index = program.pushStack(
-                    program.forNode === declaration ? 0 : this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, runtimeTypeName),
-                );
+                const index = program.pushStack(program.forNode === declaration ? 0 : this.f.createArrowFunction(undefined, undefined, [], undefined, undefined, runtimeTypeName));
                 if (typeArguments) {
                     for (const argument of typeArguments) {
                         this.extractPackStructOfType(argument, program);
@@ -2562,9 +3011,7 @@ export class ReflectionTransformer implements CustomTransformer {
 
     protected resolveTypeOnlyImport(entityName: EntityName, program: CompilerProgram) {
         program.pushOp(ReflectionOp.any);
-        const typeName = ts.isIdentifier(entityName)
-            ? getIdentifierName(entityName)
-            : getIdentifierName(entityName.right);
+        const typeName = ts.isIdentifier(entityName) ? getIdentifierName(entityName) : getIdentifierName(entityName.right);
         this.resolveTypeName(typeName, program);
     }
 
@@ -2576,13 +3023,13 @@ export class ReflectionTransformer implements CustomTransformer {
     protected resolveTypeParameter(declaration: TypeParameterDeclaration, type: Identifier | TypeReferenceNode | ExpressionWithTypeArguments, program: CompilerProgram) {
         //check if `type` was used in an expression. if so, we need to resolve it from runtime, otherwise we mark it as T
         const isUsedInFunction = isFunctionLike(declaration.parent);
-        const resolveRuntimeTypeParameter = (isUsedInFunction && program.isResolveFunctionParameters(declaration.parent)) || (this.needsToBeInferred(declaration, type));
+        const resolveRuntimeTypeParameter = (isUsedInFunction && program.isResolveFunctionParameters(declaration.parent)) || this.needsToBeInferred(declaration, type);
 
         if (resolveRuntimeTypeParameter) {
             //go through all parameters and look where `type.name.escapedText` is used (recursively).
             //go through all found parameters and replace `T` with `infer T` and embed its type in `typeof parameter extends Type<infer T> ? T : never`, if T is not directly used
             const argumentName = declaration.name.escapedText as string; //T
-            const foundUsers: { type: Node, parameterName: Identifier }[] = [];
+            const foundUsers: { type: Node; parameterName: Identifier }[] = [];
 
             if (isUsedInFunction) {
                 for (const parameter of (declaration.parent as SignatureDeclaration).parameters) {
@@ -2644,7 +3091,6 @@ export class ReflectionTransformer implements CustomTransformer {
                 if (foundUsers.length > 1) {
                     //todo: intersection end
                 }
-
             } else if (declaration.constraint) {
                 if (isUsedInFunction) program.resolveFunctionParametersIncrease(declaration.parent);
                 const constraint = getEffectiveConstraintOfTypeParameter(declaration);
@@ -2733,10 +3179,7 @@ export class ReflectionTransformer implements CustomTransformer {
                                         const declaration = found.declarations[0];
                                         if (declaration && isImportSpecifier(declaration)) {
                                             const importOrExport = declaration.parent.parent.parent;
-                                            const found = this.resolveImportSpecifier(
-                                                element.propertyName ? getEscapedText(element.propertyName) : declarationName,
-                                                importOrExport, sourceFile,
-                                            );
+                                            const found = this.resolveImportSpecifier(element.propertyName ? getEscapedText(element.propertyName) : declarationName, importOrExport, sourceFile);
                                             if (found) return found;
                                         } else if (declaration) {
                                         }
@@ -2763,6 +3206,47 @@ export class ReflectionTransformer implements CustomTransformer {
         return;
     }
 
+    /**
+     * Determines whether a named re-export should include the corresponding __Ω symbol.
+     *
+     * For `.ts` files: Check if the original symbol resolves to a type declaration
+     * (interface, type alias, enum, or class) - the compiler will generate __Ω for these.
+     *
+     * For `.d.ts` files: Check if the __Ω symbol is explicitly declared.
+     */
+    protected shouldReExportOmegaSymbol(originalName: string, exportDecl: ExportDeclaration, currentSourceFile: SourceFile): boolean {
+        // First, resolve the original symbol to see if it's a type declaration
+        const resolvedDeclaration = this.resolveImportSpecifier(originalName, exportDecl, currentSourceFile);
+        if (!resolvedDeclaration) return false;
+
+        // Get the source file where the symbol is defined
+        const declarationSourceFile = findSourceFile(resolvedDeclaration);
+        if (!declarationSourceFile) return false;
+
+        // If it's a .d.ts file, we need to check if __Ω is explicitly exported
+        if (declarationSourceFile.fileName.endsWith('.d.ts')) {
+            // The __Ω name needs to be escaped for lookup since TypeScript escapes
+            // identifiers starting with __ in the locals map
+            const omegaName = escapeLeadingUnderscores('__Ω' + originalName) as string;
+            const omegaDeclaration = this.resolveImportSpecifier(omegaName, exportDecl, currentSourceFile);
+            return !!omegaDeclaration;
+        }
+
+        // For .ts files, check if the resolved declaration is a type that will generate __Ω
+        if (isInterfaceDeclaration(resolvedDeclaration) || isTypeAliasDeclaration(resolvedDeclaration) || isEnumDeclaration(resolvedDeclaration) || isClassDeclaration(resolvedDeclaration)) {
+            // Check if the source file has reflection enabled
+            const reflection = this.getReflectionConfig(declarationSourceFile);
+            if (reflection.mode === 'never') return false;
+            // Also check explicit reflection mode on the declaration
+            const explicitMode = this.getExplicitReflectionMode(declarationSourceFile, resolvedDeclaration);
+            if (explicitMode === false) return false;
+            if (reflection.mode === 'explicit' && explicitMode !== true) return false;
+            return true;
+        }
+
+        return false;
+    }
+
     protected getTypeOfType(type: Node | Declaration): Expression | undefined {
         const reflection = this.isWithReflection(this.sourceFile, type);
         if (!reflection) return;
@@ -2772,9 +3256,33 @@ export class ReflectionTransformer implements CustomTransformer {
         return this.packOpsAndStack(program);
     }
 
-    protected packOpsAndStack(program: CompilerProgram) {
+    /**
+     * Like getTypeOfType but returns undefined for empty ops instead of 'any'.
+     * Used for functions where empty ops means "can't determine type, don't decorate"
+     * rather than "external type, use any".
+     */
+    protected getTypeOfFunction(fn: Node | Declaration): Expression | undefined {
+        const reflection = this.isWithReflection(this.sourceFile, fn);
+        if (!reflection) return;
+
+        const program = new CompilerProgram(fn, this.sourceFile);
+        this.extractPackStructOfType(fn, program);
+        return this.packOpsAndStack(program, { emitAnyForEmptyOps: false });
+    }
+
+    protected packOpsAndStack(program: CompilerProgram, options?: { emitAnyForEmptyOps?: boolean }) {
         const packStruct = program.buildPackStruct();
-        if (packStruct.ops.length === 0) return;
+        if (packStruct.ops.length === 0) {
+            // External/excluded types produce empty ops - emit 'any' instead of
+            // returning undefined which would create invalid JS: `const __ΩType;` (#352)
+            // However, for functions, empty ops means "can't determine type" and we should
+            // return undefined so the function isn't decorated (this preserves the fallback
+            // behavior in ReflectionFunction.from).
+            if (options?.emitAnyForEmptyOps === false) {
+                return undefined;
+            }
+            return this.valueToExpression([encodeOps([ReflectionOp.any])]);
+        }
         // debugPackStruct(this.sourceFile, program.forNode, packStruct);
         const packed = [...packStruct.stack, encodeOps(packStruct.ops)];
         return this.valueToExpression(packed);
@@ -2803,23 +3311,14 @@ export class ReflectionTransformer implements CustomTransformer {
             return node;
         }
         const type = this.getTypeOfType(node);
-        const __type = this.f.createPropertyDeclaration(
-            this.f.createModifiersFromModifierFlags(ModifierFlags.Static), '__type',
-            undefined, undefined,
-            type);
+        const __type = this.f.createPropertyDeclaration(this.f.createModifiersFromModifierFlags(ModifierFlags.Static), '__type', undefined, undefined, type);
 
         if (isClassDeclaration(node)) {
             // return node;
-            return this.f.updateClassDeclaration(node, node.modifiers,
-                node.name, node.typeParameters, node.heritageClauses,
-                this.f.createNodeArray<ClassElement>([...node.members, __type]),
-            );
+            return this.f.updateClassDeclaration(node, node.modifiers, node.name, node.typeParameters, node.heritageClauses, this.f.createNodeArray<ClassElement>([...node.members, __type]));
         }
 
-        return this.f.updateClassExpression(node, node.modifiers,
-            node.name, node.typeParameters, node.heritageClauses,
-            this.f.createNodeArray<ClassElement>([...node.members, __type]),
-        );
+        return this.f.updateClassExpression(node, node.modifiers, node.name, node.typeParameters, node.heritageClauses, this.f.createNodeArray<ClassElement>([...node.members, __type]));
     }
 
     /**
@@ -2828,7 +3327,7 @@ export class ReflectionTransformer implements CustomTransformer {
      * => const fn = __assignType(function() {}, [34])
      */
     protected decorateFunctionExpression(expression: FunctionExpression) {
-        const encodedType = this.getTypeOfType(expression);
+        const encodedType = this.getTypeOfFunction(expression);
         if (!encodedType) return expression;
 
         return this.wrapWithAssignType(expression, encodedType);
@@ -2839,8 +3338,8 @@ export class ReflectionTransformer implements CustomTransformer {
      *
      * => function name() {}; name.__type = 34;
      */
-    protected decorateFunctionDeclaration(declaration: FunctionDeclaration) {
-        const encodedType = this.getTypeOfType(declaration);
+    protected decorateFunctionDeclaration(declaration: FunctionDeclaration, originalParent?: Node) {
+        const encodedType = this.getTypeOfFunction(declaration);
         if (!encodedType) return declaration;
 
         if (!declaration.name) {
@@ -2849,20 +3348,27 @@ export class ReflectionTransformer implements CustomTransformer {
 
             //since a new default export is created, we do not need ExportKey&DefaultKeyword on the function anymore,
             //but it should preserve all others like Async.
-            const modifier: readonly Modifier[] = declaration.modifiers
-                ? declaration.modifiers.filter(v => v.kind !== SyntaxKind.ExportKeyword && v.kind !== SyntaxKind.DefaultKeyword && v.kind !== SyntaxKind.Decorator) as Modifier[]
-                : [];
-            return this.f.createExportAssignment(undefined, undefined, this.wrapWithAssignType(
-                this.f.createFunctionExpression(modifier, declaration.asteriskToken, declaration.name, declaration.typeParameters, declaration.parameters, declaration.type, declaration.body),
-                encodedType,
-            ));
+            const modifier: readonly Modifier[] = declaration.modifiers ? (declaration.modifiers.filter(v => v.kind !== SyntaxKind.ExportKeyword && v.kind !== SyntaxKind.DefaultKeyword && v.kind !== SyntaxKind.Decorator) as Modifier[]) : [];
+            return this.f.createExportAssignment(
+                undefined,
+                undefined,
+                this.wrapWithAssignType(this.f.createFunctionExpression(modifier, declaration.asteriskToken, declaration.name, declaration.typeParameters, declaration.parameters, declaration.type, declaration.body), encodedType),
+            );
         }
 
-        const statements: Statement[] = [declaration];
-        statements.push(this.f.createExpressionStatement(
-            this.f.createAssignment(this.f.createPropertyAccessExpression(serializeEntityNameAsExpression(this.f, declaration.name), '__type'), encodedType),
-        ));
-        return statements;
+        const typeAssignment = this.f.createExpressionStatement(this.f.createAssignment(this.f.createPropertyAccessExpression(serializeEntityNameAsExpression(this.f, declaration.name), '__type'), encodedType));
+
+        // Check if this is a module-level function (parent is SourceFile)
+        // Module-level functions should have their __type assignment hoisted
+        // so that ReflectionFunction.from(fn) works when called before the declaration
+        // Use originalParent since the transformed node may not have parent reference set
+        if (originalParent && isSourceFile(originalParent)) {
+            this.functionTypeAssignments.push(typeAssignment);
+            return declaration;
+        }
+
+        // Block-scoped functions keep their __type assignment inline
+        return [declaration, typeAssignment];
     }
 
     /**
@@ -2870,7 +3376,7 @@ export class ReflectionTransformer implements CustomTransformer {
      * => const fn = __assignType(() => {}, [34])
      */
     protected decorateArrowFunction(expression: ArrowFunction) {
-        const encodedType = this.getTypeOfType(expression);
+        const encodedType = this.getTypeOfFunction(expression);
         if (!encodedType) return expression;
 
         return this.wrapWithAssignType(expression, encodedType);
@@ -2886,14 +3392,7 @@ export class ReflectionTransformer implements CustomTransformer {
     protected wrapWithAssignType(fn: Expression, type: Expression) {
         this.embedAssignType = true;
 
-        return this.f.createCallExpression(
-            this.f.createIdentifier('__assignType'),
-            undefined,
-            [
-                fn,
-                type,
-            ],
-        );
+        return this.f.createCallExpression(this.f.createIdentifier('__assignType'), undefined, [fn, type]);
     }
 
     /**
@@ -2911,13 +3410,11 @@ export class ReflectionTransformer implements CustomTransformer {
             current = current.parent;
         }
 
-        if (reflectionComment === '' || reflectionComment === 'true' || reflectionComment === 'default'
-            || reflectionComment === 'enabled' || reflectionComment === '1') {
+        if (reflectionComment === '' || reflectionComment === 'true' || reflectionComment === 'default' || reflectionComment === 'enabled' || reflectionComment === '1') {
             return true;
         }
 
-        if (reflectionComment === 'false' || reflectionComment === 'disabled' || reflectionComment === 'never'
-            || reflectionComment === 'no' || reflectionComment === '0') {
+        if (reflectionComment === 'false' || reflectionComment === 'disabled' || reflectionComment === 'never' || reflectionComment === 'no' || reflectionComment === '0') {
             return false;
         }
 
@@ -2948,7 +3445,7 @@ export class DeclarationTransformer extends ReflectionTransformer {
         const visitor = (node: Node): any => {
             node = visitEachChild(node, visitor, this.context);
 
-            if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node) || isEnumDeclaration(node)) && hasModifier(node, SyntaxKind.ExportKeyword)) {
+            if ((isTypeAliasDeclaration(node) || isInterfaceDeclaration(node) || isEnumDeclaration(node)) && hasModifier(node, SyntaxKind.ExportKeyword) && !hasModifier(node, SyntaxKind.DeclareKeyword)) {
                 const reflection = this.isWithReflection(sourceFile, node);
                 if (reflection) {
                     this.addExports.push({ identifier: getIdentifierName(this.getDeclarationVariableName(node.name)) });
@@ -2967,13 +3464,14 @@ export class DeclarationTransformer extends ReflectionTransformer {
                 handledIdentifier.push(imp.identifier);
 
                 //export declare type __ΩXY = any[];
-                exports.push(this.f.createTypeAliasDeclaration([
-                        this.f.createModifier(SyntaxKind.ExportKeyword),
-                        this.f.createModifier(SyntaxKind.DeclareKeyword),
-                    ], this.f.createIdentifier(imp.identifier),
-                    undefined,
-                    this.f.createArrayTypeNode(this.f.createKeywordTypeNode(SyntaxKind.AnyKeyword)),
-                ));
+                exports.push(
+                    this.f.createTypeAliasDeclaration(
+                        [this.f.createModifier(SyntaxKind.ExportKeyword), this.f.createModifier(SyntaxKind.DeclareKeyword)],
+                        this.f.createIdentifier(imp.identifier),
+                        undefined,
+                        this.f.createArrayTypeNode(this.f.createKeywordTypeNode(SyntaxKind.AnyKeyword)),
+                    ),
+                );
             }
 
             this.sourceFile = this.f.updateSourceFile(this.sourceFile, [...this.sourceFile.statements, ...exports]);
@@ -2986,7 +3484,7 @@ export class DeclarationTransformer extends ReflectionTransformer {
 }
 
 let loaded = false;
-const cache = new Cache;
+const cache = new Cache();
 
 export const transformer: CustomTransformerFactory = function deepkitTransformer(context) {
     if (!loaded) {
@@ -3000,4 +3498,3 @@ export const transformer: CustomTransformerFactory = function deepkitTransformer
 export const declarationTransformer: CustomTransformerFactory = function deepkitDeclarationTransformer(context) {
     return new DeclarationTransformer(context, cache);
 };
-

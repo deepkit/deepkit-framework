@@ -7,12 +7,19 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { BaseResponse, CollationMessage, Command, HintMessage, TransactionalMessage, WriteConcernMessage } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
+
 import type { MongoClientConfig } from '../config.js';
-import type { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
+import type { Host } from '../host.js';
+import {
+    BaseResponse,
+    CollationMessage,
+    Command,
+    HintMessage,
+    TransactionalMessage,
+    WriteConcernMessage,
+} from './command.js';
 
 interface DeleteResponse extends BaseResponse {
     n: number;
@@ -27,7 +34,8 @@ type DeleteSchema = {
         collation?: CollationMessage;
         hint?: HintMessage;
     }[];
-} & TransactionalMessage & WriteConcernMessage;
+} & TransactionalMessage &
+    WriteConcernMessage;
 
 export class DeleteCommand<T extends ReflectionClass<any>> extends Command<number> {
     constructor(

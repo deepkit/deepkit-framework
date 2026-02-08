@@ -1,4 +1,5 @@
 import { test } from '@jest/globals';
+
 import { Database } from '../src/database.js';
 import { MemoryDatabaseAdapter } from '../src/memory-db.js';
 
@@ -16,7 +17,5 @@ test('api', async () => {
 
     await session.rollback();
 
-    await session.transaction(async () => {
-
-    });
+    await session.transaction(async () => {});
 });

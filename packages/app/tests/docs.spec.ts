@@ -1,13 +1,15 @@
 import { expect, test } from '@jest/globals';
+
 import { ClassType } from '@deepkit/core';
+import { InjectorContext } from '@deepkit/injector';
+
 import { App } from '../src/app.js';
 import { AppModule, createModuleClass } from '../src/module.js';
-import { InjectorContext } from '@deepkit/injector';
 import { ControllerConfig } from '../src/service-container.js';
 
 test('controller instantiation', () => {
     class Registry {
-        protected controllers: { module: AppModule<any>, classType: ClassType }[] = [];
+        protected controllers: { module: AppModule<any>; classType: ClassType }[] = [];
 
         register(module: AppModule<any>, controller: ClassType) {
             this.controllers.push({ module, classType: controller });
@@ -23,9 +25,8 @@ test('controller instantiation', () => {
     class Router {
         constructor(
             protected injectorContext: InjectorContext,
-            protected registry: Registry
-        ) {
-        }
+            protected registry: Registry,
+        ) {}
 
         getController(classType: ClassType) {
             //find classType and module for given controller classType
@@ -41,7 +42,7 @@ test('controller instantiation', () => {
         providers: [Router],
         exports: [Router],
     }) {
-        protected registry = new Registry;
+        protected registry = new Registry();
 
         process() {
             this.addProvider({ provide: Registry, useValue: this.registry });
@@ -56,12 +57,11 @@ test('controller instantiation', () => {
         }
     }
 
-    class MyController {
-    }
+    class MyController {}
 
     const app = new App({
         controllers: [MyController],
-        imports: [new HttpModule()]
+        imports: [new HttpModule()],
     });
 
     const myController = app.get(Router).getController(MyController);

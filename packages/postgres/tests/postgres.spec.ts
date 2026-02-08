@@ -1,24 +1,26 @@
 import { expect, test } from '@jest/globals';
 import pg from 'pg';
+
 import { assertInstanceOf } from '@deepkit/core';
+import { ConsoleLogger } from '@deepkit/logger';
 import { DatabaseError, DatabaseInsertError, UniqueConstraintFailure } from '@deepkit/orm';
-import { AutoIncrement, cast, DatabaseField, entity, PrimaryKey, Unique, UUID, uuid } from '@deepkit/type';
+import { AutoIncrement, DatabaseField, PrimaryKey, UUID, Unique, cast, entity, uuid } from '@deepkit/type';
 
 import { databaseFactory } from './factory.js';
-import { ConsoleLogger } from '@deepkit/logger';
-
 
 test('count', async () => {
     const pool = new pg.Pool({
-        host: 'localhost',
-        database: 'postgres',
-        user: 'postgres',
+        host: process.env.POSTGRES_HOST || 'localhost',
+        port: parseInt(process.env.POSTGRES_PORT || '15432', 10),
+        database: process.env.POSTGRES_DB || 'postgres',
+        user: process.env.POSTGRES_USER || 'postgres',
+        password: process.env.POSTGRES_PASSWORD || undefined,
     });
 
     pg.types.setTypeParser(1700, parseFloat);
     pg.types.setTypeParser(20, BigInt);
 
-    (BigInt.prototype as any).toJSON = function() {
+    (BigInt.prototype as any).toJSON = function () {
         return this.toString();
     };
 
@@ -46,7 +48,7 @@ test('bool and json', async () => {
     const database = await databaseFactory([Model]);
 
     {
-        const m = new Model;
+        const m = new Model();
         m.flag = true;
         m.doc.flag = true;
         await database.persist(m);
@@ -62,8 +64,7 @@ test('change different fields of multiple entities', async () => {
         firstName: string = '';
         lastName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -100,8 +101,7 @@ test('change pk', async () => {
     class Model {
         firstName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -141,8 +141,7 @@ test('for update/share', async () => {
     class Model {
         firstName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -191,8 +190,7 @@ test('unique constraint 1', async () => {
     class Model {
         id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public username: string & Unique = '') {
-        }
+        constructor(public username: string & Unique = '') {}
     }
 
     const database = await databaseFactory([Model]);
@@ -209,8 +207,11 @@ test('unique constraint 1', async () => {
             await database.persist(m1);
         } catch (error: any) {
             assertInstanceOf(error, UniqueConstraintFailure);
+            expect(error.code).toBe('DK-O100'); // UniqueConstraintFailure error code
             assertInstanceOf(error.cause, DatabaseInsertError);
+            expect(error.cause.code).toBe('DK-O010'); // DatabaseInsertError error code
             assertInstanceOf(error.cause.cause, DatabaseError);
+            expect(error.cause.cause.code).toBe('DK-O001'); // DatabaseError base code
             // error.cause.cause.cause is from the driver
             expect((error.cause.cause.cause as any).table).toBe('Model');
         }
@@ -239,8 +240,7 @@ test('unique constraint 1', async () => {
 
 test('database field name with filter', async () => {
     class User {
-        constructor(public id: UUID & PrimaryKey & DatabaseField<{ name: 'uuid' }>) {
-        }
+        constructor(public id: UUID & PrimaryKey & DatabaseField<{ name: 'uuid' }>) {}
     }
 
     const database = await databaseFactory([User]);
@@ -256,7 +256,7 @@ test('database field name with filter', async () => {
 });
 
 test('json array', async () => {
-    type Block = { type: string, data: any };
+    type Block = { type: string; data: any };
 
     class Model {
         id: number & PrimaryKey & AutoIncrement = 0;
@@ -286,7 +286,10 @@ test('json array', async () => {
     {
         const model = await database.query(Model).findOne();
         model.title = '14';
-        model.blocks = [{ type: 'a', data: { yes: 0 } }, { type: 'a', data: { no: '23' } }];
+        model.blocks = [
+            { type: 'a', data: { yes: 0 } },
+            { type: 'a', data: { no: '23' } },
+        ];
         await database.persist(model);
     }
     {
@@ -294,4 +297,47 @@ test('json array', async () => {
         expect(model.title).toBe('14');
         expect(model.blocks.length).toEqual(2);
     }
+});
+
+test('count with pagination returns total count (#668)', async () => {
+    // GitHub issue #668: query.count() throws error if used with query pagination for page > 1
+    // count() should return the total number of matching rows, ignoring limit/skip
+    class Item {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        constructor(public name: string = '') {}
+    }
+
+    const database = await databaseFactory([Item]);
+
+    // Insert 25 items
+    for (let i = 0; i < 25; i++) {
+        await database.persist(new Item(`Item ${i + 1}`));
+    }
+
+    // Test 1: count without pagination returns total
+    expect(await database.query(Item).count()).toBe(25);
+
+    // Test 2: count with pagination still returns total (this was the bug)
+    const query = database.query(Item).itemsPerPage(10).page(1);
+    const [page1Items, total1] = await Promise.all([query.find(), query.count()]);
+    expect(page1Items.length).toBe(10);
+    expect(total1).toBe(25); // count should return total, not paginated count
+
+    // Test 3: page 2 - this is where the bug manifested (page > 1)
+    const query2 = database.query(Item).itemsPerPage(10).page(2);
+    const [page2Items, total2] = await Promise.all([query2.find(), query2.count()]);
+    expect(page2Items.length).toBe(10);
+    expect(total2).toBe(25); // count should still return total
+
+    // Test 4: page 3 (last page with only 5 items)
+    const query3 = database.query(Item).itemsPerPage(10).page(3);
+    const [page3Items, total3] = await Promise.all([query3.find(), query3.count()]);
+    expect(page3Items.length).toBe(5);
+    expect(total3).toBe(25); // count should still return total
+
+    // Test 5: page beyond data (page 4 should return 0 items but count should still be 25)
+    const query4 = database.query(Item).itemsPerPage(10).page(4);
+    const [page4Items, total4] = await Promise.all([query4.find(), query4.count()]);
+    expect(page4Items.length).toBe(0);
+    expect(total4).toBe(25); // count should return total even when page is empty
 });

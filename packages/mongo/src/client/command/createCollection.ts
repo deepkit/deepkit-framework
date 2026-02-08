@@ -7,12 +7,12 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { Command } from './command.js';
 import { ReflectionClass } from '@deepkit/type';
+
 import type { MongoClientConfig } from '../config.js';
-import type { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
+import type { Host } from '../host.js';
+import { Command } from './command.js';
 
 interface RequestSchema {
     create: string;
@@ -20,9 +20,7 @@ interface RequestSchema {
 }
 
 export class CreateCollectionCommand<T extends ReflectionClass<any>> extends Command<void> {
-    constructor(
-        public schema: T,
-    ) {
+    constructor(public schema: T) {
         super();
     }
 

@@ -1,7 +1,6 @@
 .yarn
 node_modules
 .idea
-docs
 coverage
 packages/node
 packages/network
@@ -18,3 +17,8 @@ packages/create-app/files/var
 .vs
 .fleet
 .DS_Store
+*.sqlite
+*.sqlite-journal
+.mcp.json
+.claude/*
+!.claude/handover.md

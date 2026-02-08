@@ -7,12 +7,15 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { expect, test } from '@jest/globals';
-import { float, float32, int8, integer, PrimaryKey, Reference } from '../src/reflection/type.js';
-import { is } from '../src/typeguard.js';
-import { Serializer } from '../src/serializer.js';
-import { cast } from '../src/serializer-facade.js';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
+
+import { Serializer, registerDefaultHandlers, registerTypeGuards } from '../index.js';
 import { isReferenceInstance } from '../src/reference.js';
+import { cast } from '../src/serializer-facade.js';
+import { PrimaryKey, Reference, float, float32, int8, integer } from '../src/type-annotations.js';
+import { is, isStrict, isWeak, typeGuardStrict, typeGuardWeak } from '../src/typeguard.js';
 
 test('primitive string', () => {
     expect(is<string>('a')).toEqual(true);
@@ -61,18 +64,20 @@ test('primitive number float32', () => {
     expect(is<float32>('a')).toEqual(false);
     expect(is<float32>(123)).toEqual(true);
     expect(is<float32>(123.4)).toEqual(true);
-    expect(is<float32>(3.40282347e+38)).toEqual(true);
+    expect(is<float32>(3.40282347e38)).toEqual(true);
     //JS precision issue:
-    expect(is<float32>(3.40282347e+38 + 100000000000000000000000)).toEqual(false);
-    expect(is<float32>(-3.40282347e+38)).toEqual(true);
-    expect(is<float32>(-3.40282347e+38 - 100000000000000000000000)).toEqual(false);
+    expect(is<float32>(3.40282347e38 + 100000000000000000000000)).toEqual(false);
+    expect(is<float32>(-3.40282347e38)).toEqual(true);
+    expect(is<float32>(-3.40282347e38 - 100000000000000000000000)).toEqual(false);
     expect(is<float32>(true)).toEqual(false);
     expect(is<float32>({})).toEqual(false);
 });
 
 test('enum', () => {
     enum MyEnum {
-        a, b, c
+        a,
+        b,
+        c,
     }
 
     expect(is<MyEnum>(0)).toEqual(true);
@@ -85,8 +90,10 @@ test('enum', () => {
 });
 
 test('enum const', () => {
-    const enum MyEnum {
-        a, b, c
+    enum MyEnum {
+        a,
+        b,
+        c,
     }
 
     expect(is<MyEnum>(0)).toEqual(true);
@@ -100,7 +107,9 @@ test('enum const', () => {
 
 test('enum string', () => {
     enum MyEnum {
-        a = 'a', b = 'b', c = 'c'
+        a = 'a',
+        b = 'b',
+        c = 'c',
     }
 
     expect(is<MyEnum>('a')).toEqual(true);
@@ -147,8 +156,22 @@ test('set', () => {
 
 test('map', () => {
     expect(is<Map<string, number>>(new Map([['a', 1]]))).toEqual(true);
-    expect(is<Map<string, number>>(new Map([['a', 1], ['b', 2]]))).toEqual(true);
-    expect(is<Map<string, number>>(new Map<any, any>([['a', 1], ['b', 'b']]))).toEqual(false);
+    expect(
+        is<Map<string, number>>(
+            new Map([
+                ['a', 1],
+                ['b', 2],
+            ]),
+        ),
+    ).toEqual(true);
+    expect(
+        is<Map<string, number>>(
+            new Map<any, any>([
+                ['a', 1],
+                ['b', 'b'],
+            ]),
+        ),
+    ).toEqual(false);
     expect(is<Map<string, number>>(new Map<any, any>([[2, 1]]))).toEqual(false);
 });
 
@@ -228,8 +251,8 @@ test('object literal', () => {
     expect(is<{ a?: string }>({})).toEqual(true);
     expect(is<{ a?: string }>({ a: 'abc' })).toEqual(true);
     expect(is<{ a?: string }>({ a: 123 })).toEqual(false);
-    expect(is<{ a: string, b: number }>({ a: 'a', b: 12 })).toEqual(true);
-    expect(is<{ a: string, b: number }>({ a: 'a', b: 'asd' })).toEqual(false);
+    expect(is<{ a: string; b: number }>({ a: 'a', b: 12 })).toEqual(true);
+    expect(is<{ a: string; b: number }>({ a: 'a', b: 'asd' })).toEqual(false);
 });
 
 test('function', () => {
@@ -289,11 +312,11 @@ test('object literal methods', () => {
 });
 
 test('multiple index signature', () => {
-    expect(is<{ [name: string]: string | number, [name: number]: string }>({})).toEqual(true);
-    expect(is<{ [name: string]: string | number, [name: number]: number }>({ a: 'abc' })).toEqual(true);
-    expect(is<{ [name: string]: string | number, [name: number]: number }>({ a: 123 })).toEqual(true);
-    expect(is<{ [name: string]: string | number, [name: number]: number }>({ 1: 123 })).toEqual(true);
-    expect(is<{ [name: string]: string | number, [name: number]: number }>({ 1: 'abc' })).toEqual(false);
+    expect(is<{ [name: string]: string | number; [name: number]: string }>({})).toEqual(true);
+    expect(is<{ [name: string]: string | number; [name: number]: number }>({ a: 'abc' })).toEqual(true);
+    expect(is<{ [name: string]: string | number; [name: number]: number }>({ a: 123 })).toEqual(true);
+    expect(is<{ [name: string]: string | number; [name: number]: number }>({ 1: 123 })).toEqual(true);
+    expect(is<{ [name: string]: string | number; [name: number]: number }>({ 1: 'abc' })).toEqual(false);
 });
 
 test('brands', () => {
@@ -425,25 +448,256 @@ test('union classes with generic', () => {
     }
 
     const serializer = new Serializer();
+    registerDefaultHandlers(serializer);
+    registerTypeGuards(serializer);
 
     const newGroup = cast<Group>({ id: 1, second: 'a' });
 
-    const a = cast<User>({
-        id: 1,
-        groups: [newGroup],
-    }, undefined, serializer);
+    const a = cast<User>(
+        {
+            id: 1,
+            groups: [newGroup],
+        },
+        undefined,
+        serializer,
+    );
 
     expect(a.groups[0]).toBeInstanceOf(Group);
     expect(isReferenceInstance(a.groups[0])).toBe(false);
 
-    const b = cast<User>({
-        id: 1,
-        groups: [1],
-    }, undefined, serializer);
+    const b = cast<User>(
+        {
+            id: 1,
+            groups: [1],
+        },
+        undefined,
+        serializer,
+    );
 
     expect(b.groups[0]).toBeInstanceOf(Group);
     expect(isReferenceInstance(b.groups[0])).toBe(true);
     if (isReferenceInstance(b.groups[0])) {
         //do something with this instance and fully load it
     }
+});
+
+// ============================================================================
+// Strict Type Guards (reject unknown keys)
+// ============================================================================
+
+test('isStrict object literal', () => {
+    // Exact match - should pass
+    expect(isStrict<{ a: string }>({ a: 'abc' })).toEqual(true);
+    expect(isStrict<{ a: string; b: number }>({ a: 'abc', b: 123 })).toEqual(true);
+
+    // Unknown key - should fail
+    expect(isStrict<{ a: string }>({ a: 'abc', x: 1 })).toEqual(false);
+    expect(isStrict<{ a: string }>({ a: 'abc', extra: 'key' })).toEqual(false);
+    expect(isStrict<{ a: string; b: number }>({ a: 'abc', b: 123, c: true })).toEqual(false);
+
+    // Wrong type - should fail
+    expect(isStrict<{ a: string }>({ a: 123 })).toEqual(false);
+
+    // Missing required key - should fail
+    expect(isStrict<{ a: string }>({})).toEqual(false);
+
+    // Optional key - should pass when missing
+    expect(isStrict<{ a?: string }>({})).toEqual(true);
+    expect(isStrict<{ a?: string }>({ a: 'abc' })).toEqual(true);
+    expect(isStrict<{ a?: string }>({ a: 'abc', x: 1 })).toEqual(false);
+});
+
+test('isStrict class', () => {
+    class User {
+        name!: string;
+        age!: number;
+    }
+
+    // Exact match - should pass
+    expect(isStrict<User>({ name: 'John', age: 30 })).toEqual(true);
+
+    // Unknown key - should fail
+    expect(isStrict<User>({ name: 'John', age: 30, extra: 'data' })).toEqual(false);
+    expect(isStrict<User>({ name: 'John', age: 30, x: 1 })).toEqual(false);
+
+    // Wrong type - should fail
+    expect(isStrict<User>({ name: 'John', age: 'thirty' })).toEqual(false);
+
+    // Missing required key - should fail
+    expect(isStrict<User>({ name: 'John' })).toEqual(false);
+});
+
+test('isStrict with optional properties', () => {
+    class Config {
+        host!: string;
+        port?: number;
+    }
+
+    // All properties present - should pass
+    expect(isStrict<Config>({ host: 'localhost', port: 8080 })).toEqual(true);
+
+    // Optional property missing - should pass
+    expect(isStrict<Config>({ host: 'localhost' })).toEqual(true);
+
+    // Unknown key - should fail
+    expect(isStrict<Config>({ host: 'localhost', extra: true })).toEqual(false);
+    expect(isStrict<Config>({ host: 'localhost', port: 8080, extra: true })).toEqual(false);
+});
+
+test('isStrict nested objects', () => {
+    interface Address {
+        city: string;
+        zip: string;
+    }
+
+    interface Person {
+        name: string;
+        address: Address;
+    }
+
+    // Exact match - should pass
+    expect(isStrict<Person>({ name: 'John', address: { city: 'NYC', zip: '10001' } })).toEqual(true);
+
+    // Unknown key at top level - should fail
+    expect(isStrict<Person>({ name: 'John', address: { city: 'NYC', zip: '10001' }, extra: 1 })).toEqual(false);
+
+    // Unknown key in nested object - should fail
+    expect(isStrict<Person>({ name: 'John', address: { city: 'NYC', zip: '10001', extra: 1 } })).toEqual(false);
+});
+
+test('isStrict vs is comparison', () => {
+    interface Model {
+        name: string;
+    }
+
+    const exact = { name: 'test' };
+    const withExtra = { name: 'test', extra: 123 };
+
+    // is() allows extra keys
+    expect(is<Model>(exact)).toEqual(true);
+    expect(is<Model>(withExtra)).toEqual(true);
+
+    // isStrict() rejects extra keys
+    expect(isStrict<Model>(exact)).toEqual(true);
+    expect(isStrict<Model>(withExtra)).toEqual(false);
+});
+
+test('typeGuardStrict precompiled', () => {
+    interface User {
+        id: number;
+        name: string;
+    }
+
+    const isUserStrict = typeGuardStrict<User>();
+
+    // Exact match - should pass
+    expect(isUserStrict({ id: 1, name: 'John' })).toEqual(true);
+
+    // Unknown key - should fail
+    expect(isUserStrict({ id: 1, name: 'John', extra: true })).toEqual(false);
+
+    // Wrong type - should fail
+    expect(isUserStrict({ id: '1', name: 'John' })).toEqual(false);
+
+    // Missing key - should fail
+    expect(isUserStrict({ id: 1 })).toEqual(false);
+});
+
+test('isStrict arrays', () => {
+    // Arrays should work normally
+    expect(isStrict<string[]>(['a', 'b'])).toEqual(true);
+    expect(isStrict<number[]>([1, 2, 3])).toEqual(true);
+
+    interface Item {
+        id: number;
+    }
+
+    // Array of objects with strict checking
+    expect(isStrict<Item[]>([{ id: 1 }, { id: 2 }])).toEqual(true);
+    expect(isStrict<Item[]>([{ id: 1, extra: 1 }])).toEqual(false);
+});
+
+test('isStrict primitives', () => {
+    // Primitives should work normally (no extra keys possible)
+    expect(isStrict<string>('hello')).toEqual(true);
+    expect(isStrict<number>(123)).toEqual(true);
+    expect(isStrict<boolean>(true)).toEqual(true);
+    expect(isStrict<null>(null)).toEqual(true);
+});
+
+// ============================================================================
+// isWeak tests (maximum performance, no NaN checks)
+// ============================================================================
+
+test('isWeak accepts NaN while is rejects it', () => {
+    // This is the key difference between isWeak and is
+    expect(is<number>(NaN)).toEqual(false); // Regular is() rejects NaN
+    expect(isWeak<number>(NaN)).toEqual(true); // Weak mode accepts NaN
+
+    // Object with NaN property
+    interface Point {
+        x: number;
+        y: number;
+    }
+    expect(is<Point>({ x: 1, y: NaN })).toEqual(false); // Rejects NaN
+    expect(isWeak<Point>({ x: 1, y: NaN })).toEqual(true); // Accepts NaN
+});
+
+test('isWeak basic type checking', () => {
+    // Still checks types correctly
+    expect(isWeak<string>('hello')).toEqual(true);
+    expect(isWeak<string>(123)).toEqual(false);
+    expect(isWeak<number>(123)).toEqual(true);
+    expect(isWeak<number>('hello')).toEqual(false);
+    expect(isWeak<boolean>(true)).toEqual(true);
+    expect(isWeak<boolean>('true')).toEqual(false);
+});
+
+test('isWeak objects', () => {
+    interface User {
+        id: number;
+        name: string;
+    }
+
+    // Valid objects pass
+    expect(isWeak<User>({ id: 1, name: 'John' })).toEqual(true);
+
+    // Wrong types fail
+    expect(isWeak<User>({ id: '1', name: 'John' })).toEqual(false);
+
+    // Extra keys allowed (like is(), unlike isStrict())
+    expect(isWeak<User>({ id: 1, name: 'John', extra: 'value' })).toEqual(true);
+});
+
+test('isWeak arrays', () => {
+    expect(isWeak<number[]>([1, 2, 3])).toEqual(true);
+    expect(isWeak<number[]>(['a', 'b'])).toEqual(false);
+
+    // Arrays with NaN pass in weak mode
+    expect(isWeak<number[]>([1, NaN, 3])).toEqual(true);
+    expect(is<number[]>([1, NaN, 3])).toEqual(false);
+});
+
+test('typeGuardWeak precompiled', () => {
+    interface Item {
+        value: number;
+    }
+
+    const isItemWeak = typeGuardWeak<Item>();
+
+    expect(isItemWeak({ value: 123 })).toEqual(true);
+    expect(isItemWeak({ value: NaN })).toEqual(true); // NaN passes
+    expect(isItemWeak({ value: 'string' })).toEqual(false);
+});
+
+test('isWeak nested objects', () => {
+    interface Nested {
+        inner: {
+            count: number;
+        };
+    }
+
+    expect(isWeak<Nested>({ inner: { count: 5 } })).toEqual(true);
+    expect(isWeak<Nested>({ inner: { count: NaN } })).toEqual(true); // NaN passes
+    expect(is<Nested>({ inner: { count: NaN } })).toEqual(false); // is() rejects
 });

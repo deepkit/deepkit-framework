@@ -7,25 +7,33 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { deserialize, ReflectionClass, resolvePath, serialize, serializer } from '@deepkit/type';
 import { ClassType } from '@deepkit/core';
+import { QueryCustomFields, QueryFieldNames, convertQueryFilter } from '@deepkit/orm';
+import { ReflectionClass, deserialize, resolvePath, serialize, serializer } from '@deepkit/type';
+
 import './mongo-serializer';
 import { mongoSerializer } from './mongo-serializer.js';
-import { convertQueryFilter, QueryCustomFields, QueryFieldNames } from '@deepkit/orm';
 import { FilterQuery } from './query.model.js';
 
 export function convertClassQueryToMongo<T, K extends keyof T, Q extends FilterQuery<T>>(
     classType: ReflectionClass<T> | ClassType,
     query: Q,
     fieldNamesMap: QueryFieldNames = {},
-    customMapping: { [name: string]: (name: string, value: any, fieldNamesMap: { [name: string]: boolean }) => any } = {},
+    customMapping: {
+        [name: string]: (name: string, value: any, fieldNamesMap: { [name: string]: boolean }) => any;
+    } = {},
 ): Q {
     const schema = ReflectionClass.from(classType);
-    return convertQueryFilter(schema, query, (convertClassType: ReflectionClass<any>, path: string, value: any) => {
-        const type = resolvePath(path, schema.type);
-        return serialize(value, undefined, mongoSerializer, undefined, type);
-    }, fieldNamesMap, customMapping);
+    return convertQueryFilter(
+        schema,
+        query,
+        (convertClassType: ReflectionClass<any>, path: string, value: any) => {
+            const type = resolvePath(path, schema.type);
+            return serialize(value, undefined, mongoSerializer, undefined, type);
+        },
+        fieldNamesMap,
+        customMapping,
+    );
 }
 
 export function convertPlainQueryToMongo<T, K extends keyof T>(
@@ -34,9 +42,15 @@ export function convertPlainQueryToMongo<T, K extends keyof T>(
     fieldNamesMap: QueryFieldNames = {},
     customMapping: QueryCustomFields = {},
 ): { [path: string]: any } {
-    return convertQueryFilter(classType, target, (convertClassType: ReflectionClass<any>, path: string, value: any) => {
-        const type = resolvePath(path, convertClassType.type);
-        const classValue = deserialize(value, undefined, serializer, undefined, type);
-        return serialize(classValue, undefined, mongoSerializer, undefined, type);
-    }, fieldNamesMap, customMapping);
+    return convertQueryFilter(
+        classType,
+        target,
+        (convertClassType: ReflectionClass<any>, path: string, value: any) => {
+            const type = resolvePath(path, convertClassType.type);
+            const classValue = deserialize(value, undefined, serializer, undefined, type);
+            return serialize(classValue, undefined, mongoSerializer, undefined, type);
+        },
+        fieldNamesMap,
+        customMapping,
+    );
 }

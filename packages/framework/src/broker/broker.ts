@@ -7,9 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { BrokerKernel } from '@deepkit/broker';
 import { RpcTcpServer } from '@deepkit/rpc-tcp';
+
 import { BrokerConfig } from '../module.config.js';
 
 // export enum EntityChannelMessageType {
@@ -85,9 +85,9 @@ import { BrokerConfig } from '../module.config.js';
 // }
 
 export class BrokerServer extends RpcTcpServer {
-    protected kernel: BrokerKernel = new BrokerKernel;
+    protected kernel: BrokerKernel = new BrokerKernel();
 
     constructor(protected listen: BrokerConfig['listen']) {
-        super(new BrokerKernel, listen);
+        super(new BrokerKernel(), listen);
     }
 }

@@ -7,9 +7,17 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import {
     ContainerAccessor,
+    ReflectionClass,
+    ReflectionKind,
+    Serializer,
+    TemplateState,
+    Type,
+    TypeArray,
+    TypeClass,
+    TypeObjectLiteral,
+    TypeUnion,
     executeTemplates,
     handleUnion,
     isBackReferenceType,
@@ -19,19 +27,11 @@ import {
     nodeBufferToArrayBuffer,
     nodeBufferToTypedArray,
     referenceAnnotation,
-    ReflectionClass,
-    ReflectionKind,
     serializeObjectLiteral,
-    Serializer,
-    TemplateState,
-    Type,
-    TypeArray,
-    TypeClass,
     typedArrayToBuffer,
-    TypeObjectLiteral,
-    TypeUnion,
     uuidAnnotation,
 } from '@deepkit/type';
+
 import { typeRequiresJSONCast } from '../platform/default-platform.js';
 
 export const hexTable: string[] = [];
@@ -70,11 +70,18 @@ export function isDirectPropertyOfEntity(state: TemplateState): boolean {
 
     if (state.parentTypes.length < 3) return false;
 
-    if (state.parentTypes[0].kind !== ReflectionKind.class && state.parentTypes[0].kind !== ReflectionKind.objectLiteral) return false;
+    if (
+        state.parentTypes[0].kind !== ReflectionKind.class &&
+        state.parentTypes[0].kind !== ReflectionKind.objectLiteral
+    )
+        return false;
 
-    if (state.parentTypes[1].kind !== ReflectionKind.property
-        && state.parentTypes[1].kind !== ReflectionKind.propertySignature
-        && state.parentTypes[1].kind !== ReflectionKind.indexSignature) return false;
+    if (
+        state.parentTypes[1].kind !== ReflectionKind.property &&
+        state.parentTypes[1].kind !== ReflectionKind.propertySignature &&
+        state.parentTypes[1].kind !== ReflectionKind.indexSignature
+    )
+        return false;
 
     if (state.parentTypes[2].kind === ReflectionKind.union) {
         return state.parentTypes.length === 3 || state.parentTypes.length === 4;
@@ -103,7 +110,9 @@ function deserializeSqlAny(type: Type, state: TemplateState) {
         return;
     }
     state.setContext({ jsonParse: JSON.parse });
-    state.addCode(`${state.setter} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor};`);
+    state.addCode(
+        `${state.setter} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor};`,
+    );
 }
 
 /**
@@ -126,7 +135,9 @@ function deserializeSqlArray(type: TypeArray, state: TemplateState) {
 
     if (!isDirectPropertyOfEntity(state)) return;
 
-    state.addCode(`${state.setter} = 'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor};`);
+    state.addCode(
+        `${state.setter} = 'string' === typeof ${state.accessor} ? JSON.parse(${state.accessor}) : ${state.accessor};`,
+    );
 }
 
 /**
@@ -156,7 +167,9 @@ function deserializeSqlObjectLiteral(type: TypeClass | TypeObjectLiteral, state:
         if (isDirectPropertyOfEntity(state)) {
             //TypeClass|TypeObjectLiteral properties are serialized as JSON
             state.setContext({ jsonParse: JSON.parse });
-            state.addCode(`${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`);
+            state.addCode(
+                `${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`,
+            );
         }
 
         serializeObjectLiteral(type, state);
@@ -180,7 +193,9 @@ function deserializeSqlUnion(type: TypeUnion, state: TemplateState) {
         // so this code expects that typeRequiresJSONCast knows when all platforms store JSON in the database,
         // which make change in the future. Then we need to have information from the platform in this template function here.
         state.setContext({ jsonParse: JSON.parse });
-        state.addCode(`${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`);
+        state.addCode(
+            `${state.accessor} = 'string' === typeof ${state.accessor} ? jsonParse(${state.accessor}) : ${state.accessor}`,
+        );
     }
 
     handleUnion(type, state);
@@ -296,27 +311,41 @@ export class SqlSerializer extends Serializer {
                 state.addSetter(`nodeBufferToArrayBuffer(${state.accessor})`);
             } else {
                 state.setContext({ nodeBufferToTypedArray });
-                state.addSetter(`nodeBufferToTypedArray(${state.accessor}, ${state.setVariable('typeArray', type.classType)})`);
+                state.addSetter(
+                    `nodeBufferToTypedArray(${state.accessor}, ${state.setVariable('typeArray', type.classType)})`,
+                );
             }
         });
     }
 }
 
-export const sqlSerializer: Serializer = new SqlSerializer;
+export const sqlSerializer: Serializer = new SqlSerializer();
 
 export function uuid4Binary(u: any): Buffer {
     return 'string' === typeof u ? Buffer.from(u.replace(/-/g, ''), 'hex') : Buffer.alloc(0);
 }
 
 export function uuid4Stringify(buffer: Buffer): string {
-    return hexTable[buffer[0]] + hexTable[buffer[1]] + hexTable[buffer[2]] + hexTable[buffer[3]]
-        + '-'
-        + hexTable[buffer[4]] + hexTable[buffer[5]]
-        + '-'
-        + hexTable[buffer[6]] + hexTable[buffer[7]]
-        + '-'
-        + hexTable[buffer[8]] + hexTable[buffer[9]]
-        + '-'
-        + hexTable[buffer[10]] + hexTable[buffer[11]] + hexTable[buffer[12]] + hexTable[buffer[13]] + hexTable[buffer[14]] + hexTable[buffer[15]]
-        ;
+    return (
+        hexTable[buffer[0]] +
+        hexTable[buffer[1]] +
+        hexTable[buffer[2]] +
+        hexTable[buffer[3]] +
+        '-' +
+        hexTable[buffer[4]] +
+        hexTable[buffer[5]] +
+        '-' +
+        hexTable[buffer[6]] +
+        hexTable[buffer[7]] +
+        '-' +
+        hexTable[buffer[8]] +
+        hexTable[buffer[9]] +
+        '-' +
+        hexTable[buffer[10]] +
+        hexTable[buffer[11]] +
+        hexTable[buffer[12]] +
+        hexTable[buffer[13]] +
+        hexTable[buffer[14]] +
+        hexTable[buffer[15]]
+    );
 }

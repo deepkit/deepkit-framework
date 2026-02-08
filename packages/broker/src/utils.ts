@@ -22,7 +22,12 @@ export function fastHash(value: Uint8Array): number {
 /**
  * @internal
  */
-export function handleMessageDeduplication(hash: string | number, queue: Queue, value: Uint8Array, ttl: number): boolean {
+export function handleMessageDeduplication(
+    hash: string | number,
+    queue: Queue,
+    value: Uint8Array,
+    ttl: number,
+): boolean {
     if (queue.deduplicateMessageHashes.has(hash)) return true;
     setTimeout(() => queue.deduplicateMessageHashes.delete(hash), ttl);
     queue.deduplicateMessageHashes.add(hash);

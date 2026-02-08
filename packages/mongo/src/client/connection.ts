@@ -7,23 +7,24 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { Socket, createConnection } from 'net';
+import { TLSSocket, connect as createTLSConnection } from 'tls';
 
+import { BSONBinarySerializer, BsonStreamReader, Writer, getBSONSerializer, getBSONSizer } from '@deepkit/bson';
 import { arrayRemoveItem, asyncOperation, formatError } from '@deepkit/core';
-import { Host } from './host.js';
-import { createConnection, Socket } from 'net';
-import { connect as createTLSConnection, TLSSocket } from 'tls';
-import { Command, TransactionalMessage } from './command/command.js';
-import { stringifyType, Type, uuid } from '@deepkit/type';
-import { BSONBinarySerializer, BsonStreamReader, getBSONSerializer, getBSONSizer, Writer } from '@deepkit/bson';
-import { HandshakeCommand } from './command/handshake.js';
-import { detectTopology, MongoClientConfig, updateKnownHosts, updateStaleness } from './config.js';
-import { MongoConnectionError, MongoError } from './error.js';
-import { DatabaseTransaction } from '@deepkit/orm';
-import { CommitTransactionCommand } from './command/commitTransaction.js';
-import { AbortTransactionCommand } from './command/abortTransaction.js';
 import { DataEvent, EventDispatcher, EventTokenSync } from '@deepkit/event';
-import { IsMasterCommand } from './command/ismaster.js';
 import { Logger } from '@deepkit/logger';
+import { DatabaseTransaction } from '@deepkit/orm';
+import { Type, stringifyType, uuid } from '@deepkit/type';
+
+import { AbortTransactionCommand } from './command/abortTransaction.js';
+import { Command, TransactionalMessage } from './command/command.js';
+import { CommitTransactionCommand } from './command/commitTransaction.js';
+import { HandshakeCommand } from './command/handshake.js';
+import { IsMasterCommand } from './command/ismaster.js';
+import { MongoClientConfig, detectTopology, updateKnownHosts, updateStaleness } from './config.js';
+import { MongoConnectionError, MongoError } from './error.js';
+import { Host } from './host.js';
 import { CommandOptions, ConnectionOptions } from './options.js';
 
 export enum MongoConnectionStatus {
@@ -76,9 +77,11 @@ export class MongoStats {
     topologyChanges: number = 0;
 }
 
-export const onMongoTopologyChange = new EventTokenSync<DataEvent<{ pool: MongoConnectionPool }>>('mongo.topologyChange');
+export const onMongoTopologyChange = new EventTokenSync<DataEvent<{ pool: MongoConnectionPool }>>(
+    'mongo.topologyChange',
+);
 
-export const onMongoNewHost = new EventTokenSync<DataEvent<{ pool: MongoConnectionPool, host: Host }>>('mongo.newHost');
+export const onMongoNewHost = new EventTokenSync<DataEvent<{ pool: MongoConnectionPool; host: Host }>>('mongo.newHost');
 
 interface QueueEntry {
     resolve: (connection: MongoConnection) => void;
@@ -108,7 +111,7 @@ export class MongoConnectionPool {
     }
 
     protected connectPromise?: Promise<void>;
-    protected connectPromiseHandles?: { resolve: () => void, reject: (error: Error) => void };
+    protected connectPromiseHandles?: { resolve: () => void; reject: (error: Error) => void };
 
     constructor(
         protected config: MongoClientConfig,
@@ -143,10 +146,10 @@ export class MongoConnectionPool {
         }
 
         // wait for topology change: we need at least one secondary or primary online
-        return this.connectPromise = asyncOperation<void>((resolve, reject) => {
+        return (this.connectPromise = asyncOperation<void>((resolve, reject) => {
             this.connectPromiseHandles = { resolve, reject };
             this.heartbeat();
-        });
+        }));
     }
 
     protected createErrorForUnmetRequest(request: ConnectionRequest): MongoConnectionError {
@@ -206,7 +209,11 @@ export class MongoConnectionPool {
                 if (this.isConnected()) {
                     this.connectPromiseHandles.resolve();
                 } else {
-                    this.connectPromiseHandles.reject(new MongoConnectionError('Connection failed: no hosts available. ' + this.config.shortSummary()));
+                    this.connectPromiseHandles.reject(
+                        new MongoConnectionError(
+                            'Connection failed: no hosts available. ' + this.config.shortSummary(),
+                        ),
+                    );
                 }
                 this.connectPromiseHandles = undefined;
             }
@@ -271,7 +278,7 @@ export class MongoConnectionPool {
         const topologyId = this.config.topologyId;
 
         this.activeHeartbeats++;
-        host.lastUpdatePromise = new Promise<void>(async (resolve) => {
+        host.lastUpdatePromise = new Promise<void>(async resolve => {
             let connection = this.getConnectionForHost(host);
             if (!connection) {
                 // we force create a connection to this host, ignoring limits
@@ -295,7 +302,7 @@ export class MongoConnectionPool {
                     return;
                 }
 
-                host.lastUpdateTime = new Date;
+                host.lastUpdateTime = new Date();
                 host.latency = Date.now() - start;
                 host.dead = false;
                 host.setType(host.getTypeFromIsMasterResult(data));
@@ -317,7 +324,9 @@ export class MongoConnectionPool {
                 host.subsequentHeartbeatErrors++;
                 if (host.subsequentHeartbeatErrors <= 10) {
                     const errors = `${host.subsequentHeartbeatErrors}/10`;
-                    this.scopedLogger.warn(`Mongo heartbeat connection error for host ${host.label} (${errors}): ${formatError(error)}}}`);
+                    this.scopedLogger.warn(
+                        `Mongo heartbeat connection error for host ${host.label} (${errors}): ${formatError(error)}}}`,
+                    );
                 }
                 host.status = 'heartbeat(): ' + formatError(error);
                 host.dead = true;
@@ -327,13 +336,15 @@ export class MongoConnectionPool {
                 connection.release();
                 resolve();
             }
-        }).catch((error) => {
-            this.scopedLogger.log(`Mongo heartbeat general error for host ${host.label}: ${formatError(error)}`);
-        }).finally(() => {
-            this.activeHeartbeats--;
-            host.lastUpdatePromise = undefined;
-            this.onTopologyProgress('host');
-        });
+        })
+            .catch(error => {
+                this.scopedLogger.log(`Mongo heartbeat general error for host ${host.label}: ${formatError(error)}`);
+            })
+            .finally(() => {
+                this.activeHeartbeats--;
+                host.lastUpdatePromise = undefined;
+                this.onTopologyProgress('host');
+            });
     }
 
     /**
@@ -347,17 +358,21 @@ export class MongoConnectionPool {
 
         this.scopedLogger.debug(`Heartbeat start ${this.stats.heartbeats}`);
 
-        this.config.getHosts().then((hosts) => {
-            if (this.closed) return;
-            for (const host of hosts) {
-                this.heartbeatHost(host);
-            }
-        }).catch((error) => {
-            this.stats.heartbeatsFailed++;
-            this.scopedLogger.error(`Mongo heartbeat error: ${formatError(error)}`);
-        }).finally(() => {
-            this.heartbeatTimer = setTimeout(() => this.heartbeat(), this.config.options.heartbeatFrequencyMS);
-        });
+        this.config
+            .getHosts()
+            .then(hosts => {
+                if (this.closed) return;
+                for (const host of hosts) {
+                    this.heartbeatHost(host);
+                }
+            })
+            .catch(error => {
+                this.stats.heartbeatsFailed++;
+                this.scopedLogger.error(`Mongo heartbeat error: ${formatError(error)}`);
+            })
+            .finally(() => {
+                this.heartbeatTimer = setTimeout(() => this.heartbeat(), this.config.options.heartbeatFrequencyMS);
+            });
     }
 
     protected findHostForRequest(request: ConnectionRequest): Host | undefined {
@@ -440,28 +455,37 @@ export class MongoConnectionPool {
         this.stats.connectionsCreated++;
         host.stats.connectionsCreated++;
         host.stats.connectionsAlive++;
-        const connection = new MongoConnection(this.connectionId++, host, this.config, this.serializer, (connection) => {
-            arrayRemoveItem(host.connections, connection);
-            arrayRemoveItem(this.connections, connection);
-            if (connection.status === MongoConnectionStatus.error) {
-                this.stats.connectionsError++;
-                host.stats.connectionsError++;
-            }
-            host.stats.connectionsAlive--;
-            if (connection.reserved) {
-                host.stats.connectionsReserved--;
-            }
-            // onClose does not automatically reconnect. Only new commands re-establish connections.
-        }, (connection) => {
-            this.release(connection);
-        }, (bytesSent) => {
-            host.stats.bytesSent += bytesSent;
-            this.stats.bytesSent += bytesSent;
-        }, (bytesReceived) => {
-            host.stats.bytesReceived += bytesReceived;
-            this.stats.bytesReceived += bytesReceived;
-        });
-        connection.connect().catch((error) => {
+        const connection = new MongoConnection(
+            this.connectionId++,
+            host,
+            this.config,
+            this.serializer,
+            connection => {
+                arrayRemoveItem(host.connections, connection);
+                arrayRemoveItem(this.connections, connection);
+                if (connection.status === MongoConnectionStatus.error) {
+                    this.stats.connectionsError++;
+                    host.stats.connectionsError++;
+                }
+                host.stats.connectionsAlive--;
+                if (connection.reserved) {
+                    host.stats.connectionsReserved--;
+                }
+                // onClose does not automatically reconnect. Only new commands re-establish connections.
+            },
+            connection => {
+                this.release(connection);
+            },
+            bytesSent => {
+                host.stats.bytesSent += bytesSent;
+                this.stats.bytesSent += bytesSent;
+            },
+            bytesReceived => {
+                host.stats.bytesReceived += bytesReceived;
+                this.stats.bytesReceived += bytesReceived;
+            },
+        );
+        connection.connect().catch(error => {
             host.status = 'connect(): ' + formatError(error);
         });
         host.connections.push(connection);
@@ -474,9 +498,16 @@ export class MongoConnectionPool {
         if (!waiter) return false;
 
         // check if timed out
-        if (this.config.options.waitQueueTimeoutMS && Date.now() - waiter.time > this.config.options.waitQueueTimeoutMS) {
+        if (
+            this.config.options.waitQueueTimeoutMS &&
+            Date.now() - waiter.time > this.config.options.waitQueueTimeoutMS
+        ) {
             this.queue.splice(i, 1);
-            waiter.reject(new MongoConnectionError(`Connection acquisition timed out after ${Date.now() - waiter.time}ms (max ${this.config.options.waitQueueTimeoutMS}ms)`));
+            waiter.reject(
+                new MongoConnectionError(
+                    `Connection acquisition timed out after ${Date.now() - waiter.time}ms (max ${this.config.options.waitQueueTimeoutMS}ms)`,
+                ),
+            );
             return false;
         }
 
@@ -538,7 +569,7 @@ export class MongoConnectionPool {
      */
     async getConnection(partialRequest: Partial<ConnectionRequest> = {}): Promise<MongoConnection> {
         if (this.closed) {
-            throw new MongoError('Connection pool is closed');
+            throw new MongoError('DK-MG001', 'Connection pool is closed');
         }
 
         const request = this.applyRequestDefaults(partialRequest);
@@ -597,7 +628,7 @@ export class MongoConnectionPool {
 }
 
 export function readUint32LE(buffer: Uint8Array | ArrayBuffer, offset: number = 0): number {
-    return buffer[offset] + (buffer[offset + 1] * 2 ** 8) + (buffer[offset + 2] * 2 ** 16) + (buffer[offset + 3] * 2 ** 24);
+    return buffer[offset] + buffer[offset + 1] * 2 ** 8 + buffer[offset + 2] * 2 ** 16 + buffer[offset + 3] * 2 ** 24;
 }
 
 /**
@@ -609,18 +640,23 @@ export class MongoDatabaseTransactionMonitor {
         connection: MongoConnection;
         lsid: { id: string };
         txnNumber: bigint;
-    }>((value) => {
-        this.logger.scoped('mongo').warn(`Leaking transaction detected. Automatically rollback transaction ${value.txnNumber}`);
-        value.connection.execute(new AbortTransactionCommand({ ...value, autocommit: false }))
-            .catch((error) => {
-                this.logger.scoped('mongo').error(`Could not rollback transaction ${value.txnNumber}: ${formatError(error)}`);
-            }).finally(() => {
-            value.connection.release();
-        });
+    }>(value => {
+        this.logger
+            .scoped('mongo')
+            .warn(`Leaking transaction detected. Automatically rollback transaction ${value.txnNumber}`);
+        value.connection
+            .execute(new AbortTransactionCommand({ ...value, autocommit: false }))
+            .catch(error => {
+                this.logger
+                    .scoped('mongo')
+                    .error(`Could not rollback transaction ${value.txnNumber}: ${formatError(error)}`);
+            })
+            .finally(() => {
+                value.connection.release();
+            });
     });
 
-    constructor(public logger: Logger) {
-    }
+    constructor(public logger: Logger) {}
 
     setLogger(logger: Logger) {
         this.logger = logger;
@@ -650,7 +686,11 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
         if (!this.started && !cmd.abortTransaction && !cmd.commitTransaction) {
             this.started = true;
             cmd.startTransaction = true;
-            this.monitor.finalizer.register(this, { connection: this.connection, lsid: this.lsid, txnNumber: this.txnNumber });
+            this.monitor.finalizer.register(this, {
+                connection: this.connection,
+                lsid: this.lsid,
+                txnNumber: this.txnNumber,
+            });
         }
         if (this.started) {
             cmd.lsid = this.lsid;
@@ -668,7 +708,7 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
 
     async commit() {
         if (!this.connection) return;
-        if (this.ended) throw new MongoError('Transaction ended already');
+        if (this.ended) throw new MongoError('DK-MG001', 'Transaction ended already');
 
         await this.connection.execute(new CommitTransactionCommand());
         this.ended = true;
@@ -678,7 +718,7 @@ export class MongoDatabaseTransaction extends DatabaseTransaction {
 
     async rollback() {
         if (!this.connection) return;
-        if (this.ended) throw new MongoError('Transaction ended already');
+        if (this.ended) throw new MongoError('DK-MG001', 'Transaction ended already');
         if (!this.started) return;
 
         await this.connection.execute(new AbortTransactionCommand());
@@ -693,7 +733,7 @@ export class MongoConnection {
     status: MongoConnectionStatus = MongoConnectionStatus.pending;
 
     public connectingPromise?: Promise<void>;
-    public lastCommand?: { command: Command<unknown>, promise?: Promise<any> };
+    public lastCommand?: { command: Command<unknown>; promise?: Promise<any> };
 
     public activeCommands: number = 0;
     public executedCommands: number = 0;
@@ -749,7 +789,7 @@ export class MongoConnection {
             }
 
             this.socket = createTLSConnection(options);
-            this.socket.on('data', (data) => {
+            this.socket.on('data', data => {
                 this.bytesReceived += data.byteLength;
                 this.onReceived(data.byteLength);
                 this.responseParser.feed(data);
@@ -761,7 +801,7 @@ export class MongoConnection {
                 timeout: config.options.socketTimeoutMS,
             });
 
-            this.socket.on('data', (data) => {
+            this.socket.on('data', data => {
                 this.bytesReceived += data.byteLength;
                 this.onReceived(data.byteLength);
                 this.responseParser.feed(data);
@@ -814,7 +854,7 @@ export class MongoConnection {
                 this.socket.destroy();
             });
 
-            this.socket.on('error', (error) => {
+            this.socket.on('error', error => {
                 this.status = MongoConnectionStatus.error;
                 this.connectingPromise = undefined;
                 this.closed = true;
@@ -838,7 +878,7 @@ export class MongoConnection {
                 resolve();
             } else {
                 this.status = MongoConnectionStatus.error;
-                this.error = new MongoError('Connection error: Could not complete handshake 🤷‍️');
+                this.error = new MongoError('DK-MG001', 'Connection error: Could not complete handshake');
                 this.connectingPromise = undefined;
                 reject(this.error);
             }
@@ -879,7 +919,7 @@ export class MongoConnection {
         // const offset = 16 + 4 + 8 + 4 + 4; //QUERY_REPLY
         const message = response.slice(offset, size);
 
-        if (!this.lastCommand) throw new MongoError(`Got a server response without active command`);
+        if (!this.lastCommand) throw new MongoError('DK-MG001', `Got a server response without active command`);
 
         this.lastCommand.command.handleResponse(message);
     }
@@ -891,7 +931,8 @@ export class MongoConnection {
      */
     public async execute<T extends Command<unknown>>(command: T): Promise<ReturnType<T['execute']>> {
         await this.connectingPromise;
-        if (this.status === MongoConnectionStatus.disconnected) throw new MongoError('Connection already disconnected');
+        if (this.status === MongoConnectionStatus.disconnected)
+            throw new MongoError('DK-MG001', 'Connection already disconnected');
 
         if (this.lastCommand && this.lastCommand.promise) {
             await this.lastCommand.promise;
@@ -921,7 +962,7 @@ export class MongoConnection {
 
     protected sendMessage<T>(type: Type, message: T) {
         //todo: check if we can just reuse an older buffer, or maybe we cache the buffer to commands
-        const messageSerializer = getBSONSerializer(this.serializer, type);
+        const messageSerializer = getBSONSerializer(type);
         const messageSizer = getBSONSizer(this.serializer, type);
 
         const buffer = Buffer.allocUnsafe(16 + 4 + 1 + messageSizer(message));

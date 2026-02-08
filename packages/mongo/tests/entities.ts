@@ -1,4 +1,4 @@
-import { Embedded, entity, Excluded, Index, MongoId, PrimaryKey, UUID, uuid } from '@deepkit/type';
+import { Embedded, Excluded, Index, MongoId, PrimaryKey, UUID, entity, uuid } from '@deepkit/type';
 
 export class JobTaskQueue {
     position: number = 0;
@@ -29,8 +29,7 @@ export enum Plan {
 export const now = new Date();
 
 export class CollectionWrapper {
-    constructor(public items: SubModel[]) {
-    }
+    constructor(public items: SubModel[]) {}
 
     public add(item: SubModel) {
         this.items.push(item);
@@ -38,8 +37,7 @@ export class CollectionWrapper {
 }
 
 export class StringCollectionWrapper {
-    constructor(public items: string[]) {
-    }
+    constructor(public items: string[]) {}
 
     public add(item: string) {
         this.items.push(item);
@@ -81,8 +79,7 @@ export class SimpleModel {
 
     excludedForPlain: string & Excluded<'json'> = 'excludedForPlain';
 
-    constructor(public name: string & Index) {
-    }
+    constructor(public name: string & Index) {}
 }
 
 @entity.name('SuperSimple')
@@ -90,15 +87,13 @@ export class SuperSimple {
     //what is the default for mongoId on new objects?
     _id: MongoId & PrimaryKey = '';
 
-    constructor(public name?: string) {
-    }
+    constructor(public name?: string) {}
 }
 
 @entity.name('BaseClass')
 export class BaseClass {
     _id: MongoId & PrimaryKey = '';
 }
-
 
 @entity.name('ChildClass')
 export class ChildClass extends BaseClass {

@@ -1,8 +1,10 @@
 import { expect, test } from '@jest/globals';
-import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
-import { createRpcMessage, RpcMessage } from '../src/protocol.js';
-import { DirectClient } from '../src/client/client-direct.js';
+
 import { sleep } from '@deepkit/core';
+
+import { DirectClient } from '../src/client/client-direct.js';
+import { RpcMessage, createRpcMessage } from '../src/protocol.js';
+import { RpcKernel, RpcKernelConnection } from '../src/server/kernel.js';
 
 test('back controller', async () => {
     /**
@@ -32,14 +34,14 @@ test('back controller', async () => {
             }
 
             if (message.type === MyTypes.BroadcastWithAck) {
-                broadcastWithAckCalled = message.parseBody<{v: string}>()
+                broadcastWithAckCalled = message.parseBody<{ v: string }>();
                 this.write(createRpcMessage(message.id, MyTypes.Ack));
                 return;
             }
 
             if (message.type === MyTypes.Broadcast) {
                 // no ack wanted
-                broadcastCalled = message.parseBody<{v: string}>()
+                broadcastCalled = message.parseBody<{ v: string }>();
                 return;
             }
 
@@ -57,23 +59,17 @@ test('back controller', async () => {
     const client = new DirectClient(kernel);
 
     // This waits for the server's Ack
-    const answer = await client
-        .sendMessage(MyTypes.QueryAndAnswer)
-        .firstThenClose<{ v: string }>(MyTypes.Answer);
+    const answer = await client.sendMessage(MyTypes.QueryAndAnswer).firstThenClose<{ v: string }>(MyTypes.Answer);
     expect(answer.v).toBe('42 is the answer');
 
     // This waits for the server's Ack
-    await client
-        .sendMessage<{v: string}>(MyTypes.BroadcastWithAck, {v: 'Hi1'})
-        .ackThenClose();
-    expect(broadcastWithAckCalled).toEqual({v: 'Hi1'});
+    await client.sendMessage<{ v: string }>(MyTypes.BroadcastWithAck, { v: 'Hi1' }).ackThenClose();
+    expect(broadcastWithAckCalled).toEqual({ v: 'Hi1' });
 
     // This does not wait for the server's Ack. release() call necessary to
     // release the message context.
-    client
-        .sendMessage<{v: string}>(MyTypes.Broadcast, {v: 'Hi2'})
-        .release();
+    client.sendMessage<{ v: string }>(MyTypes.Broadcast, { v: 'Hi2' }).release();
 
     await sleep(0.1);
-    expect(broadcastCalled).toEqual({v: 'Hi2'});
+    expect(broadcastCalled).toEqual({ v: 'Hi2' });
 });

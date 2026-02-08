@@ -1,7 +1,10 @@
 /** @reflection never */
-import { expect, test } from '@jest/globals';
-import { pack, unpack } from '../src/reflection/processor.js';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
 import { ReflectionOp } from '@deepkit/type-spec';
+
+import { pack, unpack } from '../src/reflection/processor.js';
 
 Error.stackTraceLimit = 200;
 
@@ -18,7 +21,7 @@ test('unpack', () => {
     expect(unpack([String.fromCharCode(33 + ReflectionOp.string, 33 + ReflectionOp.optional)])).toEqual({ ops: [ReflectionOp.string, ReflectionOp.optional], stack: [] });
     expect(unpack(pack([ReflectionOp.union, ReflectionOp.string, ReflectionOp.number]))).toEqual({
         ops: [ReflectionOp.union, ReflectionOp.string, ReflectionOp.number],
-        stack: []
+        stack: [],
     });
 });
 
@@ -27,7 +30,7 @@ test('round-trip', () => {
     expect(unpack(pack([ReflectionOp.string, ReflectionOp.optional]))).toEqual({ ops: [ReflectionOp.string, ReflectionOp.optional], stack: [] });
     expect(unpack(pack([ReflectionOp.string, ReflectionOp.optional, ReflectionOp.boolean]))).toEqual({
         ops: [ReflectionOp.string, ReflectionOp.optional, ReflectionOp.boolean],
-        stack: []
+        stack: [],
     });
 
     {
@@ -41,45 +44,54 @@ test('round-trip', () => {
     }
 
     {
+        const ops = [ReflectionOp.string, ReflectionOp.optional, ReflectionOp.boolean, ReflectionOp.number, ReflectionOp.optional, ReflectionOp.number, ReflectionOp.optional, ReflectionOp.number];
+        expect(unpack(pack(ops))).toEqual({ ops, stack: [] });
+    }
+
+    {
+        const ops = [ReflectionOp.string, ReflectionOp.optional, ReflectionOp.boolean, ReflectionOp.number, ReflectionOp.optional, ReflectionOp.number, ReflectionOp.optional, ReflectionOp.number, ReflectionOp.optional];
+        expect(unpack(pack(ops))).toEqual({ ops, stack: [] });
+    }
+
+    {
         const ops = [
-            ReflectionOp.string, ReflectionOp.optional, ReflectionOp.boolean,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
+            ReflectionOp.string,
+            ReflectionOp.optional,
+            ReflectionOp.boolean,
             ReflectionOp.number,
-        ];
-        expect(unpack(pack(ops))).toEqual({ ops, stack: [] });
-    }
-
-    {
-        const ops = [
-            ReflectionOp.string, ReflectionOp.optional, ReflectionOp.boolean,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-        ];
-        expect(unpack(pack(ops))).toEqual({ ops, stack: [] });
-    }
-
-    {
-        const ops = [
-            ReflectionOp.string, ReflectionOp.optional, ReflectionOp.boolean,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
-            ReflectionOp.number, ReflectionOp.optional,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
+            ReflectionOp.number,
+            ReflectionOp.optional,
         ];
         expect(unpack(pack(ops))).toEqual({ ops, stack: [] });
     }

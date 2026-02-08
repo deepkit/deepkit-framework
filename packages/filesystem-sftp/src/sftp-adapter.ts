@@ -1,8 +1,17 @@
-import { FileType, FileVisibility, Reporter, resolveFilesystemPath, FilesystemAdapter, FilesystemFile } from '@deepkit/filesystem';
-import { pathDirectory, pathBasename } from '@deepkit/core';
 import Client, { ConnectOptions, FileInfo } from 'ssh2-sftp-client';
 import { Readable } from 'stream';
+
+import { pathBasename, pathDirectory } from '@deepkit/core';
 import { asyncOperation } from '@deepkit/core';
+import {
+    FileType,
+    FileVisibility,
+    FilesystemAdapter,
+    FilesystemFile,
+    FilesystemFileNotFound,
+    Reporter,
+    resolveFilesystemPath,
+} from '@deepkit/filesystem';
 
 export interface FilesystemFtpOptions extends ConnectOptions {
     /**
@@ -33,11 +42,11 @@ export interface FilesystemFtpOptions extends ConnectOptions {
         file: {
             public: number; //default 0o644
             private: number; //default 0o600
-        },
+        };
         directory: {
             public: number; //default 0o755
             private: number; //default 0o700
-        }
+        };
     };
 }
 
@@ -63,13 +72,13 @@ export class FilesystemSftpAdapter implements FilesystemAdapter {
         permissions: {
             file: {
                 public: 0o644,
-                private: 0o600
+                private: 0o600,
             },
             directory: {
                 public: 0o755,
-                private: 0o700
-            }
-        }
+                private: 0o700,
+            },
+        },
     };
     protected closed = true;
 
@@ -78,7 +87,7 @@ export class FilesystemSftpAdapter implements FilesystemAdapter {
     constructor(options: Partial<FilesystemFtpOptions> = {}) {
         Object.assign(this.options, options);
         this.client = new Client();
-        this.client.on('end', (err) => {
+        this.client.on('end', err => {
             this.closed = true;
         });
     }
@@ -96,14 +105,17 @@ export class FilesystemSftpAdapter implements FilesystemAdapter {
         return resolveFilesystemPath([this.options.root, path]);
     }
 
-    protected stringModeToMode(rights: { user: string, group: string, other: string }): number {
+    protected stringModeToMode(rights: { user: string; group: string; other: string }): number {
         const user = stringModeToNumber(rights.user);
         const group = stringModeToNumber(rights.group);
         const other = stringModeToNumber(rights.other);
         return user * 64 + group * 8 + other;
     }
 
-    protected mapModeToVisibility(type: FileType, rights: { user: string, group: string, other: string }): FileVisibility {
+    protected mapModeToVisibility(
+        type: FileType,
+        rights: { user: string; group: string; other: string },
+    ): FileVisibility {
         const permissions = this.options.permissions[type === 'file' ? 'file' : 'directory'];
         // example rights.user="rwx", rights.group="rwx", rights.other="rwx"
         const mode = this.stringModeToMode(rights);
@@ -114,7 +126,7 @@ export class FilesystemSftpAdapter implements FilesystemAdapter {
     async getVisibility(path: string): Promise<FileVisibility> {
         await this.ensureConnected();
         const file = await this.get(path);
-        if (!file) throw new Error(`File ${path} not found`);
+        if (!file) throw new FilesystemFileNotFound(`File ${path} not found`);
         return file.visibility;
     }
 
@@ -167,7 +179,7 @@ export class FilesystemSftpAdapter implements FilesystemAdapter {
     async ensureConnected(): Promise<void> {
         if (this.connectPromise) await this.connectPromise;
         if (!this.closed) return;
-        this.connectPromise = asyncOperation(async (resolve) => {
+        this.connectPromise = asyncOperation(async resolve => {
             this.closed = false;
             await this.client.connect({
                 host: this.options.host,
@@ -262,7 +274,7 @@ export class FilesystemSftpAdapter implements FilesystemAdapter {
     async read(path: string, reporter: Reporter): Promise<Uint8Array> {
         await this.ensureConnected();
         const remotePath = this.getRemotePath(path);
-        return await this.client.get(remotePath, undefined) as Buffer;
+        return (await this.client.get(remotePath, undefined)) as Buffer;
     }
 
     async write(path: string, contents: Uint8Array, visibility: FileVisibility, reporter: Reporter): Promise<void> {

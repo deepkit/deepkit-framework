@@ -7,29 +7,34 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { DeepkitError } from '@deepkit/core';
 
 import { BaseResponse } from './command/command.js';
-import { DatabaseError } from '@deepkit/orm';
-
 
 /**
  * Throws the correct ORM errors when responses returns an error
  */
-export function handleErrorResponse(response: BaseResponse): DatabaseError | undefined {
-    const message = response.errmsg || (response.writeErrors && response.writeErrors.length ? response.writeErrors[0].errmsg : undefined);
+export function handleErrorResponse(response: BaseResponse): MongoDatabaseError | undefined {
+    const message =
+        response.errmsg ||
+        (response.writeErrors && response.writeErrors.length ? response.writeErrors[0].errmsg : undefined);
     if (!message || 'string' !== typeof message) return;
 
     if (message) {
-        return Object.assign(new MongoDatabaseError(message), { code: response.code || 0 });
+        return Object.assign(new MongoDatabaseError(message), { mongoCode: response.code || 0 });
     }
     return;
 }
 
-export class MongoError extends DatabaseError {
-    public readonly code: number = 0;
+export class MongoError extends DeepkitError {
+    public mongoCode: number = 0;
 
-    toString() {
-        if (this.code) return `[${this.code}] ${this.message}`;
+    constructor(code: string, message: string, options?: { cause?: Error }) {
+        super(code, message, options);
+    }
+
+    override toString() {
+        if (this.mongoCode) return `[${this.mongoCode}] ${this.message}`;
         return this.message;
     }
 }
@@ -38,7 +43,9 @@ export class MongoError extends DatabaseError {
  * When a tcp/connection issue happened.
  */
 export class MongoConnectionError extends MongoError {
-
+    constructor(message: string, options?: { cause?: Error }) {
+        super('DK-MG010', message, options);
+    }
 }
 
 /**
@@ -46,53 +53,27 @@ export class MongoConnectionError extends MongoError {
  * generally from database.raw or database.query.
  */
 export class MongoDatabaseError extends MongoError {
-
+    constructor(message: string, options?: { cause?: Error }) {
+        super('DK-MG020', message, options);
+    }
 }
 
-
 //https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.rst#determining-retryable-errors
-const retryableWrites: number[] = [
-    11600,
-    11602,
-    10107,
-    13435,
-    13436,
-    189,
-    91,
-    7,
-    6,
-    89,
-    9001,
-    262,
-];
+const retryableWrites: number[] = [11600, 11602, 10107, 13435, 13436, 189, 91, 7, 6, 89, 9001, 262];
 
 export function isErrorRetryableWrite(error: any): boolean {
-    if (error instanceof MongoError && error.code) {
-        return retryableWrites.includes(error.code);
+    if (error instanceof MongoError && error.mongoCode) {
+        return retryableWrites.includes(error.mongoCode);
     }
 
     return false;
 }
 
 // https://github.com/mongodb/specifications/blob/master/source/retryable-reads/retryable-reads.rst#retryable-error
-const retryableReads: number[] = [
-        11600,
-        11602,
-        10107,
-        13435,
-        13436,
-        189,
-        91,
-        7,
-        6,
-        89,
-        9001,
-    ]
-;
-
+const retryableReads: number[] = [11600, 11602, 10107, 13435, 13436, 189, 91, 7, 6, 89, 9001];
 export function isErrorRetryableRead(error: any): boolean {
-    if (error instanceof MongoError && error.code) {
-        return retryableReads.includes(error.code);
+    if (error instanceof MongoError && error.mongoCode) {
+        return retryableReads.includes(error.mongoCode);
     }
 
     return false;

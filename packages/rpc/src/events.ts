@@ -1,5 +1,6 @@
 import { DataEvent, EventToken, EventTokenSync } from '@deepkit/event';
 import { InjectorContext } from '@deepkit/injector';
+
 import { RpcKernelBaseConnection } from './server/kernel.js';
 import { RpcControllerAccess, Session } from './server/security.js';
 
@@ -107,6 +108,9 @@ export interface RpcControllerAccessEventBase extends RpcConnectionEvent {
     controller: RpcControllerAccess;
 }
 
-export type RpcControllerAccessEvent = RpcControllerAccessEventStart | RpcControllerAccessEventBase | WithFail<RpcControllerAccessEventBase>;
+export type RpcControllerAccessEvent =
+    | RpcControllerAccessEventStart
+    | RpcControllerAccessEventBase
+    | WithFail<RpcControllerAccessEventBase>;
 
 export const onRpcControllerAccess = new EventToken<DataEvent<RpcControllerAccessEvent>>('rpc.controllerAccess');

@@ -7,13 +7,23 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { AbstractClassType, ClassType, isArray, isClass } from '@deepkit/core';
 
-import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext } from './decorator-builder.js';
-import { EntityData, ReceiveType, SerializerFn, TData } from './reflection/reflection.js';
-import { ClassType, isArray } from '@deepkit/core';
-import { IndexOptions } from './reflection/type.js';
-import type { ValidateFunction } from './validator.js';
 import { typeSettings } from './core.js';
+import {
+    ClassDecoratorResult,
+    createClassDecoratorContext,
+    createPropertyDecoratorContext,
+} from './decorator-builder.js';
+import { resolveRuntimeType } from './reflection/processor.js';
+import { EntityData, ReceiveType, SerializerFn, TData } from './reflection/reflection.js';
+import type { IndexOptions, ValidateFunction } from './type-annotations.js';
+
+export function annotateClass<T>(clazz: ClassType | AbstractClassType, type?: ReceiveType<T>) {
+    (clazz as any).__type = isClass(type) ? (type as any).__type || [] : [];
+    type = resolveRuntimeType(type);
+    (clazz as any).__type.__type = type;
+}
 
 class TDecorator {
     t = new TData();

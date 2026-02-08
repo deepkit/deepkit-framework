@@ -7,8 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { resolveSrv, resolveTxt } from 'dns';
+
 import { asyncOperation } from '@deepkit/core';
 
 function matchesParentDomain(srvAddress, parentDomain) {
@@ -18,7 +18,9 @@ function matchesParentDomain(srvAddress, parentDomain) {
     return srv.endsWith(parent);
 }
 
-export async function resolveSrvHosts(hostname: string): Promise<{ options: string, hosts: { hostname: string, port: number }[] }> {
+export async function resolveSrvHosts(
+    hostname: string,
+): Promise<{ options: string; hosts: { hostname: string; port: number }[] }> {
     return await asyncOperation(async (resolve, reject) => {
         resolveSrv(`_mongodb._tcp.${hostname}`, (err?, addresses?) => {
             if (err) return reject(err);

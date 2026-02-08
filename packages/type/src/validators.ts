@@ -1,6 +1,7 @@
 import { isArray } from '@deepkit/core';
-import { ValidatorError } from './validator.js';
+
 import { TypeLiteral } from './reflection/type.js';
+import { ValidatorError } from './validator.js';
 
 export const validators: { [name in string]?: (...args: any[]) => (value: any) => ValidatorError | undefined } = {
     pattern(type: TypeLiteral) {
@@ -104,7 +105,8 @@ export const validators: { [name in string]?: (...args: any[]) => (value: any) =
     minimum(min: TypeLiteral & { literal: number | bigint }) {
         return (value: any) => {
             if ('number' !== typeof value && 'bigint' !== typeof value) return;
-            if (value < min.literal) return new ValidatorError('minimum', 'Number needs to be greater than or equal to ' + min.literal);
+            if (value < min.literal)
+                return new ValidatorError('minimum', 'Number needs to be greater than or equal to ' + min.literal);
             return;
         };
     },
@@ -112,7 +114,8 @@ export const validators: { [name in string]?: (...args: any[]) => (value: any) =
     exclusiveMinimum(min: TypeLiteral & { literal: number | bigint }) {
         return (value: any) => {
             if ('number' !== typeof value && 'bigint' !== typeof value) return;
-            if (value <= min.literal) return new ValidatorError('minimum', 'Number needs to be greater than ' + min.literal);
+            if (value <= min.literal)
+                return new ValidatorError('minimum', 'Number needs to be greater than ' + min.literal);
             return;
         };
     },
@@ -120,7 +123,8 @@ export const validators: { [name in string]?: (...args: any[]) => (value: any) =
     maximum(max: TypeLiteral & { literal: number | bigint }) {
         return (value: any) => {
             if ('number' !== typeof value && 'bigint' !== typeof value) return;
-            if (value > max.literal) return new ValidatorError('maximum', 'Number needs to be smaller than or equal to ' + max.literal);
+            if (value > max.literal)
+                return new ValidatorError('maximum', 'Number needs to be smaller than or equal to ' + max.literal);
             return;
         };
     },
@@ -128,7 +132,8 @@ export const validators: { [name in string]?: (...args: any[]) => (value: any) =
     exclusiveMaximum(max: TypeLiteral & { literal: number | bigint }) {
         return (value: any) => {
             if ('number' !== typeof value && 'bigint' !== typeof value) return;
-            if (value >= max.literal) return new ValidatorError('maximum', 'Number needs to be smaller than ' + max.literal);
+            if (value >= max.literal)
+                return new ValidatorError('maximum', 'Number needs to be smaller than ' + max.literal);
             return;
         };
     },

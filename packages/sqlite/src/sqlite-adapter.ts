@@ -7,8 +7,10 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import sqlite3 from 'better-sqlite3';
 
-import { AbstractClassType, asyncOperation, ClassType, empty } from '@deepkit/core';
+import { AbstractClassType, ClassType, DeepkitError, asyncOperation, empty } from '@deepkit/core';
+import { Logger } from '@deepkit/logger';
 import {
     DatabaseDeleteError,
     DatabaseError,
@@ -18,19 +20,15 @@ import {
     DatabaseTransaction,
     DatabaseUpdateError,
     DeleteResult,
-    ensureDatabaseError,
     OrmEntity,
     PatchResult,
-    primaryKeyObjectConverter,
     UniqueConstraintFailure,
+    ensureDatabaseError,
+    primaryKeyObjectConverter,
 } from '@deepkit/orm';
 import {
-    asAliasName,
     DefaultPlatform,
-    prepareBatchUpdate,
     PreparedEntity,
-    splitDotPath,
-    SqlBuilder,
     SQLConnection,
     SQLConnectionPool,
     SQLDatabaseAdapter,
@@ -40,22 +38,31 @@ import {
     SQLQueryModel,
     SQLQueryResolver,
     SQLStatement,
+    SqlBuilder,
+    asAliasName,
+    prepareBatchUpdate,
+    splitDotPath,
 } from '@deepkit/sql';
-import { Changes, getPatchSerializeFunction, getSerializeFunction, ReceiveType, ReflectionClass, resolvePath } from '@deepkit/type';
-import sqlite3 from 'better-sqlite3';
-import { SQLitePlatform } from './sqlite-platform.js';
 import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
-import { Logger } from '@deepkit/logger';
+import {
+    Changes,
+    ReceiveType,
+    ReflectionClass,
+    getPatchSerializeFunction,
+    getSerializeFunction,
+    resolvePath,
+} from '@deepkit/type';
+
+import { SQLitePlatform } from './sqlite-platform.js';
 
 /**
  * Converts a specific database error to a more specific error, if possible.
  */
-function handleSpecificError(session: DatabaseSession, error: DatabaseError): Error {
+function handleSpecificError(session: DatabaseSession, error: Error): Error {
     let cause: any = error;
     while (cause) {
         if (cause instanceof Error) {
-            if (cause.message.includes('UNIQUE constraint failed')
-            ) {
+            if (cause.message.includes('UNIQUE constraint failed')) {
                 return new UniqueConstraintFailure(`${cause.message}`, { cause: error });
             }
             cause = cause.cause;
@@ -68,7 +75,12 @@ function handleSpecificError(session: DatabaseSession, error: DatabaseError): Er
 const scope = 'deepkit:orm:sqlite';
 
 export class SQLiteStatement extends SQLStatement {
-    constructor(protected logger: Logger, protected sql: string, protected stmt: sqlite3.Statement, protected stopwatch?: Stopwatch) {
+    constructor(
+        protected logger: Logger,
+        protected sql: string,
+        protected stmt: sqlite3.Statement,
+        protected stopwatch?: Stopwatch,
+    ) {
         super();
     }
 
@@ -104,8 +116,7 @@ export class SQLiteStatement extends SQLStatement {
         }
     }
 
-    release() {
-    }
+    release() {}
 }
 
 export class SQLiteDatabaseTransaction extends DatabaseTransaction {
@@ -118,7 +129,7 @@ export class SQLiteDatabaseTransaction extends DatabaseTransaction {
 
     async commit() {
         if (!this.connection) return;
-        if (this.ended) throw new Error('Transaction ended already');
+        if (this.ended) throw new DeepkitError('DK-SQ001', 'Transaction ended already');
 
         await this.connection.run('COMMIT');
         this.ended = true;
@@ -128,7 +139,7 @@ export class SQLiteDatabaseTransaction extends DatabaseTransaction {
     async rollback() {
         if (!this.connection) return;
 
-        if (this.ended) throw new Error('Transaction ended already');
+        if (this.ended) throw new DeepkitError('DK-SQ001', 'Transaction ended already');
         await this.connection.run('ROLLBACK');
         this.ended = true;
         this.connection.release();
@@ -243,13 +254,15 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
             return transaction.connection;
         }
 
-        const connection = this.firstConnection && this.firstConnection.released ? this.firstConnection :
-            this.activeConnections >= this.maxConnections
-                //we wait for the next query to be released and reuse it
-                ? await asyncOperation<SQLiteConnection>((resolve) => {
-                    this.queue.push(resolve);
-                })
-                : this.createConnection(transaction);
+        const connection =
+            this.firstConnection && this.firstConnection.released
+                ? this.firstConnection
+                : this.activeConnections >= this.maxConnections
+                  ? //we wait for the next query to be released and reuse it
+                    await asyncOperation<SQLiteConnection>(resolve => {
+                        this.queue.push(resolve);
+                    })
+                  : this.createConnection(transaction);
 
         if (!this.firstConnection) this.firstConnection = connection;
         connection.released = false;
@@ -261,10 +274,10 @@ export class SQLiteConnectionPool extends SQLConnectionPool {
             connection.transaction = transaction;
             try {
                 await transaction.begin();
-            } catch (error) {
+            } catch (error: any) {
                 transaction.ended = true;
                 connection.release();
-                throw new Error('Could not start transaction: ' + error);
+                throw new DeepkitError('DK-SQ002', 'Could not start transaction: ' + error, { cause: error });
             }
         }
         return connection;
@@ -308,7 +321,10 @@ export class SQLitePersistence extends SQLPersistence {
         return super.getInsertSQL(classSchema, fields, values);
     }
 
-    async batchUpdate<T extends OrmEntity>(entity: PreparedEntity, changeSets: DatabasePersistenceChangeSet<T>[]): Promise<void> {
+    async batchUpdate<T extends OrmEntity>(
+        entity: PreparedEntity,
+        changeSets: DatabasePersistenceChangeSet<T>[],
+    ): Promise<void> {
         const prepared = prepareBatchUpdate(this.platform, entity, changeSets);
         if (!prepared) return;
 
@@ -337,10 +353,18 @@ export class SQLitePersistence extends SQLPersistence {
         for (let i = 0; i < changeSets.length; i++) {
             params.push(prepared.primaryKeys[i]);
             let pkValue = placeholderStrategy.getPlaceholder();
-            valuesValues.push('(' + pkValue + ',' + valuesNames.map(name => {
-                params.push(prepared.values[name][i]);
-                return placeholderStrategy.getPlaceholder();
-            }).join(',') + ')');
+            valuesValues.push(
+                '(' +
+                    pkValue +
+                    ',' +
+                    valuesNames
+                        .map(name => {
+                            params.push(prepared.values[name][i]);
+                            return placeholderStrategy.getPlaceholder();
+                        })
+                        .join(',') +
+                    ')',
+            );
         }
 
         for (let i = 0; i < changeSets.length; i++) {
@@ -438,7 +462,8 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         protected connectionPool: SQLiteConnectionPool,
         protected platform: DefaultPlatform,
         classSchema: ReflectionClass<T>,
-        session: DatabaseSession<SQLDatabaseAdapter>) {
+        session: DatabaseSession<SQLDatabaseAdapter>,
+    ) {
         super(connectionPool, platform, classSchema, session.adapter, session);
     }
 
@@ -455,10 +480,15 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         const sqlBuilder = new SqlBuilder(this.adapter);
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const select = sqlBuilder.select(this.classSchema, model, { select: [pkField] });
-        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(
+            this.classSchema,
+            this.platform.serializer.deserializeRegistry,
+        );
         if (sqlBuilderFrame) sqlBuilderFrame.end();
 
-        const connectionFrame = this.session.stopwatch ? this.session.stopwatch.start('Connection acquisition') : undefined;
+        const connectionFrame = this.session.stopwatch
+            ? this.session.stopwatch.start('Connection acquisition')
+            : undefined;
         const connection = await this.connectionPool.getConnection(this.session.assignedTransaction);
         if (connectionFrame) connectionFrame.end();
 
@@ -475,7 +505,11 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
                 deleteResult.primaryKeys.push(primaryKeyConverted(row[pkName]));
             }
         } catch (error: any) {
-            error = new DatabaseDeleteError(this.classSchema, `Could not delete ${this.classSchema.getClassName()} in database`, { cause: error });
+            error = new DatabaseDeleteError(
+                this.classSchema,
+                `Could not delete ${this.classSchema.getClassName()} in database`,
+                { cause: error },
+            );
             error.query = model;
             error = this.handleSpecificError(error);
         } finally {
@@ -489,46 +523,69 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         const selectParams: any[] = [];
         const tableName = this.platform.getTableIdentifier(this.classSchema);
         const primaryKey = this.classSchema.getPrimary();
-        const primaryKeyConverted = primaryKeyObjectConverter(this.classSchema, this.platform.serializer.deserializeRegistry);
+        const primaryKeyConverted = primaryKeyObjectConverter(
+            this.classSchema,
+            this.platform.serializer.deserializeRegistry,
+        );
 
         const fieldsSet: { [name: string]: 1 } = {};
         const aggregateFields: { [name: string]: { converted: (v: any) => any } } = {};
 
-        const patchSerialize = getPatchSerializeFunction(this.classSchema.type, this.platform.serializer.serializeRegistry);
+        const patchSerialize = getPatchSerializeFunction(
+            this.classSchema.type,
+            this.platform.serializer.serializeRegistry,
+        );
         const $set = changes.$set ? patchSerialize(changes.$set, undefined, { normalizeArrayIndex: true }) : undefined;
 
-        if ($set) for (const i in $set) {
-            if (!$set.hasOwnProperty(i)) continue;
-            fieldsSet[i] = 1;
-            select.push(` ? as ${this.platform.quoteIdentifier(asAliasName(i))}`);
-            selectParams.push($set[i]);
-        }
+        if ($set)
+            for (const i in $set) {
+                if (!$set.hasOwnProperty(i)) continue;
+                fieldsSet[i] = 1;
+                select.push(` ? as ${this.platform.quoteIdentifier(asAliasName(i))}`);
+                selectParams.push($set[i]);
+            }
 
-        if (changes.$unset) for (const i in changes.$unset) {
-            if (!changes.$unset.hasOwnProperty(i)) continue;
-            fieldsSet[i] = 1;
-            select.push(`NULL as ${this.platform.quoteIdentifier(i)}`);
-        }
+        if (changes.$unset)
+            for (const i in changes.$unset) {
+                if (!changes.$unset.hasOwnProperty(i)) continue;
+                fieldsSet[i] = 1;
+                select.push(`NULL as ${this.platform.quoteIdentifier(i)}`);
+            }
 
         for (const i of model.returning) {
-            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.deserializeRegistry) };
+            aggregateFields[i] = {
+                converted: getSerializeFunction(
+                    resolvePath(i, this.classSchema.type),
+                    this.platform.serializer.deserializeRegistry,
+                ),
+            };
             select.push(`(${this.platform.quoteIdentifier(i)} ) as ${this.platform.quoteIdentifier(i)}`);
         }
 
-        if (changes.$inc) for (const i in changes.$inc) {
-            if (!changes.$inc.hasOwnProperty(i)) continue;
-            fieldsSet[i] = 1;
-            aggregateFields[i] = { converted: getSerializeFunction(resolvePath(i, this.classSchema.type), this.platform.serializer.serializeRegistry) };
+        if (changes.$inc)
+            for (const i in changes.$inc) {
+                if (!changes.$inc.hasOwnProperty(i)) continue;
+                fieldsSet[i] = 1;
+                aggregateFields[i] = {
+                    converted: getSerializeFunction(
+                        resolvePath(i, this.classSchema.type),
+                        this.platform.serializer.serializeRegistry,
+                    ),
+                };
 
-            select.push(`(${this.platform.getColumnAccessor('', i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`);
-        }
+                select.push(
+                    `(${this.platform.getColumnAccessor('', i)} + ${this.platform.quoteValue(changes.$inc[i])}) as ${this.platform.quoteIdentifier(asAliasName(i))}`,
+                );
+            }
 
         const set: string[] = [];
         for (const i in fieldsSet) {
             if (i.includes('.')) {
                 let [firstPart, secondPart] = splitDotPath(i);
                 if (!secondPart.startsWith('[')) secondPart = '.' + secondPart;
-                set.push(`${this.platform.quoteIdentifier(firstPart)} = json_set(${this.platform.quoteIdentifier(firstPart)}, '$${secondPart}', _b.${this.platform.quoteIdentifier(asAliasName(i))})`);
+                set.push(
+                    `${this.platform.quoteIdentifier(firstPart)} = json_set(${this.platform.quoteIdentifier(firstPart)}, '$${secondPart}', _b.${this.platform.quoteIdentifier(asAliasName(i))})`,
+                );
             } else {
                 set.push(`${this.platform.quoteIdentifier(i)} = _b.${this.platform.quoteIdentifier(i)}`);
             }
@@ -546,7 +603,7 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
         const sqlBuilder = new SqlBuilder(this.adapter, selectParams);
         const selectSQL = sqlBuilder.select(this.classSchema, model, { select });
         if (!set.length) {
-            throw new DatabaseError('SET is empty');
+            throw new DatabaseError('DK-O001', 'SET is empty');
         }
 
         const sql = `
@@ -581,7 +638,13 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
                 }
             }
         } catch (error: any) {
-            error = new DatabasePatchError(this.classSchema, model, changes, `Could not patch ${this.classSchema.getClassName()} in database`, { cause: error });
+            error = new DatabasePatchError(
+                this.classSchema,
+                model,
+                changes,
+                `Could not patch ${this.classSchema.getClassName()} in database`,
+                { cause: error },
+            );
             throw this.handleSpecificError(error);
         } finally {
             connection.release();
@@ -589,17 +652,29 @@ export class SQLiteQueryResolver<T extends OrmEntity> extends SQLQueryResolver<T
     }
 }
 
-export class SQLiteDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T> {
-}
+export class SQLiteDatabaseQuery<T extends OrmEntity> extends SQLDatabaseQuery<T> {}
 
 export class SQLiteDatabaseQueryFactory extends SQLDatabaseQueryFactory {
-    constructor(protected connectionPool: SQLiteConnectionPool, platform: DefaultPlatform, databaseSession: DatabaseSession<any>) {
+    constructor(
+        protected connectionPool: SQLiteConnectionPool,
+        platform: DefaultPlatform,
+        databaseSession: DatabaseSession<any>,
+    ) {
         super(connectionPool, platform, databaseSession);
     }
 
-    createQuery<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>): SQLiteDatabaseQuery<T> {
-        return new SQLiteDatabaseQuery<T>(ReflectionClass.from(type), this.databaseSession,
-            new SQLiteQueryResolver<T>(this.connectionPool, this.platform, ReflectionClass.from(type), this.databaseSession),
+    createQuery<T extends OrmEntity>(
+        type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>,
+    ): SQLiteDatabaseQuery<T> {
+        return new SQLiteDatabaseQuery<T>(
+            ReflectionClass.from(type),
+            this.databaseSession,
+            new SQLiteQueryResolver<T>(
+                this.connectionPool,
+                this.platform,
+                ReflectionClass.from(type),
+                this.databaseSession,
+            ),
         );
     }
 }
@@ -647,7 +722,10 @@ export class SQLiteDatabaseAdapter extends SQLDatabaseAdapter {
 
     disconnect(force?: boolean): void {
         if (!force && this.connectionPool.getActiveConnections() > 0) {
-            throw new Error(`There are still active connections. Please release() any fetched connection first.`);
+            throw new DeepkitError(
+                'DK-SQ003',
+                'There are still active connections. Please release() any fetched connection first.',
+            );
         }
         this.connectionPool.close();
     }

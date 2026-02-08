@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+
 import { User } from './testcase-b/user.js';
 import { createDatabase } from './utils.js';
 
@@ -18,14 +19,15 @@ async function setupTestCase(name: string) {
     await db.persist(marcel);
 
     return {
-        database: db, marc, peter, marcel,
-    }
+        database: db,
+        marc,
+        peter,
+        marcel,
+    };
 }
 
 test('ids', async () => {
-    const {
-        database, marc, peter, marcel,
-    } = await setupTestCase('ids');
+    const { database, marc, peter, marcel } = await setupTestCase('ids');
 
     {
         const ids = await database.query(User).ids(true);
@@ -34,16 +36,19 @@ test('ids', async () => {
 
     {
         const ids = await database.query(User).ids();
-        expect(ids).toEqual([{id: marc.id}, {id: peter.id}, {id: marcel.id}]);
+        expect(ids).toEqual([{ id: marc.id }, { id: peter.id }, { id: marcel.id }]);
     }
 
     {
-        const ids = await database.query(User).sort({name: 'asc'}).ids(true);
+        const ids = await database.query(User).sort({ name: 'asc' }).ids(true);
         expect(ids).toEqual([marc.id, marcel.id, peter.id]);
     }
 
     {
-        const ids = await database.query(User).filter({name: {$regex: /^marc/}}).ids(true);
+        const ids = await database
+            .query(User)
+            .filter({ name: { $regex: /^marc/ } })
+            .ids(true);
         expect(ids).toEqual([marc.id, marcel.id]);
     }
 
@@ -53,23 +58,25 @@ test('ids', async () => {
     }
 
     {
-        const ids = await database.query(User).joinWith('credentials').filter({name: {$regex: /^marc/}}).ids(true);
+        const ids = await database
+            .query(User)
+            .joinWith('credentials')
+            .filter({ name: { $regex: /^marc/ } })
+            .ids(true);
         expect(ids).toEqual([marc.id, marcel.id]);
     }
 });
 
 test('one-to-one', async () => {
-    const {
-        database, marc, peter, marcel,
-    } = await setupTestCase('one-to-one');
+    const { database, marc, peter, marcel } = await setupTestCase('one-to-one');
 
     {
-        const item = await database.query(User).joinWith('credentials').filter({name: 'marc'}).findOne();
-        expect(item.credentials.password).toBe('marcPassword')
+        const item = await database.query(User).joinWith('credentials').filter({ name: 'marc' }).findOne();
+        expect(item.credentials.password).toBe('marcPassword');
     }
 
     {
-        const item = await database.query(User).joinWith('credentials').filter({name: 'marcel'}).findOne();
-        expect(item.credentials.password).toBe('')
+        const item = await database.query(User).joinWith('credentials').filter({ name: 'marcel' }).findOne();
+        expect(item.credentials.password).toBe('');
     }
 });

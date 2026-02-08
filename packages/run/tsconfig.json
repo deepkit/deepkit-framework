@@ -10,7 +10,9 @@
   "reflection": true,
   "include": [
     "index.ts",
-    "hooks.ts"
+    "hooks.ts",
+    "shared.ts",
+    "expect.ts"
   ],
   "exclude": [
     "tests"

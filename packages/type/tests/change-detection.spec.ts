@@ -1,10 +1,13 @@
-import { expect, test } from '@jest/globals';
-import { deserialize } from '../src/serializer-facade.js';
-import { createSnapshot } from '../src/snapshot.js';
-import { ReflectionClass, resolveClassType, typeOf } from '../src/reflection/reflection.js';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
+
 import { buildChanges } from '../src/change-detector.js';
 import { atomicChange } from '../src/changes.js';
+import { ReflectionClass, resolveClassType, typeOf } from '../src/reflection/reflection.js';
 import { ReflectionKind } from '../src/reflection/type.js';
+import { deserialize } from '../src/serializer-facade.js';
+import { createSnapshot } from '../src/snapshot.js';
 
 test('change-detection string', () => {
     interface s {
@@ -116,7 +119,7 @@ test('change-detection object', () => {
 test('change-detection union', () => {
     interface s {
         id: number;
-        tags?: { type: 'a', name: string } | { type: 'b', size: number };
+        tags?: { type: 'a'; name: string } | { type: 'b'; size: number };
     }
 
     {
@@ -143,7 +146,6 @@ test('change-detection enum', () => {
         id: number;
         enum?: MyEnum;
     }
-
 
     {
         const item = deserialize<s>({ id: 1, enum: MyEnum.running });
@@ -226,7 +228,6 @@ test('change-detection array in array', () => {
 });
 
 test('change-detection array in object', () => {
-
     interface s {
         id: number;
         tags: { [name: string]: string[] };
@@ -283,10 +284,9 @@ test('change-detection object in object', () => {
 });
 
 test('change-detection class', () => {
-
     interface s {
         id: number;
-        config: { a?: string, b?: string };
+        config: { a?: string; b?: string };
     }
 
     expect(ReflectionClass.from(typeOf<s>()).getProperty('config').getResolvedReflectionClass().getProperty('a').type.kind).toBe(ReflectionKind.string);
@@ -314,14 +314,20 @@ test('change-detection class', () => {
 test('change-detection class in array', () => {
     interface s {
         id: number;
-        config: { name: string, value: string }[];
+        config: { name: string; value: string }[];
     }
 
     expect(resolveClassType(ReflectionClass.from(typeOf<s>()).getProperty('config').getSubType()).getProperty('name').type.kind).toBe(ReflectionKind.string);
     expect(resolveClassType(ReflectionClass.from(typeOf<s>()).getProperty('config').getSubType()).getProperty('value').type.kind).toBe(ReflectionKind.string);
 
     {
-        const item = deserialize<s>({ id: 1, config: [{ name: 'foo', value: 'bar' }, { name: 'foo2', value: 'bar2' }] });
+        const item = deserialize<s>({
+            id: 1,
+            config: [
+                { name: 'foo', value: 'bar' },
+                { name: 'foo2', value: 'bar2' },
+            ],
+        });
         const snapshot = createSnapshot(ReflectionClass.from(typeOf<s>()), item);
         expect(buildChanges(ReflectionClass.from(typeOf<s>()), snapshot, item)).toMatchObject({});
 
@@ -331,10 +337,16 @@ test('change-detection class in array', () => {
         item.config = [{ name: 'foo2', value: 'bar2' }];
         expect(buildChanges(ReflectionClass.from(typeOf<s>()), snapshot, item)).toMatchObject({ $set: { config: item.config } });
 
-        item.config = [{ name: 'foo3', value: 'bar' }, { name: 'foo2', value: 'bar2' }];
+        item.config = [
+            { name: 'foo3', value: 'bar' },
+            { name: 'foo2', value: 'bar2' },
+        ];
         expect(buildChanges(ReflectionClass.from(typeOf<s>()), snapshot, item)).toMatchObject({ $set: { config: item.config } });
 
-        item.config = [{ name: 'foo', value: 'bar' }, { name: 'foo4', value: 'bar2' }];
+        item.config = [
+            { name: 'foo', value: 'bar' },
+            { name: 'foo4', value: 'bar2' },
+        ];
         expect(buildChanges(ReflectionClass.from(typeOf<s>()), snapshot, item)).toMatchObject({ $set: { config: item.config } });
 
         item.config = [{ name: 'foo4', value: 'bar2' }];
@@ -343,10 +355,17 @@ test('change-detection class in array', () => {
         item.config = [];
         expect(buildChanges(ReflectionClass.from(typeOf<s>()), snapshot, item)).toMatchObject({ $set: { config: item.config } });
 
-        item.config = [{ name: 'foo', value: 'bar' }, { name: 'foo2', value: 'bar2' }, { name: 'foo3', value: 'bar3' }];
+        item.config = [
+            { name: 'foo', value: 'bar' },
+            { name: 'foo2', value: 'bar2' },
+            { name: 'foo3', value: 'bar3' },
+        ];
         expect(buildChanges(ReflectionClass.from(typeOf<s>()), snapshot, item)).toMatchObject({ $set: { config: item.config } });
 
-        item.config = [{ name: 'foo', value: 'bar' }, { name: 'foo2', value: 'bar2' }];
+        item.config = [
+            { name: 'foo', value: 'bar' },
+            { name: 'foo2', value: 'bar2' },
+        ];
         expect(buildChanges(ReflectionClass.from(typeOf<s>()), snapshot, item)).toMatchObject({});
     }
 });

@@ -1,12 +1,16 @@
-import { expect, test } from '@jest/globals';
-import { cast, validate } from '@deepkit/type';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
+
+import { cast } from '../../src/serializer-facade.js';
+import { validate } from '../../src/validator.js';
 
 test('cast literal obj having typed tuple [number | null, number | null] as nested prop', () => {
     type MinMax = [number | null, number | null];
 
     class T {
         building!: {
-            area: MinMax
+            area: MinMax;
         };
     }
 
@@ -47,21 +51,21 @@ test('cast literal obj to T containing typed tuple', () => {
     expect(casted.tuple[2]).toBe(null);
 });
 
-test("cast literal obj having typed tuple [number | null, number | null] as nested prop", () => {
+test('cast literal obj having typed tuple [number | null, number | null] as nested prop', () => {
     type MinMax = [min: number | null, max: number | null];
 
     class T {
         building?: {
-            area?: MinMax
-        }
+            area?: MinMax;
+        };
     }
 
     // const d = JSON.parse('{"building":{"area":[120,null]}}');
 
     const data: T = cast<T>({
         building: {
-            area: [120, null]
-        }
+            area: [120, null],
+        },
     });
 
     const errors = validate<T>(data);

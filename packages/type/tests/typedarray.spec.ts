@@ -1,8 +1,11 @@
-import { expect, test } from '@jest/globals';
 import { Buffer } from 'buffer';
-import { ReflectionClass } from '../src/reflection/reflection.js';
-import { assertType, binaryTypes, ReflectionKind } from '../src/reflection/type.js';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
+
 import { base64ToArrayBuffer, base64ToTypedArray, typedArrayToBase64, typedArrayToBuffer } from '../src/core.js';
+import { ReflectionClass } from '../src/reflection/reflection.js';
+import { ReflectionKind, assertType, binaryTypes } from '../src/reflection/type.js';
 import { deserialize, serialize } from '../src/serializer-facade.js';
 
 test('mapping', async () => {
@@ -19,7 +22,7 @@ test('mapping', async () => {
     }
 
     const classSchema = ReflectionClass.from(Clazz);
-    const clazz = new Clazz;
+    const clazz = new Clazz();
     const json = serialize<Clazz>(clazz);
     const back = deserialize<Clazz>(json);
 
@@ -62,7 +65,6 @@ test('Float32Array', async () => {
     clazz.floats = new Float32Array(2);
     clazz.floats[0] = 256.0;
     clazz.floats[1] = 23029.445;
-    console.log(clazz.floats);
 
     expect(clazz.floats.buffer.byteLength).toBe(8);
     expect(clazz.floats.buffer.byteLength).toBe(Float32Array.BYTES_PER_ELEMENT * 2);
@@ -79,7 +81,6 @@ test('Float32Array', async () => {
     const plain = serialize<Clazz>(clazz);
     expect(typeof plain.floats).toBe('string');
     expect(plain.floats).toBe('AACAQ+Tqs0Y=');
-
 
     //this errors since Buffer.buffer is corrupt
     // expect(Buffer.from('ab').buffer.byteLength).toBe(2);

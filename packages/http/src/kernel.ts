@@ -1,13 +1,22 @@
-import { InjectorContext, Setter } from '@deepkit/injector';
-import { HttpRouter } from './router.js';
-import { EventDispatcher } from '@deepkit/event';
-import { LoggerInterface } from '@deepkit/logger';
-import { HttpRequest, HttpResponse, incomingMessageToHttpRequest, MemoryHttpResponse, RequestBuilder, serverResponseToHttpResponse } from './model.js';
-import { HttpError, HttpRequestEvent, HttpResultFormatter, httpWorkflow, JSONResponse } from './http.js';
-import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
 import { unlink } from 'fs';
-import { ValidationError } from '@deepkit/type';
 import { IncomingMessage, ServerResponse } from 'http';
+
+import { EventDispatcher } from '@deepkit/event';
+import { InjectorContext, Setter } from '@deepkit/injector';
+import { LoggerInterface } from '@deepkit/logger';
+import { FrameCategory, Stopwatch } from '@deepkit/stopwatch';
+import { ValidationError } from '@deepkit/type';
+
+import { HttpError, HttpRequestEvent, HttpResultFormatter, JSONResponse, httpWorkflow } from './http.js';
+import {
+    HttpRequest,
+    HttpResponse,
+    MemoryHttpResponse,
+    RequestBuilder,
+    incomingMessageToHttpRequest,
+    serverResponseToHttpResponse,
+} from './model.js';
+import { HttpRouter } from './router.js';
 
 interface HttpKernelHandleOptions {
     /**
@@ -70,19 +79,24 @@ export class HttpKernel {
             options.throwOnNotFound = true;
         }
         return (req: IncomingMessage, res: ServerResponse, next: (error?: any) => void) => {
-            return this.handleRequest(req, res, options).then(() => {
-                next();
-            }).catch((error) => {
-                if (options.fallThroughOnNotFound && error instanceof HttpError && error.httpCode === 404) {
+            return this.handleRequest(req, res, options)
+                .then(() => {
                     next();
-                    return;
-                }
-                next(error);
-            });
+                })
+                .catch(error => {
+                    if (options.fallThroughOnNotFound && error instanceof HttpError && error.httpCode === 404) {
+                        next();
+                        return;
+                    }
+                    next(error);
+                });
         };
     }
 
-    public async request(requestBuilder: RequestBuilder, options: HttpKernelHandleOptions = {}): Promise<MemoryHttpResponse> {
+    public async request(
+        requestBuilder: RequestBuilder,
+        options: HttpKernelHandleOptions = {},
+    ): Promise<MemoryHttpResponse> {
         const request = requestBuilder.build();
         const response = new MemoryHttpResponse(request);
         response.assignSocket(request.socket);
@@ -112,32 +126,44 @@ export class HttpKernel {
             frame.data({ url: req.getUrl(), method: req.getMethod(), clientIp: req.getRemoteAddress() });
             await frame.run(() => workflow.apply('request', new HttpRequestEvent(httpInjectorContext, req, res)));
         } catch (error: any) {
+            this.logger.error('HTTP kernel request failed', error);
+
             if (!res.headersSent) {
                 const resultFormatter = httpInjectorContext.get(HttpResultFormatter);
                 if (error instanceof ValidationError) {
-                    resultFormatter.handle(new JSONResponse({
-                        message: error.message,
-                        errors: error.errors,
-                    }, 400).disableAutoSerializing(), { request: req, response: res });
+                    resultFormatter.handle(
+                        new JSONResponse(
+                            {
+                                message: error.message,
+                                errors: error.errors,
+                            },
+                            400,
+                        ).disableAutoSerializing(),
+                        { request: req, response: res },
+                    );
                     return;
                 } else if (error instanceof HttpError) {
                     if (req.throwErrorOnNotFound && error.httpCode === 404) {
                         throw error;
                     }
-                    resultFormatter.handle(new JSONResponse({
-                        message: error.message,
-                    }, error.httpCode).disableAutoSerializing(), { request: req, response: res });
+                    resultFormatter.handle(
+                        new JSONResponse(
+                            {
+                                message: error.message,
+                            },
+                            error.httpCode,
+                        ).disableAutoSerializing(),
+                        { request: req, response: res },
+                    );
                     return;
                 }
 
                 res.status(500);
+                res.end('Internal error');
             }
-
-            this.logger.error('HTTP kernel request failed', error);
         } finally {
             for (const file of Object.values(req.uploadedFiles || [])) {
-                unlink(file.path, () => {
-                });
+                unlink(file.path, () => {});
             }
 
             frame.data({ responseStatus: res.statusCode });

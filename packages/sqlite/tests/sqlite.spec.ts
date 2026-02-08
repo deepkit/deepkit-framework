@@ -1,34 +1,34 @@
 import { expect, test } from '@jest/globals';
+
 import { sleep } from '@deepkit/core';
+import { MemoryLogger } from '@deepkit/logger';
 import { DatabaseEntityRegistry, UniqueConstraintFailure } from '@deepkit/orm';
 import { User, UserCredentials } from '@deepkit/orm-integration';
 import { sql } from '@deepkit/sql';
 import {
     AutoIncrement,
     BackReference,
-    cast,
     DatabaseField,
     Entity,
+    Inline,
+    PrimaryKey,
+    Reference,
+    ReflectionClass,
+    UUID,
+    Unique,
+    cast,
     entity,
     getPrimaryKeyExtractor,
     getPrimaryKeyHashGenerator,
     isReferenceInstance,
-    PrimaryKey,
-    Reference,
-    ReflectionClass,
     serialize,
     typeOf,
-    Unique,
-    UUID,
     uuid,
 } from '@deepkit/type';
-
 
 import { SQLiteDatabaseAdapter, SQLiteDatabaseTransaction } from '../src/sqlite-adapter.js';
 import { SQLitePlatform } from '../src/sqlite-platform.js';
 import { databaseFactory } from './factory.js';
-import { MemoryLogger } from '@deepkit/logger';
-
 
 test('reflection circular reference', () => {
     const user = ReflectionClass.from(User);
@@ -54,10 +54,9 @@ test('tables', () => {
 test('class basic', async () => {
     class Product {
         id: number & PrimaryKey = 0;
-        created: Date = new Date;
+        created: Date = new Date();
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = await databaseFactory([Product]);
@@ -139,12 +138,9 @@ test('sqlite autoincrement', async () => {
     @entity.name('sqlite-user')
     class User {
         id?: number & PrimaryKey & AutoIncrement;
-        created: Date = new Date;
+        created: Date = new Date();
 
-        constructor(
-            public name: string,
-        ) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = await databaseFactory([User]);
@@ -168,13 +164,12 @@ test('sqlite autoincrement', async () => {
 test('sqlite relation', async () => {
     @entity.name('sqlite-author')
     class Author {
-        created: Date = new Date;
+        created: Date = new Date();
 
         constructor(
             public id: number & PrimaryKey,
             public name: string,
-        ) {
-        }
+        ) {}
     }
 
     @entity.name('sqlite-book')
@@ -183,8 +178,7 @@ test('sqlite relation', async () => {
             public id: number & PrimaryKey,
             public author: Author & Reference,
             public name: string,
-        ) {
-        }
+        ) {}
     }
 
     const database = await databaseFactory([Author, Book]);
@@ -205,7 +199,6 @@ test('sqlite relation', async () => {
     expect(await session.query(Author).count()).toBe(2);
     expect(await session.query(Book).count()).toBe(1);
 });
-
 
 test('transaction', async () => {
     const sqlite = new SQLiteDatabaseAdapter('app.sqlite');
@@ -268,11 +261,11 @@ test('connection pool', async () => {
         const c10 = await sqlite.connectionPool.getConnection();
         // this blocks
         let c11: any;
-        sqlite.connectionPool.getConnection().then((c) => {
+        sqlite.connectionPool.getConnection().then(c => {
             c11 = c;
         });
         let c12: any;
-        sqlite.connectionPool.getConnection().then((c) => {
+        sqlite.connectionPool.getConnection().then(c => {
             c12 = c;
         });
         await sleep(0.01);
@@ -295,7 +288,7 @@ test('raw', async () => {
         name!: string;
     }
 
-    const database = await databaseFactory([ReflectionClass.from<User>()]);
+    const database = await databaseFactory([ReflectionClass.from(User)]);
 
     await database.persist({ id: 1, name: 'Peter' });
     await database.persist({ id: 2, name: 'Marie' });
@@ -318,10 +311,7 @@ test(':memory: connection pool', async () => {
     const sqlite = new SQLiteDatabaseAdapter(':memory:');
 
     // create a connection, or return null if it takes longer than 100 ms
-    const createConnectionOrNull = () => Promise.race([
-        sqlite.connectionPool.getConnection(),
-        sleep(0.1).then(() => null),
-    ]);
+    const createConnectionOrNull = () => Promise.race([sqlite.connectionPool.getConnection(), sleep(0.1).then(() => null)]);
 
     {
         const c1 = await sqlite.connectionPool.getConnection();
@@ -380,23 +370,23 @@ test('m2m', async () => {
         id: number & PrimaryKey & AutoIncrement = 0;
         tags: Tag[] & BackReference<{ via: typeof BookToTag }> = [];
 
-        constructor(public title: string) {
-        }
+        constructor(public title: string) {}
     }
 
     class Tag {
         id: number & PrimaryKey & AutoIncrement = 0;
         books: Book[] & BackReference<{ via: typeof BookToTag }> = [];
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     class BookToTag {
         id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public book: Book & Reference, public tag: Tag & Reference) {
-        }
+        constructor(
+            public book: Book & Reference,
+            public tag: Tag & Reference,
+        ) {}
     }
 
     const database = await databaseFactory([Book, Tag, BookToTag]);
@@ -419,7 +409,7 @@ test('bool and json', async () => {
     const database = await databaseFactory([Model]);
 
     {
-        const m = new Model;
+        const m = new Model();
         m.flag = true;
         m.doc.flag = true;
         await database.persist(m);
@@ -435,8 +425,7 @@ test('change different fields of multiple entities', async () => {
         firstName: string = '';
         lastName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -473,8 +462,7 @@ test('change pk', async () => {
     class Model {
         firstName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -514,8 +502,7 @@ test('for update/share', async () => {
     class Model {
         firstName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -564,15 +551,19 @@ test('multiple joins', async () => {
     class Flat {
         public id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public property: Property & Reference, public name: string) {
-        }
+        constructor(
+            public property: Property & Reference,
+            public name: string,
+        ) {}
     }
 
     class Tenant {
         public id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public property: Property & Reference, public name: string) {
-        }
+        constructor(
+            public property: Property & Reference,
+            public name: string,
+        ) {}
     }
 
     class Property {
@@ -580,8 +571,7 @@ test('multiple joins', async () => {
         flats: Flat[] & BackReference = [];
         tenants: Tenant[] & BackReference = [];
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = await databaseFactory([Property, Tenant, Flat]);
@@ -622,7 +612,8 @@ test('multiple joins', async () => {
     }
 
     {
-        const list = await database.query(Property)
+        const list = await database
+            .query(Property)
             .joinWith('flats')
             .joinWith('tenants', v => v.sort({ name: 'desc' }))
             .find();
@@ -692,20 +683,25 @@ test('multiple joins', async () => {
 test('unloaded relation not deep checked', async () => {
     class BaseModel {
         id: number & PrimaryKey & AutoIncrement = 0;
-        created: Date = new Date;
-        modified: Date = new Date;
-
+        created: Date = new Date();
+        modified: Date = new Date();
     }
 
     class Category extends BaseModel {
-        constructor(public name: string, public title: string = '') {
+        constructor(
+            public name: string,
+            public title: string = '',
+        ) {
             super();
             this.title = title || name;
         }
     }
 
     class Product extends BaseModel {
-        constructor(public category: Category & Reference, public title: string) {
+        constructor(
+            public category: Category & Reference,
+            public title: string,
+        ) {
             super();
         }
     }
@@ -732,8 +728,7 @@ test('deep join population', async () => {
         constructor(
             public title: string,
             public price: number,
-        ) {
-        }
+        ) {}
     }
 
     @entity.name('basketEntry')
@@ -744,8 +739,7 @@ test('deep join population', async () => {
             public basket: Basket & Reference,
             public product: Product & Reference,
             public amount: number = 1,
-        ) {
-        }
+        ) {}
     }
 
     @entity.name('basket')
@@ -774,7 +768,8 @@ test('deep join population', async () => {
     }
 
     {
-        const basket = await database.query(Basket)
+        const basket = await database
+            .query(Basket)
             .joinWith('items', v => v.joinWith('product'))
             .findOne();
         expect(basket).toBeInstanceOf(Basket);
@@ -786,12 +781,13 @@ test('deep join population', async () => {
 });
 
 test('joinWith', async () => {
+    // Use & Inline to get nested serialization. Without & Inline, Reference fields
+    // always serialize as FK only, regardless of whether data was joined.
     class MyEntity {
-        ref?: MyEntity & Reference;
-        refs?: MyEntity[] & BackReference;
+        ref?: MyEntity & Reference & Inline;
+        refs?: MyEntity[] & BackReference & Inline;
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([MyEntity]);
@@ -800,17 +796,11 @@ test('joinWith', async () => {
     entity1.ref = entity2;
     await database.persist(entity1, entity2);
 
-    const result = await database
-        .query(MyEntity)
-        .joinWith('ref')
-        .joinWith('refs')
-        .orderBy('id')
-        .find();
+    const result = await database.query(MyEntity).joinWith('ref').joinWith('refs').orderBy('id').find();
 
     expect(result[0].id).toBe(1);
     expect(result[0].ref).toBe(result[1]);
     expect(result[0].refs).toEqual([]);
-
 
     expect(result[1].id).toBe(2);
     expect(result[1].ref).toBe(undefined);
@@ -839,8 +829,7 @@ test('self-reference serialization', async () => {
     class MyEntity {
         ref?: MyEntity & Reference;
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([MyEntity]);
@@ -897,8 +886,7 @@ test('uuid 2', async () => {
     class Image {
         id: UUID & PrimaryKey = uuid();
 
-        constructor(public path: string) {
-        }
+        constructor(public path: string) {}
     }
 
     const database = await databaseFactory([Image]);
@@ -920,8 +908,7 @@ test('uuid 3', async () => {
     class Book {
         id: UUID & PrimaryKey = uuid();
 
-        constructor(public owner: User & Reference) {
-        }
+        constructor(public owner: User & Reference) {}
     }
 
     const database = await databaseFactory([User, Book]);
@@ -949,8 +936,7 @@ test('unique constraint 1', async () => {
     class Model {
         id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public username: string & Unique = '') {
-        }
+        constructor(public username: string & Unique = '') {}
     }
 
     const database = await databaseFactory([Model]);
@@ -999,8 +985,7 @@ test('forward raw types', async () => {
 
 test('database field name with filter', async () => {
     class User {
-        constructor(public id: UUID & PrimaryKey & DatabaseField<{ name: 'uuid' }>) {
-        }
+        constructor(public id: UUID & PrimaryKey & DatabaseField<{ name: 'uuid' }>) {}
     }
 
     const database = await databaseFactory([User]);
@@ -1021,10 +1006,7 @@ test('one to one', async () => {
 
         details?: SimDetails & BackReference;
 
-        constructor(
-            public msisdn: string,
-        ) {
-        }
+        constructor(public msisdn: string) {}
 
         country: string = '';
         active: boolean = true;
@@ -1033,10 +1015,7 @@ test('one to one', async () => {
     class SimDetails {
         company?: Company & Reference;
 
-        constructor(
-            public number: PhoneNumber & Reference & PrimaryKey,
-        ) {
-        }
+        constructor(public number: PhoneNumber & Reference & PrimaryKey) {}
 
         iccid: string = '';
         imsi: string = '';
@@ -1047,8 +1026,7 @@ test('one to one', async () => {
     class Company {
         id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = await databaseFactory([PhoneNumber, SimDetails, Company]);
@@ -1063,11 +1041,14 @@ test('one to one', async () => {
 
     await database.persist(phoneNumber, simDetails, company);
 
-    const result = await database.query(PhoneNumber).innerJoinWith('details', (details) => {
-        return details.innerJoinWith('company', (company) => {
-            return company.filter({ name: 'MyCompany' });
-        });
-    }).findOneOrUndefined();
+    const result = await database
+        .query(PhoneNumber)
+        .innerJoinWith('details', details => {
+            return details.innerJoinWith('company', company => {
+                return company.filter({ name: 'MyCompany' });
+            });
+        })
+        .findOneOrUndefined();
 
     expect(result!.msisdn).toEqual('1234567890');
     expect(result!.details!.pin).toEqual('1234');
@@ -1076,8 +1057,7 @@ test('one to one', async () => {
 test('logger', async () => {
     class Entity {
         id: number & PrimaryKey & AutoIncrement = 0;
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = await databaseFactory([Entity]);
@@ -1088,4 +1068,53 @@ test('logger', async () => {
     await database.persist(new Entity('test1'));
 
     expect(logger.getOutput()).toContain(`INSERT INTO "Entity"`);
+});
+
+test('count with pagination returns total count (#668)', async () => {
+    // GitHub issue #668: query.count() throws error if used with query pagination for page > 1
+    // count() should return the total number of matching rows, ignoring limit/skip
+    class Item {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        constructor(public name: string) {}
+    }
+
+    const database = await databaseFactory([Item]);
+
+    // Insert 25 items
+    for (let i = 0; i < 25; i++) {
+        await database.persist(new Item(`Item ${i + 1}`));
+    }
+
+    // Test 1: count without pagination returns total
+    expect(await database.query(Item).count()).toBe(25);
+
+    // Test 2: count with pagination still returns total (this was the bug)
+    const query = database.query(Item).itemsPerPage(10).page(1);
+    const [page1Items, total1] = await Promise.all([query.find(), query.count()]);
+    expect(page1Items.length).toBe(10);
+    expect(total1).toBe(25); // count should return total, not paginated count
+
+    // Test 3: page 2 - this is where the bug manifested (page > 1)
+    const query2 = database.query(Item).itemsPerPage(10).page(2);
+    const [page2Items, total2] = await Promise.all([query2.find(), query2.count()]);
+    expect(page2Items.length).toBe(10);
+    expect(total2).toBe(25); // count should still return total
+
+    // Test 4: page 3 (last page with only 5 items)
+    const query3 = database.query(Item).itemsPerPage(10).page(3);
+    const [page3Items, total3] = await Promise.all([query3.find(), query3.count()]);
+    expect(page3Items.length).toBe(5);
+    expect(total3).toBe(25); // count should still return total
+
+    // Test 5: page beyond data (page 4 should return 0 items but count should still be 25)
+    const query4 = database.query(Item).itemsPerPage(10).page(4);
+    const [page4Items, total4] = await Promise.all([query4.find(), query4.count()]);
+    expect(page4Items.length).toBe(0);
+    expect(total4).toBe(25); // count should return total even when page is empty
+
+    // Test 6: limit/skip directly
+    const queryWithSkip = database.query(Item).skip(20).limit(10);
+    const [skippedItems, totalSkipped] = await Promise.all([queryWithSkip.find(), queryWithSkip.count()]);
+    expect(skippedItems.length).toBe(5); // only 5 items left after skip 20
+    expect(totalSkipped).toBe(25); // count ignores skip/limit
 });

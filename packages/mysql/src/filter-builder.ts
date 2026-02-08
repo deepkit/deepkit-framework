@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { SQLFilterBuilder } from '@deepkit/sql';
 
 export class MySQLSQLFilterBuilder extends SQLFilterBuilder {

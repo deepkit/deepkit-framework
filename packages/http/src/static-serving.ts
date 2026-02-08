@@ -7,25 +7,21 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { readFileSync, stat } from 'fs';
+import { join } from 'path';
+import send from 'send';
+
+import { AppModule } from '@deepkit/app';
+import { ClassType, urlJoin } from '@deepkit/core';
+import { eventDispatcher } from '@deepkit/event';
 
 import { http } from './decorator.js';
-import { join } from 'path';
-import { readFileSync, stat } from 'fs';
 import { HtmlResponse, httpWorkflow } from './http.js';
-import { AppModule } from '@deepkit/app';
-import { normalizeDirectory } from './utils.js';
-import { ClassType, urlJoin } from '@deepkit/core';
 import { HttpRequest, HttpResponse } from './model.js';
-import send from 'send';
-import { eventDispatcher } from '@deepkit/event';
 import { HttpRouter, RouteConfig } from './router.js';
+import { normalizeDirectory } from './utils.js';
 
-export function staticServe(
-    localPath: string,
-    path: string,
-    request: HttpRequest,
-    response: HttpResponse,
-) {
+export function staticServe(localPath: string, path: string, request: HttpRequest, response: HttpResponse) {
     return new Promise((resolve, reject) => {
         const res = send(request, path, { root: localPath });
         res.pipe(response);
@@ -33,11 +29,7 @@ export function staticServe(
     });
 }
 
-export async function staticOnRoute(
-    event: typeof httpWorkflow.onRoute.event,
-    path: string,
-    localPath: string,
-) {
+export async function staticOnRoute(event: typeof httpWorkflow.onRoute.event, path: string, localPath: string) {
     if (event.sent) return;
     if (event.route) return;
 

@@ -1,6 +1,9 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
+
 import { typeOf } from '../../src/reflection/reflection';
-import { assertType, findMember, ReflectionKind, stringifyResolvedType } from '../../src/reflection/type';
+import { ReflectionKind, assertType, findMember, stringifyResolvedType } from '../../src/reflection/type';
 
 test('basics', () => {
     class A {
@@ -14,7 +17,6 @@ test('basics', () => {
     }
 
     const type = typeOf<A>();
-    console.log(stringifyResolvedType(type));
 
     assertType(type, ReflectionKind.class);
     const a = findMember('a', type.types);

@@ -21,5 +21,5 @@ export class Config {
     /**
      * @description Path to a markdown file to display at the overview page.
      */
-    markdownFile?: string
+    markdownFile?: string;
 }

@@ -7,9 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { MongoError } from './error.js';
 import { CollationMessage, HintMessage } from './command/command.js';
+import { MongoError } from './error.js';
 
 type AuthMechanismProperties = { [name: string]: string | boolean };
 
@@ -159,11 +158,14 @@ export class ConnectionOptions {
 
         // Ensure maxStalenessSeconds meets the minimum requirements
         if (maxStalenessMS > 0 && maxStalenessMS < Math.max(90_000, heartbeatFrequencyMS + idleWritePeriodMS)) {
-            throw new MongoError(`maxStalenessSeconds must be at least ${Math.max(90, (heartbeatFrequencyMS + idleWritePeriodMS) / 1000)} seconds.`);
+            throw new MongoError(
+                'DK-MG001',
+                `maxStalenessSeconds must be at least ${Math.max(90, (heartbeatFrequencyMS + idleWritePeriodMS) / 1000)} seconds.`,
+            );
         }
     }
 
-    protected preferenceTagCache = new Map<string, { [name: string]: string }[]>;
+    protected preferenceTagCache = new Map<string, { [name: string]: string }[]>();
 
     parsePreferenceTags(tags: string): { [name: string]: string }[] {
         let cache = this.preferenceTagCache.get(tags);

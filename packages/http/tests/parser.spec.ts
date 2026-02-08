@@ -1,9 +1,10 @@
-import { expect, test } from "@jest/globals";
-import { HttpConfig } from "../src/module.config";
-import { createHttpKernel } from "./utils";
-import { HttpRouterRegistry, UploadedFile } from "../src/router";
-import { HttpBody, HttpRequest } from "../src/model";
-import { json } from "stream/consumers";
+import { expect, test } from '@jest/globals';
+import { json } from 'stream/consumers';
+
+import { HttpBody, HttpRequest } from '../src/model';
+import { HttpConfig } from '../src/module.config';
+import { HttpRouterRegistry, UploadedFile } from '../src/router';
+import { createHttpKernel } from './utils';
 
 test('multipart posts', async () => {
     const httpConfig = new HttpConfig();
@@ -24,31 +25,33 @@ test('multipart posts', async () => {
         [],
         [],
         [],
-        httpConfig
+        httpConfig,
     );
 
-    const response = await httpKernel.request(HttpRequest.POST('/').multiPart([
-        { name: 'file', file: Buffer.from('the quick brown fox jumps over the lazy dog'), fileName: 'fox.txt' },
-        {
-            name: 'json',
-            value: JSON.stringify({
-                jsonA: 'someValue',
-                jsonB: 42
-            })
-        },
-        {
-            name: 'singleField',
-            value: 'singleValue',
-        },
-        {
-            name: 'multiField',
-            value: 'firstValue'
-        },
-        {
-            name: 'multiField',
-            value: 'secondValue'
-        }
-    ]));
+    const response = await httpKernel.request(
+        HttpRequest.POST('/').multiPart([
+            { name: 'file', file: Buffer.from('the quick brown fox jumps over the lazy dog'), fileName: 'fox.txt' },
+            {
+                name: 'json',
+                value: JSON.stringify({
+                    jsonA: 'someValue',
+                    jsonB: 42,
+                }),
+            },
+            {
+                name: 'singleField',
+                value: 'singleValue',
+            },
+            {
+                name: 'multiField',
+                value: 'firstValue',
+            },
+            {
+                name: 'multiField',
+                value: 'secondValue',
+            },
+        ]),
+    );
 
     expect(response.json).toMatchObject({
         file: {
@@ -60,6 +63,6 @@ test('multipart posts', async () => {
         jsonA: 'someValue',
         jsonB: 42,
         singleField: 'singleValue',
-        multiField: ['firstValue', 'secondValue']
+        multiField: ['firstValue', 'secondValue'],
     });
 });

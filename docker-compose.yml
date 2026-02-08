@@ -1,0 +1,158 @@
+# Docker Compose for Deepkit test services
+# Start:  docker compose up -d
+# Stop:   docker compose down
+# Status: docker compose ps
+#
+# Uses alternative ports to avoid conflicts with existing services.
+# Set environment variables to configure test factories:
+#   export POSTGRES_PORT=15432
+#   export MYSQL_PORT=13306
+#   export MONGO_PORT=27117
+#   export REDIS_PORT=16379
+#   export SFTP_PORT=10022
+#   export FTP_PORT=10021
+#   export MINIO_PORT=10900
+#   export GCS_PORT=10443
+
+services:
+  # PostgreSQL for packages/postgres tests
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ''
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - '15432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MySQL for packages/mysql tests
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+      MYSQL_DATABASE: default
+    ports:
+      - '13306:3306'
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '--silent']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB with replica set for packages/mongo tests
+  # Single-node replica set (required for transactions)
+  mongo:
+    image: mongo:5
+    hostname: mongo
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      - '27117:27017'
+    healthcheck:
+      test: echo "try { rs.status() } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}) }" | mongosh --quiet
+      interval: 5s
+      timeout: 30s
+      retries: 10
+      start_period: 10s
+
+  # MongoDB with authentication for simple-auth tests
+  mongo-auth:
+    image: mongo:5.0.10
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+      MONGO_INITDB_DATABASE: root-db
+    ports:
+      - '27018:27017'
+    volumes:
+      - ./packages/mongo/tests/docker/simple-auth/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
+
+  # Redis for packages/broker-redis tests
+  redis:
+    image: redis:7.0.11
+    ports:
+      - '16379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # SFTP for packages/filesystem-sftp tests
+  sftp:
+    image: atmoz/sftp:alpine
+    platform: linux/amd64
+    ports:
+      - '10022:22'
+    command: user:123:::upload
+
+  # FTP for packages/filesystem-ftp tests
+  ftp:
+    image: fauria/vsftpd
+    ports:
+      - '10021:21'
+      - '10100-10109:10100-10109'
+    environment:
+      FTP_USER: user
+      FTP_PASS: '123'
+      PASV_MIN_PORT: 10100
+      PASV_MAX_PORT: 10109
+      PASV_ADDRESS: localhost
+
+  # MinIO (S3-compatible) for packages/filesystem-aws-s3 tests
+  minio:
+    image: minio/minio
+    ports:
+      - '10900:9000'
+      - '10901:9001'
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Create default bucket for MinIO
+  minio-setup:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      mc mb --ignore-existing myminio/deepkit-test;
+      mc anonymous set public myminio/deepkit-test;
+      exit 0;
+      "
+
+  # Fake Google Cloud Storage for packages/filesystem-google tests
+  fake-gcs:
+    image: fsouza/fake-gcs-server
+    ports:
+      - '10443:4443'
+    volumes:
+      - fake-gcs-data:/data
+    command: ['-scheme', 'http', '-port', '4443', '-public-host', 'localhost:10443', '-backend', 'memory']
+
+  # Create bucket for fake-gcs
+  fake-gcs-setup:
+    image: curlimages/curl
+    depends_on:
+      - fake-gcs
+    entrypoint: >
+      /bin/sh -c "
+      sleep 2;
+      curl -X POST 'http://fake-gcs:4443/storage/v1/b?project=test-project' -H 'Content-Type: application/json' -d '{\"name\": \"deepkit-test\"}';
+      exit 0;
+      "
+
+volumes:
+  fake-gcs-data:

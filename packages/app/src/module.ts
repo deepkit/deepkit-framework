@@ -7,12 +7,21 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { InjectorModule, InjectorModuleConfig, NormalizedProvider, ProviderWithScope, Token } from '@deepkit/injector';
-import { AbstractClassType, ClassType, CustomError, ExtractClassType, isClass } from '@deepkit/core';
+import { AbstractClassType, ClassType, DeepkitError, ExtractClassType, isClass } from '@deepkit/core';
 import { EventListener, EventToken } from '@deepkit/event';
+import { InjectorModule, InjectorModuleConfig, NormalizedProvider, ProviderWithScope, Token } from '@deepkit/injector';
+import {
+    ReflectionFunction,
+    ReflectionKind,
+    ReflectionMethod,
+    Type,
+    TypeClass,
+    getPartialSerializeFunction,
+    resolveReceiveType,
+    serializer,
+} from '@deepkit/type';
 import { WorkflowDefinition } from '@deepkit/workflow';
-import { getPartialSerializeFunction, ReflectionFunction, ReflectionKind, ReflectionMethod, resolveReceiveType, serializer, Type, TypeClass } from '@deepkit/type';
+
 import { ControllerConfig } from './service-container.js';
 
 /**
@@ -187,7 +196,10 @@ export interface RootModuleDefinition extends ModuleDefinition {
     imports?: (AppModule<any> | FunctionalModule)[];
 }
 
-export class ConfigurationInvalidError extends CustomError {
+export class ConfigurationInvalidError extends DeepkitError {
+    constructor(message: string, options?: { cause?: Error }) {
+        super('DK-A001', message, options);
+    }
 }
 
 let moduleId = 0;
@@ -196,17 +208,34 @@ let moduleId = 0;
  * @reflection never
  * @internal
  */
-export type DeepPartial<T> =
-    T extends string | number | bigint | boolean | null | undefined | symbol | Date | Set<any> | Map<any, any> | Uint8Array | ArrayBuffer | ArrayBufferView | Error | RegExp | Function | Promise<any> ? T :
-        Partial<{
-            [P in keyof T]: DeepPartial<T[P]>;
-        }>;
+export type DeepPartial<T> = T extends
+    | string
+    | number
+    | bigint
+    | boolean
+    | null
+    | undefined
+    | symbol
+    | Date
+    | Set<any>
+    | Map<any, any>
+    | Uint8Array
+    | ArrayBuffer
+    | ArrayBufferView
+    | Error
+    | RegExp
+    | Function
+    | Promise<any>
+    ? T
+    : Partial<{
+          [P in keyof T]: DeepPartial<T[P]>;
+      }>;
 
 /**
  * @internal
  */
 export interface AppModuleClass<C extends InjectorModuleConfig> {
-    new(config?: DeepPartial<C>): AppModule<C>;
+    new (config?: DeepPartial<C>): AppModule<C>;
 }
 
 /**
@@ -221,7 +250,9 @@ export interface AppModuleClass<C extends InjectorModuleConfig> {
  * });
  * ```
  */
-export function createModuleClass<C extends InjectorModuleConfig>(options: CreateModuleDefinition & { config?: ClassType<C> }): AppModuleClass<C> {
+export function createModuleClass<C extends InjectorModuleConfig>(
+    options: CreateModuleDefinition & { config?: ClassType<C> },
+): AppModuleClass<C> {
     /** @reflection never */
     return class AnonAppModule extends AppModule<any> {
         constructor(config?: any) {
@@ -311,7 +342,7 @@ export class AppModule<C extends InjectorModuleConfig = any> extends InjectorMod
 
     public imports: AppModule<any>[] = [];
     public controllers: ClassType[] = [];
-    public commands: { name?: string, callback: Function }[] = [];
+    public commands: { name?: string; callback: Function }[] = [];
     public workflows: WorkflowDefinition<any>[] = [];
     public listeners: ListenerType[] = [];
     public middlewares: MiddlewareFactory[] = [];
@@ -366,30 +397,22 @@ export class AppModule<C extends InjectorModuleConfig = any> extends InjectorMod
      *  - Change the module imports depending on the configuration.
      *  - Change provider setup via this.configureProvider<Provider>(provider => {}) depending on the configuration.
      */
-    process() {
-
-    }
+    process() {}
 
     /**
      * A hook that allows to react on a registered provider in some module.
      */
-    processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {
-
-    }
+    processProvider(module: AppModule<any>, token: Token, provider: ProviderWithScope) {}
 
     /**
      * A hook that allows to react on a registered controller in some module.
      */
-    processController(module: AppModule<any>, config: ControllerConfig) {
-
-    }
+    processController(module: AppModule<any>, config: ControllerConfig) {}
 
     /**
      * A hook that allows to react on a registered event listeners in some module.
      */
-    processListener(module: AppModule<any>, listener: AddedListener) {
-
-    }
+    processListener(module: AppModule<any>, listener: AddedListener) {}
 
     /**
      * After `process` and when all modules have been processed by the service container.
@@ -398,9 +421,7 @@ export class AppModule<C extends InjectorModuleConfig = any> extends InjectorMod
      *
      * Last chance to set up the injector context, via this.setupProvider().
      */
-    postProcess() {
-
-    }
+    postProcess() {}
 
     /**
      * Renames this module instance.
@@ -426,7 +447,7 @@ export class AppModule<C extends InjectorModuleConfig = any> extends InjectorMod
         return this.controllers;
     }
 
-    getCommands(): { name?: string, callback: Function }[] {
+    getCommands(): { name?: string; callback: Function }[] {
         return this.commands;
     }
 
@@ -503,7 +524,10 @@ export class AppModule<C extends InjectorModuleConfig = any> extends InjectorMod
      */
     configure(config: Partial<C>): this {
         if (this.configDefinition) {
-            const configNormalized = getPartialSerializeFunction(resolveReceiveType(this.configDefinition) as TypeClass, serializer.deserializeRegistry)(config);
+            const configNormalized = getPartialSerializeFunction(
+                resolveReceiveType(this.configDefinition) as TypeClass,
+                serializer.deserializeRegistry,
+            )(config);
             Object.assign(this.config, configNormalized);
         }
 

@@ -7,31 +7,37 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { AbstractClassType, ClassType, forwardTypeArguments, getClassName, getClassTypeFromInstance } from '@deepkit/core';
 import {
-    entityAnnotation,
+    AbstractClassType,
+    ClassType,
+    forwardTypeArguments,
+    getClassName,
+    getClassTypeFromInstance,
+} from '@deepkit/core';
+import { EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
+import { Logger } from '@deepkit/logger';
+import { Stopwatch } from '@deepkit/stopwatch';
+import {
     EntityOptions,
-    getReferenceInfo,
-    isReferenceHydrated,
     PrimaryKeyFields,
     ReceiveType,
     ReflectionClass,
     ReflectionKind,
-    resolveReceiveType,
     Type,
+    entityAnnotation,
+    getReferenceInfo,
+    isReferenceHydrated,
+    resolveReceiveType,
 } from '@deepkit/type';
+
 import { DatabaseAdapter, DatabaseEntityRegistry, MigrateOptions } from './database-adapter.js';
 import { DatabaseSession } from './database-session.js';
+import { getClassState, getInstanceState, getNormalizedPrimaryKey } from './identity-map.js';
+import { DatabasePlugin, DatabasePluginRegistry } from './plugin/plugin.js';
 import { Query } from './query.js';
 import { getReference } from './reference.js';
 import { OrmEntity } from './type.js';
 import { VirtualForeignKeyConstraint } from './virtual-foreign-key-constraint.js';
-import { Stopwatch } from '@deepkit/stopwatch';
-import { getClassState, getInstanceState, getNormalizedPrimaryKey } from './identity-map.js';
-import { EventDispatcher, EventDispatcherUnsubscribe, EventListenerCallback, EventToken } from '@deepkit/event';
-import { DatabasePlugin, DatabasePluginRegistry } from './plugin/plugin.js';
-import { Logger } from '@deepkit/logger';
 
 /**
  * Hydrates not completely populated item and makes it completely accessible.
@@ -71,21 +77,24 @@ export async function hydrateEntity<T extends OrmEntity>(item: T): Promise<T> {
  * }
  * ```
  */
-export function isDatabaseOf<T extends DatabaseAdapter>(database: Database<any>, adapterClassType: AbstractClassType<T>): database is Database<T> {
+export function isDatabaseOf<T extends DatabaseAdapter>(
+    database: Database<any>,
+    adapterClassType: AbstractClassType<T>,
+): database is Database<T> {
     return database.adapter instanceof adapterClassType;
 }
 
 function setupVirtualForeignKey(database: Database, virtualForeignKeyConstraint: VirtualForeignKeyConstraint) {
-    database.listen(DatabaseSession.onDeletePost, async (event) => {
+    database.listen(DatabaseSession.onDeletePost, async event => {
         await virtualForeignKeyConstraint.onUoWDelete(event);
     });
-    database.listen(DatabaseSession.onUpdatePost, async (event) => {
+    database.listen(DatabaseSession.onUpdatePost, async event => {
         await virtualForeignKeyConstraint.onUoWUpdate(event);
     });
-    database.listen(Query.onPatchPost, async (event) => {
+    database.listen(Query.onPatchPost, async event => {
         await virtualForeignKeyConstraint.onQueryPatch(event);
     });
-    database.listen(Query.onDeletePost, async (event) => {
+    database.listen(Query.onDeletePost, async event => {
         await virtualForeignKeyConstraint.onQueryDelete(event);
     });
 }
@@ -135,7 +144,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 
     protected virtualForeignKeyConstraint: VirtualForeignKeyConstraint = new VirtualForeignKeyConstraint(this);
 
-    public logger: Logger = new Logger;
+    public logger: Logger = new Logger();
 
     public eventDispatcher: EventDispatcher = new EventDispatcher();
 
@@ -152,7 +161,9 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         const self = this;
 
         //we cannot use arrow functions, since they can't have ReceiveType<T>
-        function query<T extends OrmEntity>(type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>) {
+        function query<T extends OrmEntity>(
+            type?: ReceiveType<T> | ClassType<T> | AbstractClassType<T> | ReflectionClass<T>,
+        ) {
             const session = self.createSession();
             session.withIdentityMap = false;
             return session.query(type);
@@ -193,7 +204,11 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         }
     }
 
-    static createClass<T extends DatabaseAdapter>(name: string, adapter: T, schemas: (ClassType | ReflectionClass<any>)[] = []): ClassType<Database<T>> {
+    static createClass<T extends DatabaseAdapter>(
+        name: string,
+        adapter: T,
+        schemas: (ClassType | ReflectionClass<any>)[] = [],
+    ): ClassType<Database<T>> {
         class C extends Database<T> {
             bla!: string;
 
@@ -211,7 +226,11 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      *
      * order: The lower the order, the sooner the listener is called. Default is 0.
      */
-    listen<T extends EventToken<any>>(eventToken: T, callback: EventListenerCallback<T>, order: number = 0): EventDispatcherUnsubscribe {
+    listen<T extends EventToken<any>>(
+        eventToken: T,
+        callback: EventListenerCallback<T>,
+        order: number = 0,
+    ): EventDispatcherUnsubscribe {
         return this.eventDispatcher.listen(eventToken, callback, order);
     }
 
@@ -248,7 +267,14 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
      * ```
      */
     public createSession(): DatabaseSession<ADAPTER> {
-        return new DatabaseSession(this.adapter, this.entityRegistry, this.eventDispatcher, this.pluginRegistry, this.logger, this.stopwatch);
+        return new DatabaseSession(
+            this.adapter,
+            this.entityRegistry,
+            this.eventDispatcher,
+            this.pluginRegistry,
+            this.logger,
+            this.stopwatch,
+        );
     }
 
     /**
@@ -331,7 +357,8 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
         this.entityRegistry.add(schema);
         schema.data['orm.database'] = this;
 
-        if (schema.type.kind === ReflectionKind.class && isActiveRecordClassType(schema.type.classType)) schema.type.classType.registerDatabase(this);
+        if (schema.type.kind === ReflectionKind.class && isActiveRecordClassType(schema.type.classType))
+            schema.type.classType.registerDatabase(this);
         return this;
     }
 
@@ -408,7 +435,7 @@ export class Database<ADAPTER extends DatabaseAdapter = DatabaseAdapter> {
 }
 
 export interface ActiveRecordClassType {
-    new(...args: any[]): ActiveRecord;
+    new (...args: any[]): ActiveRecord;
 
     getDatabase(): Database<any>;
 
@@ -425,12 +452,14 @@ export function isActiveRecordClassType(entity: any): entity is ActiveRecordClas
  * @reflection never
  */
 export class ActiveRecord {
-    constructor(...args: any[]) {
-    }
+    constructor(...args: any[]) {}
 
     public static getDatabase(): Database<any> {
         const database = ReflectionClass.from(this).data['orm.database'] as Database<any> | undefined;
-        if (!database) throw new Error(`No database assigned to ${getClassName(this)}. Use Database.registerEntity(${getClassName(this)}) first.`);
+        if (!database)
+            throw new Error(
+                `No database assigned to ${getClassName(this)}. Use Database.registerEntity(${getClassName(this)}) first.`,
+            );
         return database;
     }
 
@@ -452,7 +481,10 @@ export class ActiveRecord {
         return this.getDatabase().query(this);
     }
 
-    public static reference<T extends typeof ActiveRecord>(this: T, primaryKey: any | PrimaryKeyFields<InstanceType<T>>): InstanceType<T> {
+    public static reference<T extends typeof ActiveRecord>(
+        this: T,
+        primaryKey: any | PrimaryKeyFields<InstanceType<T>>,
+    ): InstanceType<T> {
         return this.getDatabase().getReference(this, primaryKey) as InstanceType<T>;
     }
 }

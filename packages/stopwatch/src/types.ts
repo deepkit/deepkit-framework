@@ -5,16 +5,29 @@ export type AnalyticData = {
     cpu: number;
     memory: number;
     loopBlocked: number;
-}
+};
 
 export enum FrameCategory {
     none,
-    http, httpController, rpc, rpcAuthenticate, cli, job, function, lock,
-    workflow, event, database, databaseQuery, email, template,
+    http,
+    httpController,
+    rpc,
+    rpcAuthenticate,
+    cli,
+    job,
+    function,
+    lock,
+    workflow,
+    event,
+    database,
+    databaseQuery,
+    email,
+    template,
 }
 
 export enum FrameType {
-    start, end
+    start,
+    end,
 }
 
 export interface FrameCategoryData {
@@ -39,7 +52,9 @@ export interface FrameCategoryData {
     };
 }
 
-export type TypeOfCategory<C extends FrameCategory> = C extends keyof FrameCategoryData ? Partial<FrameCategoryData[C]> : undefined;
+export type TypeOfCategory<C extends FrameCategory> = C extends keyof FrameCategoryData
+    ? Partial<FrameCategoryData[C]>
+    : undefined;
 
 const categorySchemas: { [category in FrameCategory]?: Type } & { _loaded: boolean } = { _loaded: false };
 
@@ -102,8 +117,7 @@ export class Frame {
         public context: number,
         public label: string,
         public category: FrameCategory,
-    ) {
-    }
+    ) {}
 }
 
 //

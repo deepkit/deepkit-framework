@@ -1,8 +1,9 @@
-import { ClassType, isClass } from '@deepkit/core';
 import { AppModule } from '@deepkit/app';
-import { createFreeDecoratorContext } from '@deepkit/type';
-import { HttpRequest, HttpResponse } from './model.js';
+import { ClassType, isClass } from '@deepkit/core';
 import { InjectorModule } from '@deepkit/injector';
+import { createFreeDecoratorContext } from '@deepkit/type';
+
+import { HttpRequest, HttpResponse } from './model.js';
 
 export type HttpMiddlewareFn = (req: HttpRequest, res: HttpResponse, next: (err?: any) => void) => void | Promise<void>;
 
@@ -35,8 +36,6 @@ export class HttpMiddlewareConfig {
     routeNames: string[] = [];
     excludeRouteNames: string[] = [];
 
-    timeout?: number;
-
     modules: InjectorModule<any>[] = [];
 
     selfModule: boolean = false;
@@ -52,7 +51,7 @@ export class HttpMiddlewareConfig {
 }
 
 export class HttpMiddlewareApi {
-    t = new HttpMiddlewareConfig;
+    t = new HttpMiddlewareConfig();
 
     name(name: string) {
         this.t.name = name;
@@ -76,14 +75,6 @@ export class HttpMiddlewareApi {
 
     excludeRouteNames(...names: string[]) {
         this.t.excludeRouteNames = names;
-    }
-
-    /**
-     * When the middleware does not respond (either calling next() or sending headers) withing <timeout> milliseconds,
-     * automatically the next is executed and warning printed.
-     */
-    timeout(timeout: number) {
-        this.t.timeout = timeout;
     }
 
     forControllers(...controllers: ClassType[]) {

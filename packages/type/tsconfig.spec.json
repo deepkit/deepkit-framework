@@ -1,8 +1,7 @@
 {
   "extends": "./tsconfig.json",
-  "include": [
-    "src",
-    "index.ts",
-    "tests"
-  ]
+  "reflection": [
+    "tests/**/*.ts"
+  ],
+  "include": ["src", "index.ts", "tests"]
 }

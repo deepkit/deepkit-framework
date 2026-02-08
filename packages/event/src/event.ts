@@ -7,16 +7,24 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { asyncOperation, ClassType, CustomError, isClass, isFunction, isObject } from '@deepkit/core';
-import { injectedFunction, InjectorContext, InjectorModule } from '@deepkit/injector';
-import { ClassDecoratorResult, createClassDecoratorContext, createPropertyDecoratorContext, PropertyDecoratorResult } from '@deepkit/type';
+import { ClassType, DeepkitError, asyncOperation, isClass, isFunction, isObject } from '@deepkit/core';
+import { InjectorContext, InjectorModule, injectedFunction } from '@deepkit/injector';
+import {
+    ClassDecoratorResult,
+    PropertyDecoratorResult,
+    createClassDecoratorContext,
+    createPropertyDecoratorContext,
+} from '@deepkit/type';
 
 export type EventListenerCallbackAsync<E> = (event: E, ...args: any[]) => Promise<void> | void;
 export type EventListenerCallbackSync<E> = (event: E, ...args: any[]) => undefined | void;
-export type EventListenerCallback<T extends EventToken<any> | EventTokenSync<any>> = T extends EventTokenSync<any> ? EventListenerCallbackSync<T['event']> : EventListenerCallbackAsync<T['event']>;
+export type EventListenerCallback<T extends EventToken<any> | EventTokenSync<any>> =
+    T extends EventTokenSync<any> ? EventListenerCallbackSync<T['event']> : EventListenerCallbackAsync<T['event']>;
 
-export class EventError extends CustomError {
+export class EventError extends DeepkitError {
+    constructor(message: string, options?: { cause?: Error }) {
+        super('DK-E001', message, options);
+    }
 }
 
 /**
@@ -25,14 +33,14 @@ export class EventError extends CustomError {
 export interface EventListener {
     eventToken: EventToken<any>;
     callback: (event: any) => any;
-    module?: InjectorModule,
+    module?: InjectorModule;
     /**
      * The lower the order, the sooner the listener is called. Default is 0.
      */
     order: number;
 }
 
-type EventOfEvent<E> = E extends SimpleDataEvent<infer D> ? D : (E | void);
+type EventOfEvent<E> = E extends SimpleDataEvent<infer D> ? D : E | void;
 
 /**
  * Extract the event type of EventToken.
@@ -51,19 +59,17 @@ type ValueOrFactory<T> = T | (() => T);
 /**
  * @reflection never
  */
-export type DispatchArguments<T extends EventToken<any>> =
-    T extends EventToken<infer E> | EventTokenSync<infer E>
-        ? SimpleDataEvent<any> extends E
-            ? E extends SimpleDataEvent<infer D>
-                ? [event: ValueOrFactory<D | E>, injector?: InjectorContext]
-                : BaseEvent extends E
-                    ? [event?: ValueOrFactory<E>, injector?: InjectorContext]
-                    : [event: ValueOrFactory<E>, injector?: InjectorContext]
+export type DispatchArguments<T extends EventToken<any>> = T extends EventToken<infer E> | EventTokenSync<infer E>
+    ? SimpleDataEvent<any> extends E
+        ? E extends SimpleDataEvent<infer D>
+            ? [event: ValueOrFactory<D | E>, injector?: InjectorContext]
             : BaseEvent extends E
-                ? [event?: ValueOrFactory<E>, injector?: InjectorContext]
-                : [event: ValueOrFactory<E>, injector?: InjectorContext]
-        : [event: 'invalid-token', injector?: InjectorContext];
-
+              ? [event?: ValueOrFactory<E>, injector?: InjectorContext]
+              : [event: ValueOrFactory<E>, injector?: InjectorContext]
+        : BaseEvent extends E
+          ? [event?: ValueOrFactory<E>, injector?: InjectorContext]
+          : [event: ValueOrFactory<E>, injector?: InjectorContext]
+    : [event: 'invalid-token', injector?: InjectorContext];
 
 interface SimpleDataEvent<T> extends BaseEvent {
     data: T;
@@ -95,8 +101,7 @@ export class EventToken<T extends BaseEvent = BaseEvent> {
     constructor(
         public readonly id: string,
         event?: ClassType<T>,
-    ) {
-    }
+    ) {}
 
     listen(callback: EventListenerCallback<EventToken<T>>, order: number = 0, module?: InjectorModule): EventListener {
         return { eventToken: this, callback, order: order, module };
@@ -137,9 +142,7 @@ export function isSyncEventToken(eventToken: any): eventToken is EventTokenSync<
  * eventDispatcher.dispatch(userAdded, new User);
  * ```
  */
-export class DataEventToken<T> extends EventToken<SimpleDataEvent<T>> {
-
-}
+export class DataEventToken<T> extends EventToken<SimpleDataEvent<T>> {}
 
 export class BaseEvent {
     immediatePropagationStopped: boolean = false;
@@ -166,11 +169,11 @@ class EventStore {
 }
 
 class EventClassStore {
-    listeners: { eventToken: EventToken<any>, methodName: string, order: number }[] = [];
+    listeners: { eventToken: EventToken<any>; methodName: string; order: number }[] = [];
 }
 
 class EventClassApi {
-    t = new EventClassStore;
+    t = new EventClassStore();
 
     addListener(eventToken: EventToken<any>, methodName: string, order: number) {
         this.t.listeners.push({ eventToken, methodName, order: order });
@@ -180,11 +183,11 @@ class EventClassApi {
 export const eventClass: ClassDecoratorResult<typeof EventClassApi> = createClassDecoratorContext(EventClassApi);
 
 class EventDispatcherApi {
-    t = new EventStore;
+    t = new EventStore();
 
     onDecorator(target: ClassType, property?: string) {
-        if (!this.t.token) throw new Error('@eventDispatcher.listen(eventToken) is the correct syntax.');
-        if (!property) throw new Error('@eventDispatcher.listen(eventToken) works only on class properties.');
+        if (!this.t.token) throw new EventError('@eventDispatcher.listen(eventToken) is the correct syntax.');
+        if (!property) throw new EventError('@eventDispatcher.listen(eventToken) works only on class properties.');
 
         eventClass.addListener(this.t.token, property, this.t.order)(target);
     }
@@ -201,23 +204,24 @@ class EventDispatcherApi {
     }
 }
 
-export const eventDispatcher: PropertyDecoratorResult<typeof EventDispatcherApi> = createPropertyDecoratorContext(EventDispatcherApi);
+export const eventDispatcher: PropertyDecoratorResult<typeof EventDispatcherApi> =
+    createPropertyDecoratorContext(EventDispatcherApi);
 
 type BuiltFn = (event: BaseEvent, injector: InjectorContext) => any;
 
 export type EventListenerContainerEntryCallback = {
-    order: number,
-    fn: EventListenerCallback<any>,
-    module?: InjectorModule,
-    builtFn?: BuiltFn,
+    order: number;
+    fn: EventListenerCallback<any>;
+    module?: InjectorModule;
+    builtFn?: BuiltFn;
 };
 
 export type EventListenerContainerEntryService = {
-    module: InjectorModule,
-    order: number,
-    classType: ClassType,
+    module: InjectorModule;
+    order: number;
+    classType: ClassType;
     methodName: string;
-    builtFn?: BuiltFn,
+    builtFn?: BuiltFn;
 };
 
 export type EventListenerContainerEntry = EventListenerContainerEntryCallback | EventListenerContainerEntryService;
@@ -247,7 +251,8 @@ interface EventDispatcherFn {
 
 export type EventDispatcherUnsubscribe = () => void;
 
-export type EventDispatcherDispatchType<T extends EventToken<any>> = T extends EventTokenSync<any> ? void : Promise<void>;
+export type EventDispatcherDispatchType<T extends EventToken<any>> =
+    T extends EventTokenSync<any> ? void : Promise<void>;
 
 function resolveEvent(event?: ValueOrFactory<BaseEvent>): BaseEvent {
     if (!event) return new BaseEvent();
@@ -261,28 +266,24 @@ export interface EventListenerRegistered {
     eventToken: EventToken<any>;
 }
 
-function noop() {
-}
+function noop() {}
 
 interface Context {
-    listeners: EventListenerContainerEntry[],
-    built: boolean,
-    dispatcher: (event: BaseEvent, injector: InjectorContext) => any
+    listeners: EventListenerContainerEntry[];
+    built: boolean;
+    dispatcher: (event: BaseEvent, injector: InjectorContext) => any;
 }
 
 /** @reflection never */
 export class EventDispatcher {
     protected context = new Map<EventToken<any>, Context>();
-    protected awaiter = new Map<EventToken<any>, { promise?: Promise<any>, resolve?: (value: any) => void }>();
+    protected awaiter = new Map<EventToken<any>, { promise?: Promise<any>; resolve?: (value: any) => void }>();
     protected instances: any[] = [];
     protected registeredClassTypes = new Set<ClassType>();
 
     protected symbol = Symbol('eventDispatcher');
 
-    constructor(
-        public injector: InjectorContext = InjectorContext.forProviders([]),
-    ) {
-    }
+    constructor(public injector: InjectorContext = InjectorContext.forProviders([])) {}
 
     public registerListener(classType: ClassType, module: InjectorModule): EventListenerRegistered[] {
         if (this.registeredClassTypes.has(classType)) return [];
@@ -303,7 +304,11 @@ export class EventDispatcher {
      *
      * order: The lower the order, the sooner the listener is called. Default is 0.
      */
-    listen<T extends EventToken<any>>(eventToken: T, callback: EventListenerCallback<T>, order: number = 0): EventDispatcherUnsubscribe {
+    listen<T extends EventToken<any>>(
+        eventToken: T,
+        callback: EventListenerCallback<T>,
+        order: number = 0,
+    ): EventDispatcherUnsubscribe {
         return this.add(eventToken, { fn: callback, order: order });
     }
 
@@ -328,7 +333,7 @@ export class EventDispatcher {
         if (!awaiter) {
             awaiter = {};
             this.awaiter.set(eventToken, awaiter);
-            this.listen<any>(eventToken, (event) => {
+            this.listen<any>(eventToken, event => {
                 if (!awaiter!.resolve) return;
                 awaiter!.resolve(event);
                 awaiter!.resolve = undefined;
@@ -337,14 +342,14 @@ export class EventDispatcher {
         }
 
         if (!awaiter.promise) {
-            awaiter.promise = new Promise<any>((resolve) => {
+            awaiter.promise = new Promise<any>(resolve => {
                 awaiter!.resolve = resolve;
             });
         }
 
         this.awaiter.set(eventToken, awaiter);
 
-        return asyncOperation((resolve) => {
+        return asyncOperation(resolve => {
             awaiter.promise!.then(resolve);
         });
     }
@@ -416,14 +421,16 @@ export class EventDispatcher {
     }
 }
 
-function buildDispatcher(entries: EventListenerContainerEntry[], eventToken: EventToken<any>, injector: InjectorContext): EventDispatcherFn {
+function buildDispatcher(
+    entries: EventListenerContainerEntry[],
+    eventToken: EventToken<any>,
+    injector: InjectorContext,
+): EventDispatcherFn {
     if (entries.length === 0) {
         if (isSyncEventToken(eventToken)) {
-            return () => {
-            };
+            return () => {};
         }
-        return async () => {
-        };
+        return async () => {};
     }
 
     entries.sort((a, b) => {
@@ -437,7 +444,9 @@ function buildDispatcher(entries: EventListenerContainerEntry[], eventToken: Eve
     for (const listener of entries) {
         if (isEventListenerContainerEntryCallback(listener)) {
             if (!listener.builtFn) {
-                const thisInjector = listener.module ? injector.getInjector(listener.module) : injector.getRootInjector();
+                const thisInjector = listener.module
+                    ? injector.getInjector(listener.module)
+                    : injector.getRootInjector();
                 if (!(listener.fn as any).__type) {
                     // no types available
                     const fn = listener.fn;
@@ -486,13 +495,13 @@ export function eventWatcher(eventDispatcher: EventDispatcher, tokens: readonly 
         const lines: string[] = [];
         for (const i in data) {
             if (isObject((data as any)[i])) continue;
-            lines.push(`${i}=${((data as any)[i])}`);
+            lines.push(`${i}=${(data as any)[i]}`);
         }
         return lines.join(' ');
     }
 
     for (const token of tokens) {
-        eventDispatcher.listen(token, (event) => {
+        eventDispatcher.listen(token, event => {
             const data = event instanceof DataEvent ? event.data : event;
             dispatches.push([token.id, data]);
             const string = debugData(data);
@@ -500,7 +509,11 @@ export function eventWatcher(eventDispatcher: EventDispatcher, tokens: readonly 
         });
     }
 
-    type EventTokenSimpleData<T> = T extends EventToken<infer E> | EventTokenSync<infer E> ? E extends SimpleDataEvent<infer D> ? D : E : never;
+    type EventTokenSimpleData<T> = T extends EventToken<infer E> | EventTokenSync<infer E>
+        ? E extends SimpleDataEvent<infer D>
+            ? D
+            : E
+        : never;
 
     return {
         dispatches,
@@ -509,12 +522,15 @@ export function eventWatcher(eventDispatcher: EventDispatcher, tokens: readonly 
             dispatches.length = 0;
             messages.length = 0;
         },
-        get<T extends EventToken>(token: T, filter?: (event: EventTokenSimpleData<T>) => boolean): EventTokenSimpleData<T> {
+        get<T extends EventToken>(
+            token: T,
+            filter?: (event: EventTokenSimpleData<T>) => boolean,
+        ): EventTokenSimpleData<T> {
             for (const [id, event] of dispatches) {
                 const data = event instanceof DataEvent ? event.data : event;
                 if (id === token.id && (!filter || filter(data))) return data;
             }
-            throw new Error(`No event dispatched for token ${token.id}`);
+            throw new EventError(`No event dispatched for token ${token.id}`);
         },
     };
 }

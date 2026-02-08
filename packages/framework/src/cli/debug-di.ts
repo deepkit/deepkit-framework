@@ -7,22 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { cli, Command, Flag, ServiceContainer } from '@deepkit/app';
+import { Command, Flag, ServiceContainer, cli } from '@deepkit/app';
 
 /**
  * @description Prints debugging information about dependency injection.
  */
 @cli.controller('debug:di')
 export class DebugDIController implements Command {
-    constructor(
-        protected serviceContainer: ServiceContainer,
-    ) {
-    }
+    constructor(protected serviceContainer: ServiceContainer) {}
 
-    async execute(
-        scope?: string & Flag,
-    ): Promise<void> {
+    async execute(scope?: string & Flag): Promise<void> {
         const modules = [this.serviceContainer.appModule, ...this.serviceContainer.appModule.getImports()];
 
         let injectorContext = this.serviceContainer.getInjectorContext();

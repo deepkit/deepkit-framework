@@ -1,6 +1,8 @@
 import { expect, test } from '@jest/globals';
-import { BackReference, entity, Index, PrimaryKey, Reference, ReflectionClass, resolveForeignReflectionClass, UUID, uuid } from '@deepkit/type';
+
 import { getInstanceStateFromItem, hydrateEntity } from '@deepkit/orm';
+import { BackReference, Index, PrimaryKey, Reference, ReflectionClass, UUID, entity, resolveForeignReflectionClass, uuid } from '@deepkit/type';
+
 import { createDatabase } from './utils.js';
 
 Error.stackTraceLimit = 20;
@@ -13,21 +15,19 @@ class User {
     manager?: User & Reference;
     managedUsers: User[] & BackReference = [];
 
-    constructor(public name: string) {
-    }
+    constructor(public name: string) {}
 }
 
 @entity.name('organisation2')
 class Organisation {
     id: UUID & PrimaryKey = uuid();
 
-    users: User[] & BackReference<{ mappedBy: 'organisations', via: typeof OrganisationMembership }> = [];
+    users: User[] & BackReference<{ mappedBy: 'organisations'; via: typeof OrganisationMembership }> = [];
 
     constructor(
         public name: string,
         public owner: User & Reference,
-    ) {
-    }
+    ) {}
 }
 
 @entity.name('organisation_member2')
@@ -37,8 +37,7 @@ class OrganisationMembership {
     constructor(
         public user: User & Reference & Index,
         public organisation: Organisation & Reference & Index,
-    ) {
-    }
+    ) {}
 }
 
 async function setupTestCase(name: string) {
@@ -68,7 +67,14 @@ async function setupTestCase(name: string) {
     await session.commit();
 
     return {
-        db, session, admin, marc, peter, marcel, microsoft, apple,
+        db,
+        session,
+        admin,
+        marc,
+        peter,
+        marcel,
+        microsoft,
+        apple,
     };
 }
 
@@ -157,17 +163,19 @@ test('disabled identity map', async () => {
     }
 });
 
-
 test('parameters', async () => {
-    const {
-        db, admin, marc, peter, marcel, apple, microsoft
-    } = await setupTestCase('parameters');
+    const { db, admin, marc, peter, marcel, apple, microsoft } = await setupTestCase('parameters');
     const session = db.createSession();
 
-    await expect(session.query(User).filter({ 'name': { $parameter: 'name' } }).find()).rejects.toThrow('Parameter name not defined');
+    await expect(
+        session
+            .query(User)
+            .filter({ name: { $parameter: 'name' } })
+            .find(),
+    ).rejects.toThrow('Parameter name not defined');
 
     {
-        const query = session.query(User).filter({ 'name': { $parameter: 'name' } });
+        const query = session.query(User).filter({ name: { $parameter: 'name' } });
         const marc = await query.parameter('name', 'marc').findOne();
         expect(marc.name).toBe('marc');
 
@@ -180,16 +188,18 @@ test('parameters', async () => {
 });
 
 test('hydrate', async () => {
-    const {
-        db, admin, marc, peter, marcel, apple, microsoft
-    } = await setupTestCase('hydrate');
+    const { db, admin, marc, peter, marcel, apple, microsoft } = await setupTestCase('hydrate');
     const session = db.createSession();
 
     {
-        const item = await session.query(OrganisationMembership).filter({
-            user: marc,
-            organisation: apple,
-        }).disableIdentityMap().findOne();
+        const item = await session
+            .query(OrganisationMembership)
+            .filter({
+                user: marc,
+                organisation: apple,
+            })
+            .disableIdentityMap()
+            .findOne();
 
         expect(item).toBeInstanceOf(OrganisationMembership);
         expect(item.user.id).toBe(marc.id);
@@ -206,10 +216,13 @@ test('hydrate', async () => {
         //test automatic hydration. item.user should be picked up from the identity map, and thus fully hydrated
         {
             const marcFromDb = await session.query(User).filter({ name: 'marc' }).findOne();
-            const item = await session.query(OrganisationMembership).filter({
-                user: marc,
-                organisation: apple,
-            }).findOne();
+            const item = await session
+                .query(OrganisationMembership)
+                .filter({
+                    user: marc,
+                    organisation: apple,
+                })
+                .findOne();
             expect(item).toBeInstanceOf(OrganisationMembership);
             expect(item.user.id).toBe(marcFromDb.id);
             expect(item.user.name).toBe('marc');
@@ -221,10 +234,13 @@ test('hydrate', async () => {
 
         //test automatic hydration
         {
-            const item = await session.query(OrganisationMembership).filter({
-                user: marc,
-                organisation: apple,
-            }).findOne();
+            const item = await session
+                .query(OrganisationMembership)
+                .filter({
+                    user: marc,
+                    organisation: apple,
+                })
+                .findOne();
 
             expect(item).toBeInstanceOf(OrganisationMembership);
             expect(item.user.id).toBe(marc.id);
@@ -241,9 +257,7 @@ test('hydrate', async () => {
 });
 
 test('joins', async () => {
-    const {
-        session, admin, marc, peter, marcel, apple, microsoft
-    } = await setupTestCase('joins');
+    const { session, admin, marc, peter, marcel, apple, microsoft } = await setupTestCase('joins');
 
     expect('_id' in marc).toBe(false);
     expect(await session.query(User).count()).toBe(4);
@@ -389,8 +403,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await session.query(OrganisationMembership)
-            .useJoinWith('user').filter({ name: 'marc' }).end().find();
+        const items = await session.query(OrganisationMembership).useJoinWith('user').filter({ name: 'marc' }).end().find();
         expect(items.length).toBe(4); //still 4, but user is empty for all other than marc
         expect(items[0].user).toBeInstanceOf(User);
         expect(items[1].user).toBeInstanceOf(User);
@@ -399,8 +412,7 @@ test('joins', async () => {
     }
 
     {
-        const items = await session.query(OrganisationMembership)
-            .useInnerJoin('user').filter({ name: 'marc' }).end().find();
+        const items = await session.query(OrganisationMembership).useInnerJoin('user').filter({ name: 'marc' }).end().find();
 
         expect(items.length).toBe(2);
         expect(() => {
@@ -413,8 +425,7 @@ test('joins', async () => {
     }
 
     {
-        const query = await session.query(OrganisationMembership)
-            .useInnerJoinWith('user').select('id').filter({ name: 'marc' }).end();
+        const query = await session.query(OrganisationMembership).useInnerJoinWith('user').select('id').filter({ name: 'marc' }).end();
 
         {
             const items = await query.find();
@@ -542,8 +553,7 @@ test('joins', async () => {
     }
 
     {
-        const query = session.query(OrganisationMembership)
-            .useInnerJoinWith('user').filter({ name: 'marc' }).end();
+        const query = session.query(OrganisationMembership).useInnerJoinWith('user').filter({ name: 'marc' }).end();
 
         const items = await query.find();
         expect(items.length).toBe(2); //we get 2 because of inner join
@@ -557,8 +567,7 @@ test('joins', async () => {
     }
 
     {
-        const query = session.query(OrganisationMembership)
-            .useInnerJoinWith('user').filter({ name: 'marc' }).end();
+        const query = session.query(OrganisationMembership).useInnerJoinWith('user').filter({ name: 'marc' }).end();
 
         const item = await query.findOne();
         expect(item.user).toBeInstanceOf(User);
@@ -587,9 +596,7 @@ test('joins', async () => {
     }
 
     {
-        const query = session.query(OrganisationMembership)
-            .useJoinWith('user').filter({ name: 'marc' }).end()
-            .joinWith('organisation');
+        const query = session.query(OrganisationMembership).useJoinWith('user').filter({ name: 'marc' }).end().joinWith('organisation');
 
         expect(query.model.joins.length).toBe(2);
         expect(resolveForeignReflectionClass(query.model.joins[0].propertySchema).getClassType()).toBe(User);
@@ -600,8 +607,7 @@ test('joins', async () => {
     }
 
     {
-        const query = session.query(User)
-            .useInnerJoinWith('organisations').filter({ name: 'Microsoft' }).end();
+        const query = session.query(User).useInnerJoinWith('organisations').filter({ name: 'Microsoft' }).end();
 
         {
             const items = await query.clone().find();

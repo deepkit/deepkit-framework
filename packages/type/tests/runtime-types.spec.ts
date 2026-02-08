@@ -1,6 +1,8 @@
-import { expect, test } from '@jest/globals';
-import { ReflectionProperty } from '../src/reflection/reflection.js';
+import { test } from 'node:test';
 
+import { expect } from '@deepkit/run/expect';
+
+import { ReflectionProperty } from '../src/reflection/reflection.js';
 
 test('ReflectionClass has no runtime types', () => {
     expect((ReflectionProperty as any).__type).toBe(undefined);

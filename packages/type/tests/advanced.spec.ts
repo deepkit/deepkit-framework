@@ -7,18 +7,50 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { test } from 'node:test';
 
-import { expect, test } from '@jest/globals';
+import { expect } from '@deepkit/run/expect';
+
 import { ReceiveType, reflect, typeOf } from '../src/reflection/reflection.js';
-import { assertType, InlineRuntimeType, ReflectionKind, stringifyResolvedType, Type } from '../src/reflection/type.js';
+import { InlineRuntimeType, ReflectionKind, Type, assertType, stringifyResolvedType } from '../src/reflection/type.js';
 import { serialize } from '../src/serializer-facade.js';
+import { is } from '../src/typeguard.js';
 import { expectEqualType } from './utils.js';
 
 test('array stack', () => {
-    type Pop<T extends unknown[]> = T extends [...infer U, unknown] ? U : never
-    type Push<T extends unknown[], U> = [...T, U]
-    type Shift<T extends unknown[]> = T extends [unknown, ...infer U] ? U : never
-    type Unshift<T extends unknown[], U> = [U, ...T]
+    type Pop<T extends unknown[]> = T extends [...infer U, unknown] ? U : never;
+    type Push<T extends unknown[], U> = [...T, U];
+    type Shift<T extends unknown[]> = T extends [unknown, ...infer U] ? U : never;
+    type Unshift<T extends unknown[], U> = [U, ...T];
+});
+
+test('issue-524: conditional type with infer constraint on rest element', () => {
+    // type Foo<T> = T extends [...infer P extends string[], infer L] ? L : never
+    // type Bar = Foo<[string, string, number]> // Bar should be number
+
+    // Test 1: Basic last element extraction - the core issue from #524
+    type Last<T> = T extends [...infer _, infer L] ? L : never;
+    type LastResult = Last<[string, string, number]>;
+    expect(stringifyResolvedType(typeOf<LastResult>())).toBe('number');
+
+    // Test 2: Last from 2-element tuple
+    type Last2 = Last<[string, boolean]>;
+    expect(stringifyResolvedType(typeOf<Last2>())).toBe('boolean');
+
+    // Test 3: First element extraction (should still work)
+    type First<T> = T extends [infer F, ...infer _] ? F : never;
+    type FirstResult = First<[string, number, boolean]>;
+    expect(stringifyResolvedType(typeOf<FirstResult>())).toBe('string');
+
+    // Test 4: Validation tests from the original issue
+    // is<Bar>('hello') should be false because Bar is number
+    // is<Bar>(1) should be true because Bar is number
+    type Foo<T> = T extends [...infer P extends string[], infer L] ? L : never;
+    type Bar = Foo<[string, string, number]>;
+
+    expect(is<Bar>('hello')).toBe(false);
+    expect(is<Bar>(1)).toBe(true);
+    expect(is<number>(1)).toBe(true);
 });
 
 test('union to intersection', () => {
@@ -61,8 +93,8 @@ test('circular generic 1', () => {
         $ne?: T;
         $nin?: T[];
         // Logical
-        $not?: T extends string ? (QuerySelector<T> | RegExp) : QuerySelector<T>;
-        $regex?: T extends string ? (RegExp | string) : never;
+        $not?: T extends string ? QuerySelector<T> | RegExp : QuerySelector<T>;
+        $regex?: T extends string ? RegExp | string : never;
 
         //special deepkit/type type
         $parameter?: string;
@@ -74,14 +106,13 @@ test('circular generic 1', () => {
         $or?: Array<FilterQuery<T>>;
     };
 
-    type RegExpForString<T> = T extends string ? (RegExp | T) : T;
-    type MongoAltQuery<T> = T extends Array<infer U> ? (T | RegExpForString<U>) : RegExpForString<T>;
+    type RegExpForString<T> = T extends string ? RegExp | T : T;
+    type MongoAltQuery<T> = T extends Array<infer U> ? T | RegExpForString<U> : RegExpForString<T>;
     type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
 
     type FilterQuery<T> = {
         [P in keyof T & string]?: Condition<T[P]>;
-    } &
-        RootQuerySelector<T>;
+    } & RootQuerySelector<T>;
 
     interface Product {
         id: number;
@@ -107,8 +138,8 @@ test('circular generic 1', () => {
         $ne?: T;
         $nin?: T[];
         // Logical
-        $not?: T extends string ? (QuerySelector<T> | RegExp) : QuerySelector<T>;
-        $regex?: T extends string ? (RegExp | string) : never;
+        $not?: T extends string ? QuerySelector<T> | RegExp : QuerySelector<T>;
+        $regex?: T extends string ? RegExp | string : never;
 
         //special deepkit/type type
         $parameter?: string;
@@ -123,14 +154,13 @@ test('circular generic 1', () => {
         [key: string]: any;
     };
 
-    type RegExpForString<T> = T extends string ? (RegExp | T) : T;
-    type MongoAltQuery<T> = T extends Array<infer U> ? (T | RegExpForString<U>) : RegExpForString<T>;
+    type RegExpForString<T> = T extends string ? RegExp | T : T;
+    type MongoAltQuery<T> = T extends Array<infer U> ? T | RegExpForString<U> : RegExpForString<T>;
     type Condition<T> = MongoAltQuery<T> | QuerySelector<MongoAltQuery<T>>;
 
     type FilterQuery<T> = {
         [P in keyof T & string]?: Condition<T[P]>;
-    } &
-        RootQuerySelector<T>;
+    } & RootQuerySelector<T>;
 
     interface Product {
         id: number;
@@ -148,8 +178,6 @@ test('circular generic 1', () => {
 
     expect(serialize<t2>({ id: 5 })).toEqual({ id: 5 });
     expect(serialize<t2>({ id: { $lt: 5 } })).toEqual({ id: { $lt: 5 } });
-
-    console.log('type2', type2);
 });
 
 test('circular generic 3', () => {
@@ -163,7 +191,7 @@ test('circular generic 3', () => {
         /** https://docs.mongodb.com/manual/reference/operator/query/and/#op._S_and */
         $and?: Array<FilterQuery<T>>;
         $another?: Array<FilterQuery<Product>>;
-    }
+    };
 
     type FilterQuery<T> = {
         [P in keyof T]?: string;
@@ -204,22 +232,16 @@ test('nested template literal', () => {
     expect(stringifyResolvedType(type)).toBe('`items.${number}.title:yes-${string}` | `items.${number}.title:no-${string}` | `items.${number}.size:yes-${string}` | `items.${number}.size:no-${string}`');
 
     type SubKeys<T, K extends string> = K extends keyof T ? `${K}.${Keys<T[K]>}` : never;
-    type Keys<T> =
-        T extends (infer A)[] ? `${number}.${Keys<A>}` :
-            T extends object ? Extract<keyof T, string> | SubKeys<T, Extract<keyof T, string>> :
-                never;
+    type Keys<T> = T extends (infer A)[] ? `${number}.${Keys<A>}` : T extends object ? Extract<keyof T, string> | SubKeys<T, Extract<keyof T, string>> : never;
 
-    type t10 = Keys<{ id: number, items: { title: string, size: number }[] }>;
+    type t10 = Keys<{ id: number; items: { title: string; size: number }[] }>;
     const type2 = typeOf<t10>();
-    expect(stringifyResolvedType(type2)).toBe('\'id\' | \'items\' | `items.${number}.title` | `items.${number}.size`');
+    expect(stringifyResolvedType(type2)).toBe("'id' | 'items' | `items.${number}.title` | `items.${number}.size`");
 });
 
 test('union to intersection', () => {
-
     //functions are contra-variant
-    type UnionToIntersection<T> =
-        (T extends any ? (x: T) => any : never) extends (x: infer R) => any ? R : never
-
+    type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x: infer R) => any ? R : never;
 });
 
 test('dotted path', () => {
@@ -235,16 +257,13 @@ test('dotted path', () => {
         mainProduct: Product;
     }
 
-    type PathKeys<T> = object extends T ? string :
-        T extends (infer A)[] ? `${number}.${PathKeys<A>}` :
-            T extends object ? Extract<keyof T, string> | SubKeys<T, Extract<keyof T, string>> :
-                never;
+    type PathKeys<T> = object extends T ? string : T extends (infer A)[] ? `${number}.${PathKeys<A>}` : T extends object ? Extract<keyof T, string> | SubKeys<T, Extract<keyof T, string>> : never;
 
     type SubKeys<T, K extends string> = K extends keyof T ? `${K}.${PathKeys<T[K]>}` : never;
 
     type t1 = PathKeys<User>;
     const type = typeOf<t1>();
-    expect(stringifyResolvedType(type)).toBe('\'id\' | \'username\' | \'products\' | \'mainProduct\' | `products.${number}.id` | `products.${number}.title` | \'mainProduct.id\' | \'mainProduct.title\'');
+    expect(stringifyResolvedType(type)).toBe("'id' | 'username' | 'products' | 'mainProduct' | `products.${number}.id` | `products.${number}.title` | 'mainProduct.id' | 'mainProduct.title'");
 });
 
 test('dotted object', () => {
@@ -267,12 +286,19 @@ test('dotted object', () => {
         mainProduct: Product;
     }
 
-    type O<T, K extends string, Prefix extends string, Depth extends number[]> = K extends keyof T ? { [_ in `${Prefix}.${K}`]?: T[K] } | (T[K] extends object ? SubObjects<T[K], Extract<keyof T[K], string>, `${Prefix}.${K}`, [...Depth, 1]> : {}) : {};
+    type O<T, K extends string, Prefix extends string, Depth extends number[]> = K extends keyof T
+        ? { [_ in `${Prefix}.${K}`]?: T[K] } | (T[K] extends object ? SubObjects<T[K], Extract<keyof T[K], string>, `${Prefix}.${K}`, [...Depth, 1]> : {})
+        : {};
 
-    type SubObjects<T, K extends string, Prefix extends string, Depth extends number[]> =
-        Depth['length'] extends 10 ? {} : //bail out when too deep
-            K extends keyof T ? T[K] extends Array<infer A> ? SubObjects<A, Extract<keyof A, string>, `${Prefix}.${K}.${number}`, [...Depth, 1]> :
-                T[K] extends object ? O<T[K], Extract<keyof T[K], string>, Prefix extends '' ? K : `${Prefix}.${K}`, Depth> : { [P in `${Prefix}.${K}`]?: T[K] } : {};
+    type SubObjects<T, K extends string, Prefix extends string, Depth extends number[]> = Depth['length'] extends 10
+        ? {} //bail out when too deep
+        : K extends keyof T
+          ? T[K] extends Array<infer A>
+              ? SubObjects<A, Extract<keyof A, string>, `${Prefix}.${K}.${number}`, [...Depth, 1]>
+              : T[K] extends object
+                ? O<T[K], Extract<keyof T[K], string>, Prefix extends '' ? K : `${Prefix}.${K}`, Depth>
+                : { [P in `${Prefix}.${K}`]?: T[K] }
+          : {};
 
     type FilterQuery<T> = SubObjects<T, Extract<keyof T, string>, 'root', []>;
 

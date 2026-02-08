@@ -5,6 +5,7 @@
     "noFallthroughCasesInSwitch": true,
     "sourceMap": true,
     "experimentalDecorators": true,
+    "useDefineForClassFields": false,
     "moduleResolution": "node",
     "target": "es2020",
     "module": "CommonJS",

@@ -1,4 +1,8 @@
-import { isArray, isObject } from '@deepkit/core';
+import { performance } from 'perf_hooks';
+
+import { DeepkitError, isArray, isObject } from '@deepkit/core';
+import { HttpQuery, http } from '@deepkit/http';
+import { Logger, LoggerLevel, MemoryLoggerTransport } from '@deepkit/logger';
 import { Database, DatabaseAdapter, MigrateOptions } from '@deepkit/orm';
 import {
     BrowserControllerInterface,
@@ -6,46 +10,47 @@ import {
     DatabaseInfo,
     EntityPropertySeed,
     EntityPropertySeedReference,
-    fakerFunctions,
     FakerTypes,
-    getType,
     QueryResult,
     SeedDatabase,
+    faker,
+    fakerFunctions,
+    getType,
 } from '@deepkit/orm-browser-api';
 import { rpc } from '@deepkit/rpc';
 import { SQLDatabaseAdapter } from '@deepkit/sql';
-import { Logger, LoggerLevel, MemoryLoggerTransport } from '@deepkit/logger';
-import { performance } from 'perf_hooks';
-import { http, HttpQuery } from '@deepkit/http';
 import {
+    ReflectionClass,
+    ReflectionKind,
+    Type,
     cast,
     getPartialSerializeFunction,
     isReferenceType,
-    ReflectionClass,
-    ReflectionKind,
     resolveClassType,
     serializer,
-    Type,
 } from '@deepkit/type';
 
 @rpc.controller(BrowserControllerInterface)
 export class OrmBrowserController implements BrowserControllerInterface {
-    constructor(protected databases: Database[]) {
-    }
+    constructor(protected databases: Database[]) {}
 
     public registerDatabase(...databases: Database[]) {
         this.databases.push(...databases);
     }
 
     protected extractDatabaseInfo(db: Database): DatabaseInfo {
-        return new DatabaseInfo(db.name, (db.adapter as DatabaseAdapter).getName(), db.entityRegistry.all().map(v => v.serializeType()));
+        return new DatabaseInfo(
+            db.name,
+            (db.adapter as DatabaseAdapter).getName(),
+            db.entityRegistry.all().map(v => v.serializeType()),
+        );
     }
 
     protected getDb(dbName: string): Database {
         for (const db of this.databases) {
             if (db.name === dbName) return db;
         }
-        throw new Error(`No database ${dbName} found`);
+        throw new DeepkitError('DK-F010', `No database ${dbName} found`);
     }
 
     protected getDbEntity(dbName: string, entityName: string): [Database, ReflectionClass<any>] {
@@ -57,7 +62,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
             }
         }
 
-        throw new Error(`No entity ${entityName} for in database ${dbName}`);
+        throw new DeepkitError('DK-F011', `No entity ${entityName} in database ${dbName}`);
     }
 
     @rpc.action()
@@ -77,7 +82,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
             if (db.name === name) return this.extractDatabaseInfo(db);
         }
 
-        throw new Error(`No database ${name} found`);
+        throw new DeepkitError('DK-F010', `No database ${name} found`);
     }
 
     protected findDatabase(name: string): Database {
@@ -85,7 +90,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
             if (db.name === name) return db;
         }
 
-        throw new Error(`No database ${name} found`);
+        throw new DeepkitError('DK-F010', `No database ${name} found`);
     }
 
     @rpc.action()
@@ -106,7 +111,6 @@ export class OrmBrowserController implements BrowserControllerInterface {
     async getFakerTypes(): Promise<FakerTypes> {
         const res: FakerTypes = {};
 
-        const faker = require('faker');
         for (const fn of fakerFunctions) {
             const [p1, p2] = fn.split('.');
             try {
@@ -120,7 +124,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
     }
 
     @rpc.action()
-    async getMigrations(name: string): Promise<{ [name: string]: { sql: string[], diff: string } }> {
+    async getMigrations(name: string): Promise<{ [name: string]: { sql: string[]; diff: string } }> {
         const db = this.findDatabase(name);
         if (db.adapter instanceof SQLDatabaseAdapter) {
             return db.adapter.getMigrations(new MigrateOptions(), db.entityRegistry);
@@ -138,14 +142,12 @@ export class OrmBrowserController implements BrowserControllerInterface {
             const session = db.createSession();
             const added: { [entityName: string]: any[] } = {};
             const assignReference: {
-                path: string,
-                entity: string,
-                properties: { [name: string]: EntityPropertySeed },
-                reference: EntityPropertySeedReference,
-                callback: (v: any) => any
+                path: string;
+                entity: string;
+                properties: { [name: string]: EntityPropertySeed };
+                reference: EntityPropertySeedReference;
+                callback: (v: any) => any;
             }[] = [];
-
-            const faker = require('faker');
 
             function fakerValue(path: string, fakerName: string): any {
                 const [p1, p2] = fakerName.split('.');
@@ -169,7 +171,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
                         entity: resolveClassType(property).getName(),
                         reference: propSeed.reference,
                         properties: propSeed.properties,
-                        callback
+                        callback,
                     });
                     return;
                 } else if (property.kind === ReflectionKind.array) {
@@ -177,7 +179,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
                     if (!propSeed.array) return res;
                     const range = propSeed.array.max - propSeed.array.min;
                     for (let i = 0; i < Math.ceil(Math.random() * range); i++) {
-                        fake(path + '.' + i, property.type, propSeed.array.seed, (v) => {
+                        fake(path + '.' + i, property.type, propSeed.array.seed, v => {
                             res.push(v);
                         });
                     }
@@ -189,7 +191,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
                     for (const prop of schema.getProperties()) {
                         if (!propSeed.properties[prop.name]) continue;
 
-                        fake(path + '.' + prop.name, prop.type, propSeed.properties[prop.name], (v) => {
+                        fake(path + '.' + prop.name, prop.type, propSeed.properties[prop.name], v => {
                             item[prop.name] = v;
                         });
                     }
@@ -198,7 +200,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
                     callback(Math.random() > 0.5);
                 } else if (property.kind === ReflectionKind.enum) {
                     const values = property.values;
-                    callback(values[values.length * Math.random() | 0]);
+                    callback(values[(values.length * Math.random()) | 0]);
                 } else {
                     return callback(fakerValue(path, propSeed.faker));
                 }
@@ -211,7 +213,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
 
                 for (const [propName, propSeed] of Object.entries(properties)) {
                     const property = entity.getProperty(propName);
-                    fake(entity.getClassName() + '.' + propName, property.type, propSeed, (v) => {
+                    fake(entity.getClassName() + '.' + propName, property.type, propSeed, v => {
                         item[property.name] = v;
                     });
                 }
@@ -219,7 +221,10 @@ export class OrmBrowserController implements BrowserControllerInterface {
                 for (const reference of entity.getReferences()) {
                     if (reference.isArray()) continue;
                     if (reference.isBackReference()) continue;
-                    item[reference.name] = db.getReference(reference.getResolvedReflectionClass(), item[reference.name]);
+                    item[reference.name] = db.getReference(
+                        reference.getResolvedReflectionClass(),
+                        item[reference.name],
+                    );
                 }
 
                 session.add(item);
@@ -245,7 +250,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
             for (const ref of assignReference) {
                 const entity = db.getEntity(ref.entity);
 
-                let candidates = added[ref.entity] ||= [];
+                let candidates = (added[ref.entity] ||= []);
                 if (ref.reference === 'random') {
                     //note: I know there are faster ways, but this gets the job done for now
                     candidates = dbCandidates[ref.entity] ||= await db.query(entity).limit(1000).find();
@@ -263,7 +268,7 @@ export class OrmBrowserController implements BrowserControllerInterface {
                 if (ref.reference === 'create') {
                     ref.callback(create(entity, ref.properties));
                 } else {
-                    ref.callback(candidates[candidates.length * Math.random() | 0]);
+                    ref.callback(candidates[(candidates.length * Math.random()) | 0]);
                 }
             }
 
@@ -274,7 +279,11 @@ export class OrmBrowserController implements BrowserControllerInterface {
     }
 
     @http.GET('_orm-browser/query')
-    async httpQuery(dbName: HttpQuery<string>, entityName: HttpQuery<string>, query: HttpQuery<string>): Promise<QueryResult> {
+    async httpQuery(
+        dbName: HttpQuery<string>,
+        entityName: HttpQuery<string>,
+        query: HttpQuery<string>,
+    ): Promise<QueryResult> {
         const [, entity] = this.getDbEntity(dbName, entityName);
         const res = await this.query(dbName, entityName, query);
         if (isArray(res.result)) {
@@ -289,12 +298,12 @@ export class OrmBrowserController implements BrowserControllerInterface {
         const res: QueryResult = {
             executionTime: 0,
             log: [],
-            result: undefined
+            result: undefined,
         };
 
         const [db, entity] = this.getDbEntity(dbName, entityName);
         const oldLogger = db.logger;
-        const loggerTransport = new MemoryLoggerTransport;
+        const loggerTransport = new MemoryLoggerTransport();
         db.setLogger(new Logger([loggerTransport]));
 
         try {
@@ -326,8 +335,8 @@ export class OrmBrowserController implements BrowserControllerInterface {
         filter: { [name: string]: any },
         sort: { [name: string]: any },
         limit: number,
-        skip: number
-    ): Promise<{ items: any[], executionTime: number }> {
+        skip: number,
+    ): Promise<{ items: any[]; executionTime: number }> {
         const [db, entity] = this.getDbEntity(dbName, entityName);
         const start = performance.now();
         const items = await db.query(entity).filter(filter).sort(sort).limit(limit).skip(skip).find();
@@ -390,7 +399,6 @@ export class OrmBrowserController implements BrowserControllerInterface {
                             // since `item` from addedItems got already converted and $___newId is lost.
                             const v = add[reference.name];
                             if (reference.isArray()) {
-
                             } else {
                                 if (isNewIdWrapper(v)) {
                                     //reference to not-yet existing record,
@@ -399,7 +407,10 @@ export class OrmBrowserController implements BrowserControllerInterface {
                                 } else {
                                     //regular reference to already existing record,
                                     //so convert to reference
-                                    item[reference.name] = db.getReference(reference.getResolvedReflectionClass(), item[reference.name]);
+                                    item[reference.name] = db.getReference(
+                                        reference.getResolvedReflectionClass(),
+                                        item[reference.name],
+                                    );
                                 }
                             }
                         }
@@ -425,7 +436,10 @@ export class OrmBrowserController implements BrowserControllerInterface {
                             if (isNewIdWrapper(v)) {
                                 $set[reference.name] = addedItems.get(v.$___newId);
                             } else {
-                                $set[reference.name] = db.getReference(reference.getResolvedReflectionClass(), $set[reference.name]);
+                                $set[reference.name] = db.getReference(
+                                    reference.getResolvedReflectionClass(),
+                                    $set[reference.name],
+                                );
                             }
                         }
                         updates.push(query.filter(db.getReference(entity, change.pk)).patchOne(change.changes));

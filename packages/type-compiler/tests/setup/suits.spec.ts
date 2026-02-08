@@ -1,6 +1,9 @@
-import { test, expect } from '@jest/globals';
+import { test } from 'node:test';
 import * as ts from 'typescript';
 import { TransformationContext } from 'typescript';
+
+import { expect } from '@deepkit/run/expect';
+
 import { ReflectionTransformer } from '../../src/compiler.js';
 
 function build(currentDir = process.cwd(), useConfig = 'tsconfig.json'): { [path: string]: string } {
@@ -15,12 +18,18 @@ function build(currentDir = process.cwd(), useConfig = 'tsconfig.json'): { [path
     const program = ts.createProgram({ options, rootNames: fileNames, configFileParsingDiagnostics: errors });
 
     const result: { [path: string]: string } = {};
-    program.emit(undefined, (fileName, data) => {
-        //add basename to currentDir from fileName to result
-        result[fileName.slice(currentDir.length + 1).replace(/\.js$/, '')] = data;
-    }, undefined, undefined, {
-        before: [(context: TransformationContext) => new ReflectionTransformer(context)],
-    });
+    program.emit(
+        undefined,
+        (fileName, data) => {
+            //add basename to currentDir from fileName to result
+            result[fileName.slice(currentDir.length + 1).replace(/\.js$/, '')] = data;
+        },
+        undefined,
+        undefined,
+        {
+            before: [(context: TransformationContext) => new ReflectionTransformer(context)],
+        },
+    );
 
     return result;
 }

@@ -5,9 +5,8 @@
  *
  * The critical section that needs adjustment is in the `function getScriptTransformers` in `node_modules/typescript/lib/tsc.js`.
  */
-
-import { dirname, join, relative } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { dirname, join, relative } from 'path';
 
 let to = process.argv[2] || process.cwd();
 
@@ -70,7 +69,8 @@ if (to + '/dist/cjs' === __dirname) {
 }
 
 const typeScriptPath = dirname(require.resolve('typescript', { paths: [to] }));
-const deepkitDistPath = relative(typeScriptPath, __dirname);
+// Use forward slashes - works on all platforms and avoids Windows backslash escape issues (#356)
+const deepkitDistPath = relative(typeScriptPath, __dirname).replace(/\\/g, '/');
 
 const paths = ['tsc.js', '_tsc.js', 'typescript.js'];
 

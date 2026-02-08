@@ -1,7 +1,15 @@
-import { FilesystemAdapter, FilesystemError, FilesystemFile, FileType, FileVisibility, Reporter } from '@deepkit/filesystem';
 import { ClassType, escapeRegExp, pathDirectory } from '@deepkit/core';
+import {
+    FileType,
+    FileVisibility,
+    FilesystemAdapter,
+    FilesystemError,
+    FilesystemFile,
+    FilesystemFileNotFound,
+    Reporter,
+} from '@deepkit/filesystem';
 import { Database, DatabaseSession } from '@deepkit/orm';
-import { entity, Index, PrimaryKey } from '@deepkit/type';
+import { Index, PrimaryKey, entity } from '@deepkit/type';
 
 export interface FilesystemModel {
     path: string;
@@ -18,7 +26,7 @@ export interface FileDataModel {
     data: Uint8Array;
 }
 
-@(entity.name('file'))
+@entity.name('file')
 export class FileEntity implements FilesystemModel {
     path: string & PrimaryKey = '';
     dir: string & Index = '/';
@@ -29,7 +37,7 @@ export class FileEntity implements FilesystemModel {
     lastModified?: Date;
 }
 
-@(entity.name('file_data'))
+@entity.name('file_data')
 export class FileDataEntity {
     path: string & PrimaryKey = '';
     data: Uint8Array = new Uint8Array();
@@ -87,9 +95,7 @@ export class FilesystemDatabaseAdapter implements FilesystemAdapter {
         return true;
     }
 
-    async close(): Promise<void> {
-
-    }
+    async close(): Promise<void> {}
 
     async makeDirectory(path: string, visibility: FileVisibility, session?: DatabaseSession): Promise<void> {
         const parents = getParents(path);
@@ -103,17 +109,15 @@ export class FilesystemDatabaseAdapter implements FilesystemAdapter {
         try {
             for (const parent of parents) {
                 if (parent === '/') continue;
-                const exists = await this.database.query(this.entityClass)
-                    .filter({ path: parent })
-                    .has();
+                const exists = await this.database.query(this.entityClass).filter({ path: parent }).has();
 
                 if (exists) return;
                 const file = new this.entityClass();
                 file.path = path;
                 file.type = 'directory';
                 file.size = 0;
-                file.created = new Date;
-                file.lastModified = new Date;
+                file.created = new Date();
+                file.lastModified = new Date();
                 file.visibility = visibility;
                 file.dir = pathDirectory(path);
                 session.add(file);
@@ -135,7 +139,7 @@ export class FilesystemDatabaseAdapter implements FilesystemAdapter {
 
     async getVisibility(path: string): Promise<FileVisibility> {
         const file = await this.get(path);
-        if (!file) throw new Error(`File ${path} not found`);
+        if (!file) throw new FilesystemFileNotFound(`File ${path} not found`);
         return file.visibility;
     }
 
@@ -144,9 +148,7 @@ export class FilesystemDatabaseAdapter implements FilesystemAdapter {
     }
 
     protected async getFiles(path: string): Promise<FilesystemFile[]> {
-        const files = await this.database.query(this.entityClass)
-            .filter({ dir: path })
-            .find();
+        const files = await this.database.query(this.entityClass).filter({ dir: path }).find();
         return files.map(file => mapFileEntityToFilesystemFile(file));
     }
 
@@ -156,9 +158,9 @@ export class FilesystemDatabaseAdapter implements FilesystemAdapter {
         try {
             for (const path of paths) {
                 const file = await this.get(path);
-                if (!file) throw new FilesystemError(`File ${path} not found`);
+                if (!file) throw new FilesystemError('DK-FS001', `File ${path} not found`);
                 if (file.type === 'directory') {
-                    throw new FilesystemError(`Cannot delete directory ${path}`);
+                    throw new FilesystemError('DK-FS001', `Cannot delete directory ${path}`);
                 }
                 await session.query(this.entityClass).filter({ path }).deleteOne();
                 await session.query(this.entityDataClass).filter({ path }).deleteOne();
@@ -176,26 +178,29 @@ export class FilesystemDatabaseAdapter implements FilesystemAdapter {
 
         try {
             if (path !== '/') {
-                const file = await session.query(this.entityClass)
-                    .filter({ path })
-                    .findOneOrUndefined();
+                const file = await session.query(this.entityClass).filter({ path }).findOneOrUndefined();
 
-                if (!file) throw new FilesystemError(`File ${path} not found`);
-                if (file.type !== 'directory') throw new FilesystemError(`Cannot delete file ${path} as directory`);
+                if (!file) throw new FilesystemError('DK-FS001', `File ${path} not found`);
+                if (file.type !== 'directory')
+                    throw new FilesystemError('DK-FS001', `Cannot delete file ${path} as directory`);
                 session.remove(file);
             }
 
-            const files = await session.query(this.entityClass)
-                .filter(childrenFilter(path))
-                .find();
+            const files = await session.query(this.entityClass).filter(childrenFilter(path)).find();
             reporter.progress(0, files.length);
 
             const batchSize = 100;
             for (let i = 0; i < files.length; i += batchSize) {
                 const batch = files.slice(i, i + batchSize);
                 const paths = batch.map(file => file.path);
-                await session.query(this.entityClass).filter({ path: { $in: paths } }).deleteMany();
-                await session.query(this.entityDataClass).filter({ path: { $in: paths } }).deleteMany();
+                await session
+                    .query(this.entityClass)
+                    .filter({ path: { $in: paths } })
+                    .deleteMany();
+                await session
+                    .query(this.entityDataClass)
+                    .filter({ path: { $in: paths } })
+                    .deleteMany();
                 await session.flush();
                 reporter.progress(i + batch.length, files.length);
                 if (reporter.aborted) break;
@@ -208,7 +213,8 @@ export class FilesystemDatabaseAdapter implements FilesystemAdapter {
     }
 
     async exists(paths: string[]): Promise<boolean> {
-        const files = await this.database.query(this.entityClass)
+        const files = await this.database
+            .query(this.entityClass)
             .filter({ path: { $in: paths } })
             .select('path')
             .find();
@@ -218,9 +224,7 @@ export class FilesystemDatabaseAdapter implements FilesystemAdapter {
     async get(path: string): Promise<FilesystemFile | undefined> {
         if (path === '/') return new FilesystemFile('/', 'directory');
 
-        const record = await this.database.query(this.entityClass)
-            .filter({ path: path })
-            .findOneOrUndefined();
+        const record = await this.database.query(this.entityClass).filter({ path: path }).findOneOrUndefined();
         return record && mapFileEntityToFilesystemFile(record);
     }
 
@@ -232,13 +236,12 @@ export class FilesystemDatabaseAdapter implements FilesystemAdapter {
         const session = this.database.createSession();
         if (this.transactional) session.useTransaction();
         try {
-            const res = await session.query(this.entityClass)
+            const res = await session
+                .query(this.entityClass)
                 .filter({ path: source })
                 .patchOne({ path: destination, dir: pathDirectory(destination), lastModified: new Date() });
-            if (res.modified === 0) throw new FilesystemError(`File ${source} not found`);
-            await session.query(this.entityDataClass)
-                .filter({ path: source })
-                .patchOne({ path: destination });
+            if (res.modified === 0) throw new FilesystemError('DK-FS001', `File ${source} not found`);
+            await session.query(this.entityDataClass).filter({ path: source }).patchOne({ path: destination });
             await session.commit();
         } catch (error) {
             if (this.transactional) await session.rollback();
@@ -249,15 +252,11 @@ export class FilesystemDatabaseAdapter implements FilesystemAdapter {
     async read(path: string, reporter: Reporter): Promise<Uint8Array> {
         const session = this.database.createSession();
         if (this.transactional) session.useTransaction();
-        const file = await session.query(this.entityClass)
-            .filter({ path })
-            .findOneOrUndefined();
-        if (!file) throw new FilesystemError(`File ${path} not found`);
-        if (file.type !== 'file') throw new FilesystemError(`Cannot read directory ${path}`);
-        const data = await session.query(this.entityDataClass)
-            .filter({ path })
-            .findOneOrUndefined();
-        if (!data) throw new FilesystemError(`File data for ${path} not found`);
+        const file = await session.query(this.entityClass).filter({ path }).findOneOrUndefined();
+        if (!file) throw new FilesystemError('DK-FS001', `File ${path} not found`);
+        if (file.type !== 'file') throw new FilesystemError('DK-FS001', `Cannot read directory ${path}`);
+        const data = await session.query(this.entityDataClass).filter({ path }).findOneOrUndefined();
+        if (!data) throw new FilesystemError('DK-FS001', `File data for ${path} not found`);
         return data.data;
     }
 
@@ -266,9 +265,7 @@ export class FilesystemDatabaseAdapter implements FilesystemAdapter {
         if (this.transactional) session.useTransaction();
         try {
             await this.makeDirectory(pathDirectory(path), visibility, session);
-            let file = await session.query(this.entityClass)
-                .filter({ path })
-                .findOneOrUndefined();
+            let file = await session.query(this.entityClass).filter({ path }).findOneOrUndefined();
             if (!file) {
                 file = new this.entityClass();
                 file.path = path;
@@ -283,9 +280,7 @@ export class FilesystemDatabaseAdapter implements FilesystemAdapter {
             file.size = contents.length;
             file.lastModified = new Date();
             file.visibility = visibility;
-            let data = await session.query(this.entityDataClass)
-                .filter({ path })
-                .findOneOrUndefined();
+            let data = await session.query(this.entityDataClass).filter({ path }).findOneOrUndefined();
             if (!data) {
                 data = new this.entityDataClass();
                 data.path = path;

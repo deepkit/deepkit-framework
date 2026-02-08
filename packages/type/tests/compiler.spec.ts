@@ -1,17 +1,21 @@
 /** @reflection never */
-import { describe, expect, test } from '@jest/globals';
+import { createSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
+import { readFileSync } from 'fs';
+import { describe, test } from 'node:test';
+import { dirname, join } from 'path';
 import * as ts from 'typescript';
 import { ModuleKind, ScriptTarget, TransformationContext, transpileModule } from 'typescript';
-import { DeclarationTransformer, ReflectionTransformer } from '@deepkit/type-compiler';
-import { reflect, reflect as reflect2, ReflectionClass, removeTypeName, typeOf as typeOf2 } from '../src/reflection/reflection.js';
-import { assertType, defaultAnnotation, primaryKeyAnnotation, ReflectionKind, ReflectionVisibility, stringifyType, Type, TypeClass, TypeFunction, TypeMethod, TypeObjectLiteral, TypeProperty, TypeUnion } from '../src/reflection/type.js';
-import { ReflectionOp } from '@deepkit/type-spec';
+
 import { ClassType, isObject } from '@deepkit/core';
+import { expect } from '@deepkit/run/expect';
+import { DeclarationTransformer, ReflectionTransformer } from '@deepkit/type-compiler';
+import { ReflectionOp } from '@deepkit/type-spec';
+
 import { pack, resolveRuntimeType } from '../src/reflection/processor.js';
+import { ReflectionClass, reflect, reflect as reflect2, removeTypeName, typeOf as typeOf2 } from '../src/reflection/reflection.js';
+import { ReflectionKind, ReflectionVisibility, Type, TypeClass, TypeFunction, TypeMethod, TypeObjectLiteral, TypeProperty, TypeUnion, assertType, defaultAnnotation, stringifyType } from '../src/reflection/type.js';
+import { primaryKeyAnnotation } from '../src/type-annotations.js';
 import { expectEqualType } from './utils.js';
-import { createSystem, createVirtualCompilerHost, knownLibFilesForCompilerOptions } from '@typescript/vfs';
-import { dirname, join } from 'path';
-import { readFileSync } from 'fs';
 
 Error.stackTraceLimit = 200;
 
@@ -47,7 +51,7 @@ export function transpile<T extends string | Record<string, string>>(files: T, o
         experimentalDecorators: true,
         esModuleInterop: true,
         skipLibCheck: true,
-        ...options
+        ...options,
     };
 
     process.env['DEBUG'] = 'deepkit';
@@ -58,7 +62,7 @@ export function transpile<T extends string | Record<string, string>>(files: T, o
             transformers: {
                 before: [(context: TransformationContext) => new ReflectionTransformer(context).withReflection({ reflection: 'default' })],
                 afterDeclarations: [(context: TransformationContext) => new DeclarationTransformer(context).withReflection({ reflection: 'default' })],
-            }
+            },
         }).outputText as any;
     }
 
@@ -85,11 +89,18 @@ export function transpile<T extends string | Record<string, string>>(files: T, o
     // }
     const res: Record<string, string> = {};
 
-    program.emit(undefined, (fileName, data) => {
-        res[fileName.slice(__dirname.length + 1)] = data;
-    }, undefined, undefined, {
-        before: [(context: TransformationContext) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflection({ reflection: 'default' })],
-    });
+    program.emit(
+        undefined,
+        (fileName, data) => {
+            res[fileName.slice(__dirname.length + 1)] = data;
+        },
+        undefined,
+        undefined,
+        {
+            before: [(context: TransformationContext) => new ReflectionTransformer(context).forHost(host.compilerHost).withReflection({ reflection: 'default' })],
+            afterDeclarations: [(context: TransformationContext) => new DeclarationTransformer(context).forHost(host.compilerHost).withReflection({ reflection: 'default' })],
+        },
+    );
 
     return res as any;
 }
@@ -98,7 +109,7 @@ export function transpile<T extends string | Record<string, string>>(files: T, o
  * @reflection never
  */
 function packRaw(...args: Parameters<typeof pack>): string {
-    return `${(pack(...args) as string[]).join().replace(/'/g, '\\\'')}`;
+    return `${(pack(...args) as string[]).join().replace(/'/g, "\\'")}`;
 }
 
 /**
@@ -117,10 +128,16 @@ const tests: [code: string | { [file: string]: string }, contains: string | stri
     [`class Entity { p: Date }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.date, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
     [`class Entity { private p: string }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.private, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
     [`class Entity { p?: string }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.string, ReflectionOp.property, 0, ReflectionOp.optional, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
-    [`class Entity { p: string | undefined }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
+    [
+        `class Entity { p: string | undefined }`,
+        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.undefined, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
+    ],
     [`class Entity { p: string | null }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.frame, ReflectionOp.string, ReflectionOp.null, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
     [`class Entity { p: number[] }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.number, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
-    [`class Entity { p: (number | string)[] }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
+    [
+        `class Entity { p: (number | string)[] }`,
+        `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.array, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`,
+    ],
 
     [`class Entity { p: Promise<number> }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.number, ReflectionOp.promise, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
     [`class Entity { p: number | string }`, `Entity.__type = ['p', 'Entity', ${packString([ReflectionOp.frame, ReflectionOp.number, ReflectionOp.string, ReflectionOp.union, ReflectionOp.property, 0, ReflectionOp.class, ReflectionOp.typeName, 1])}]`],
@@ -319,7 +336,7 @@ describe('transformer', () => {
             const transpiled = transpile(code);
             const result = isObject(transpiled) ? transpiled['app.js'] : transpiled;
             const e = expect(result);
-            for (const c of (Array.isArray(contains) ? contains : [contains])) {
+            for (const c of Array.isArray(contains) ? contains : [contains]) {
                 if (c.startsWith('!')) {
                     e.not.toContain(c.substr(1));
                 } else {
@@ -349,7 +366,6 @@ test('class', () => {
     return class User {id: number; username: string}`;
     const clazz = transpileAndReturn(code);
     const js = transpile(code);
-    console.log('js', js);
     const type = reflect(clazz);
     assertType(type, ReflectionKind.class);
     expect(type.classType).toBe(clazz);
@@ -372,7 +388,6 @@ test('class declaration', () => {
     function p() {}
     `;
     const js = transpile({ 'app.ts': code });
-    console.log('js', js);
 });
 
 test('generic class', () => {
@@ -383,35 +398,35 @@ test('generic class', () => {
     expect(type).toMatchObject({
         kind: ReflectionKind.class,
         classType: clazz,
-        types: [{
-            kind: ReflectionKind.property,
-            name: 'data',
-            visibility: ReflectionVisibility.public,
-            type: { kind: ReflectionKind.string }
-        }]
+        types: [
+            {
+                kind: ReflectionKind.property,
+                name: 'data',
+                visibility: ReflectionVisibility.public,
+                type: { kind: ReflectionKind.string },
+            },
+        ],
     });
 });
 
 test('class constructor', () => {
     const code = `return class Container {constructor(public title: string) {}}`;
     const js = transpile(code);
-    console.log('js', js);
     const clazz = transpileAndReturn(code);
     const type = reflect(clazz);
     expectEqualType(type, {
         kind: ReflectionKind.class,
         classType: clazz as ClassType,
-        types: [{
-            kind: ReflectionKind.method,
-            name: 'constructor',
-            visibility: ReflectionVisibility.public,
-            parameters: [
-                { kind: ReflectionKind.parameter, name: 'title', type: { kind: ReflectionKind.string }, visibility: ReflectionVisibility.public }
-            ],
-            return: { kind: ReflectionKind.any }
-        },
-            { kind: ReflectionKind.property, name: 'title', type: { kind: ReflectionKind.string }, visibility: ReflectionVisibility.public }
-        ]
+        types: [
+            {
+                kind: ReflectionKind.method,
+                name: 'constructor',
+                visibility: ReflectionVisibility.public,
+                parameters: [{ kind: ReflectionKind.parameter, name: 'title', type: { kind: ReflectionKind.string }, visibility: ReflectionVisibility.public }],
+                return: { kind: ReflectionKind.any },
+            },
+            { kind: ReflectionKind.property, name: 'title', type: { kind: ReflectionKind.string }, visibility: ReflectionVisibility.public },
+        ],
     } as Type);
 });
 
@@ -445,27 +460,29 @@ test('external object literal', () => {
     expect(reflect(clazz)).toMatchObject({
         kind: ReflectionKind.class,
         classType: clazz,
-        types: [{
-            kind: ReflectionKind.property,
-            name: 'data',
-            visibility: ReflectionVisibility.public,
-            type: {
-                kind: ReflectionKind.objectLiteral,
-                typeName: 'o',
-                types: [
-                    {
-                        kind: ReflectionKind.propertySignature,
-                        type: { kind: ReflectionKind.string },
-                        name: 'a',
-                    },
-                    {
-                        kind: ReflectionKind.propertySignature,
-                        type: { kind: ReflectionKind.number },
-                        name: 'b',
-                    }
-                ]
-            } as TypeObjectLiteral
-        }]
+        types: [
+            {
+                kind: ReflectionKind.property,
+                name: 'data',
+                visibility: ReflectionVisibility.public,
+                type: {
+                    kind: ReflectionKind.objectLiteral,
+                    typeName: 'o',
+                    types: [
+                        {
+                            kind: ReflectionKind.propertySignature,
+                            type: { kind: ReflectionKind.string },
+                            name: 'a',
+                        },
+                        {
+                            kind: ReflectionKind.propertySignature,
+                            type: { kind: ReflectionKind.number },
+                            name: 'b',
+                        },
+                    ],
+                } as TypeObjectLiteral,
+            },
+        ],
     });
 });
 
@@ -478,34 +495,35 @@ test('partial', () => {
     return class Container {data: Partial<o>}`;
 
     const js = transpile(code);
-    console.log('js', js);
     const clazz = transpileAndReturn(code);
 
     expect(reflect(clazz)).toMatchObject({
         kind: ReflectionKind.class,
         classType: clazz,
-        types: [{
-            kind: ReflectionKind.property,
-            name: 'data',
-            visibility: ReflectionVisibility.public,
-            type: {
-                kind: ReflectionKind.objectLiteral,
-                types: [
-                    {
-                        kind: ReflectionKind.propertySignature,
-                        type: { kind: ReflectionKind.string },
-                        name: 'a',
-                        optional: true,
-                    },
-                    {
-                        kind: ReflectionKind.propertySignature,
-                        type: { kind: ReflectionKind.number },
-                        name: 'b',
-                        optional: true,
-                    }
-                ]
-            } as TypeObjectLiteral
-        }]
+        types: [
+            {
+                kind: ReflectionKind.property,
+                name: 'data',
+                visibility: ReflectionVisibility.public,
+                type: {
+                    kind: ReflectionKind.objectLiteral,
+                    types: [
+                        {
+                            kind: ReflectionKind.propertySignature,
+                            type: { kind: ReflectionKind.string },
+                            name: 'a',
+                            optional: true,
+                        },
+                        {
+                            kind: ReflectionKind.propertySignature,
+                            type: { kind: ReflectionKind.number },
+                            name: 'b',
+                            optional: true,
+                        },
+                    ],
+                } as TypeObjectLiteral,
+            },
+        ],
     });
 });
 
@@ -523,10 +541,8 @@ test('type emitted at the right place', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     expect(js).toContain(`() => {\n    const __Ωo = ['a', 'o', '${packRaw([ReflectionOp.frame])}`);
     const type = transpileAndReturn(code);
-    console.log(type);
 });
 
 test('no global clash', () => {
@@ -553,7 +569,6 @@ test('no global clash', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     expect(js).toContain(`const __Ωo = ['a', 'o', '${packRaw([ReflectionOp.frame])}`);
     expect(js).toContain(`const __Ωo = ['a', 'b', 'o', '${packRaw([ReflectionOp.frame])}`);
     // const clazz = transpileAndReturn(code);
@@ -566,11 +581,9 @@ test('function type', () => {
 
     expectEqualType(type, {
         kind: ReflectionKind.function,
-        parameters: [
-            { kind: ReflectionKind.parameter, name: 'a', type: { kind: ReflectionKind.string } }
-        ],
+        parameters: [{ kind: ReflectionKind.parameter, name: 'a', type: { kind: ReflectionKind.string } }],
         return: { kind: ReflectionKind.void },
-        name: undefined
+        name: undefined,
     } as TypeFunction);
 });
 
@@ -587,7 +600,7 @@ test('resolve query string', () => {
     return typeOf<o['a']>();`);
 
     expect(type).toMatchObject({
-        kind: ReflectionKind.string
+        kind: ReflectionKind.string,
     });
 });
 
@@ -598,10 +611,7 @@ test('resolve query union', () => {
 
     expectEqualType(type, {
         kind: ReflectionKind.union,
-        types: [
-            { kind: ReflectionKind.string },
-            { kind: ReflectionKind.literal, literal: true },
-        ]
+        types: [{ kind: ReflectionKind.string }, { kind: ReflectionKind.literal, literal: true }],
     });
 });
 
@@ -614,7 +624,6 @@ test('emit function types in objects', () => {
     return typeOf<typeof wrap>();
     `;
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
@@ -623,9 +632,9 @@ test('emit function types in objects', () => {
                 kind: ReflectionKind.methodSignature,
                 name: 'add',
                 parameters: [{ kind: ReflectionKind.parameter, name: 'item', type: { kind: ReflectionKind.string } }],
-                return: { kind: ReflectionKind.any }
-            }
-        ]
+                return: { kind: ReflectionKind.any },
+            },
+        ],
     } as Type);
 });
 
@@ -637,7 +646,6 @@ test('emit optional for method signatures', () => {
     return typeOf<Wrap>();
     `;
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
@@ -647,9 +655,9 @@ test('emit optional for method signatures', () => {
                 name: 'maybe',
                 optional: true,
                 parameters: [{ kind: ReflectionKind.parameter, name: 'item', type: { kind: ReflectionKind.string } }],
-                return: { kind: ReflectionKind.any }
-            }
-        ]
+                return: { kind: ReflectionKind.any },
+            },
+        ],
     } as Type);
 });
 
@@ -660,9 +668,7 @@ test('emit class extends types', () => {
         return typeOf<ClassB>();
     `;
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
-    console.log('type', type);
     expectEqualType(type, {
         kind: ReflectionKind.class,
         extendsArguments: [{ kind: ReflectionKind.string }],
@@ -704,7 +710,6 @@ test('nominal interfaces cache', () => {
         return [typeOf<A>(), typeOf<A>()];
     `;
     const js = transpile(code);
-    console.log('js', js);
     const types = transpileAndReturn(code) as Type[];
     assertType(types[0], ReflectionKind.objectLiteral);
     assertType(types[1], ReflectionKind.objectLiteral);
@@ -722,9 +727,7 @@ test('nominal interfaces index access', () => {
         return [typeOf<A>(), typeOf<C['a']>()];
     `;
     const js = transpile(code);
-    console.log('js', js);
     const types = transpileAndReturn(code) as Type[];
-    console.dir(types, {depth: null});
     assertType(types[0], ReflectionKind.objectLiteral);
     assertType(types[1], ReflectionKind.objectLiteral);
     expect(types[0].id).toBe(types[1].id);
@@ -737,10 +740,7 @@ test('infer T in function primitive', () => {
         }
     `;
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code) as (v: string | number) => Type;
-    console.log(type);
-    console.log(type('abc'));
 });
 
 test('constructor', () => {
@@ -749,28 +749,19 @@ test('constructor', () => {
         return typeOf<constructor>();
     `;
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code) as (v: string | number) => Type;
-    console.log(type);
 });
 
 test('template literal', () => {
-    const code = '' +
-        'type d8 = `1233` extends `${number}${infer T1}${number}` ? T1 : never;\n' +
-        'type d9 = `1133` extends `${object}${infer T1}${number}` ? T1 : never;';
+    const code = '' + 'type d8 = `1233` extends `${number}${infer T1}${number}` ? T1 : never;\n' + 'type d9 = `1133` extends `${object}${infer T1}${number}` ? T1 : never;';
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code) as (v: string | number) => Type;
-    console.log(type);
 });
 
 test('multiple infer', () => {
-    const code = 'type a2 = \'abcd\' extends `a${infer T}${infer T2}` ? [T, T2] : never;\n' +
-        'return typeOf<a2>();';
+    const code = "type a2 = 'abcd' extends `a${infer T}${infer T2}` ? [T, T2] : never;\n" + 'return typeOf<a2>();';
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code) as (v: string | number) => Type;
-    console.log(type);
 });
 
 test('ClassType declaration', () => {
@@ -783,7 +774,6 @@ test('ClassType declaration', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code) as () => Type;
     expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
@@ -792,9 +782,9 @@ test('ClassType declaration', () => {
                 kind: ReflectionKind.methodSignature,
                 name: 'new',
                 return: { kind: ReflectionKind.string },
-                parameters: [{ kind: ReflectionKind.parameter, name: 'args', type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.any } } }]
-            }
-        ]
+                parameters: [{ kind: ReflectionKind.parameter, name: 'args', type: { kind: ReflectionKind.rest, type: { kind: ReflectionKind.any } } }],
+            },
+        ],
     });
 });
 
@@ -812,7 +802,6 @@ test('ClassType infer', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code) as () => Type;
     expect(type).toMatchObject({
         kind: ReflectionKind.class,
@@ -821,8 +810,8 @@ test('ClassType infer', () => {
                 kind: ReflectionKind.property,
                 name: 'id',
                 type: { kind: ReflectionKind.number },
-            }
-        ]
+            },
+        ],
     });
 });
 
@@ -852,13 +841,9 @@ test('infer parameter in returned class constructor', () => {
     return StreamApiResponse2;
     `;
     const js = transpile(code);
-    console.log('js', js);
     const res = transpileAndReturn(code) as (v: ClassType) => ClassType;
-    const type = resolveRuntimeType(res(class MyResponse {
-    })) as TypeClass;
-    console.log('type', stringifyType(type));
+    const type = resolveRuntimeType(res(class MyResponse {})) as TypeClass;
     expect((type.types[0] as TypeMethod).parameters[0].type.kind).toBe(ReflectionKind.class);
-    console.log((type.types[0] as TypeMethod).parameters[0]);
 });
 
 test('index signature with template literal index', () => {
@@ -867,9 +852,7 @@ test('index signature with template literal index', () => {
     return typeOf<a1>();
     `;
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code) as Type;
-    console.log(type);
 });
 
 test('complex infer T', () => {
@@ -911,7 +894,6 @@ test('infer T in function boxed primitive', () => {
     const t2 = fn({ a: 23 });
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code) as (v: { a: any }) => Type;
     expectEqualType(type({ a: 'abc' }), { kind: ReflectionKind.literal, literal: 'abc' });
     expectEqualType(type({ a: 23 }), { kind: ReflectionKind.literal, literal: 23 });
@@ -926,7 +908,6 @@ test('infer T in function inferred second template arg', () => {
         }
     `;
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code) as (v: string | number) => Type;
     expect(type('abc')).toMatchObject({ kind: ReflectionKind.literal, literal: 'string' });
     expect(type(34)).toMatchObject({ kind: ReflectionKind.literal, literal: 'number' });
@@ -941,7 +922,6 @@ test('infer T in function branded type', () => {
         }
     `;
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code) as (v: string | number) => Type;
     expect(type('abc')).toEqual({ kind: ReflectionKind.literal, literal: 'abc' });
     expect(type(34)).toEqual({ kind: ReflectionKind.literal, literal: 34 });
@@ -954,15 +934,12 @@ test('correct T resolver', () => {
     }
     `;
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code) as (v: any) => ClassType;
     const classType = type('abc');
     expectEqualType(reflect(classType), {
         kind: ReflectionKind.class,
         classType: classType,
-        types: [
-            { kind: ReflectionKind.property, visibility: ReflectionVisibility.public, name: 'item', type: { kind: ReflectionKind.literal, literal: 'abc' } }
-        ]
+        types: [{ kind: ReflectionKind.property, visibility: ReflectionVisibility.public, name: 'item', type: { kind: ReflectionKind.literal, literal: 'abc' } }],
     } as Type);
 });
 
@@ -977,10 +954,7 @@ test('dynamic class with member of outer T', () => {
         }
     `;
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code) as (v: string | number) => Type;
-    console.log(type);
-    console.log(type('abc'));
 });
 
 test('infer T in function alias', () => {
@@ -992,9 +966,7 @@ test('infer T in function alias', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
-    console.log(type);
 });
 
 test('infer T in class', () => {
@@ -1005,7 +977,6 @@ test('infer T in class', () => {
 
         return new Wrap('abc');
     `);
-    console.log('js', js);
 });
 
 test('resolve partial', () => {
@@ -1024,13 +995,11 @@ test('resolve partial', () => {
                 optional: true,
                 name: 'a',
                 type: {
-                    kind: ReflectionKind.union, types: [
-                        { kind: ReflectionKind.literal, literal: true },
-                        { kind: ReflectionKind.string },
-                    ]
-                } as TypeUnion
+                    kind: ReflectionKind.union,
+                    types: [{ kind: ReflectionKind.literal, literal: true }, { kind: ReflectionKind.string }],
+                } as TypeUnion,
             },
-        ]
+        ],
     });
 });
 
@@ -1046,7 +1015,6 @@ test('resolve partial 2', () => {
     return typeOf<p>();`;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
 
     expect(type).toMatchObject({
@@ -1056,9 +1024,9 @@ test('resolve partial 2', () => {
                 kind: ReflectionKind.propertySignature,
                 optional: true,
                 name: 'a',
-                type: { kind: ReflectionKind.string }
+                type: { kind: ReflectionKind.string },
             },
-        ]
+        ],
     });
 });
 
@@ -1069,7 +1037,6 @@ test('conditional simple', () => {
     return typeOf<Conditional>();`;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
 
     expect(type).toMatchObject({
@@ -1089,15 +1056,14 @@ test('conditional map', () => {
     return typeOf<p>()`;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
 
     expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
-            { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.literal, literal: true, } },
-            { kind: ReflectionKind.propertySignature, name: 'b', type: { kind: ReflectionKind.literal, literal: false, } },
-        ]
+            { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.literal, literal: true } },
+            { kind: ReflectionKind.propertySignature, name: 'b', type: { kind: ReflectionKind.literal, literal: false } },
+        ],
     });
 });
 
@@ -1108,11 +1074,10 @@ test('conditional infer', () => {
     return typeOf<Conditional>();`;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
 
     expect(type).toMatchObject({
-        kind: ReflectionKind.string
+        kind: ReflectionKind.string,
     });
 });
 
@@ -1122,27 +1087,28 @@ test('nested object literal', () => {
     return typeOf<o>();`;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
 
     expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
-                kind: ReflectionKind.propertySignature, name: 'a', type: {
-                    kind: ReflectionKind.objectLiteral, types: [
-                        { kind: ReflectionKind.propertySignature, name: 't', type: { kind: ReflectionKind.string } }
-                    ]
-                }
+                kind: ReflectionKind.propertySignature,
+                name: 'a',
+                type: {
+                    kind: ReflectionKind.objectLiteral,
+                    types: [{ kind: ReflectionKind.propertySignature, name: 't', type: { kind: ReflectionKind.string } }],
+                },
             },
             {
-                kind: ReflectionKind.propertySignature, name: 'b', type: {
-                    kind: ReflectionKind.objectLiteral, types: [
-                        { kind: ReflectionKind.propertySignature, name: 't', type: { kind: ReflectionKind.number } }
-                    ]
-                }
+                kind: ReflectionKind.propertySignature,
+                name: 'b',
+                type: {
+                    kind: ReflectionKind.objectLiteral,
+                    types: [{ kind: ReflectionKind.propertySignature, name: 't', type: { kind: ReflectionKind.number } }],
+                },
             },
-        ]
+        ],
     });
 });
 
@@ -1152,19 +1118,17 @@ test('branded type', () => {
     return typeOf<ASD<string>>();`;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
                 {
-                    kind: ReflectionKind.objectLiteral, types: [
-                        { kind: ReflectionKind.propertySignature, type: { kind: ReflectionKind.literal, literal: true }, optional: true, name: '__primaryKey' }
-                    ]
+                    kind: ReflectionKind.objectLiteral,
+                    types: [{ kind: ReflectionKind.propertySignature, type: { kind: ReflectionKind.literal, literal: true }, optional: true, name: '__primaryKey' }],
                 },
-            ]
-        }
+            ],
+        },
     } as Type);
 });
 
@@ -1174,13 +1138,10 @@ test('mapped type string index', () => {
     return typeOf<A>();`;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
-        types: [
-            { kind: ReflectionKind.propertySignature, name: 'asd', type: { kind: ReflectionKind.string } },
-        ]
+        types: [{ kind: ReflectionKind.propertySignature, name: 'asd', type: { kind: ReflectionKind.string } }],
     } as TypeObjectLiteral);
 });
 
@@ -1190,13 +1151,10 @@ test('mapped type var index', () => {
     return typeOf<A<'asd'>>();`;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
-        types: [
-            { kind: ReflectionKind.propertySignature, name: 'asd', type: { kind: ReflectionKind.string } },
-        ]
+        types: [{ kind: ReflectionKind.propertySignature, name: 'asd', type: { kind: ReflectionKind.string } }],
     } as TypeObjectLiteral);
 });
 
@@ -1206,19 +1164,17 @@ test('brand mapped type var index', () => {
     return typeOf<A<string>>();`;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
                 {
-                    kind: ReflectionKind.objectLiteral, types: [
-                        { kind: ReflectionKind.propertySignature, name: 'brand', type: { kind: ReflectionKind.string } },
-                    ]
-                }
-            ]
-        }
+                    kind: ReflectionKind.objectLiteral,
+                    types: [{ kind: ReflectionKind.propertySignature, name: 'brand', type: { kind: ReflectionKind.string } }],
+                },
+            ],
+        },
     } as Type);
 });
 
@@ -1228,19 +1184,17 @@ test('brand mapped type var index/type', () => {
     return typeOf<A<string, 'uuid'>>();`;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
                 {
-                    kind: ReflectionKind.objectLiteral, types: [
-                        { kind: ReflectionKind.propertySignature, name: 'brand', type: { kind: ReflectionKind.literal, literal: 'uuid' } },
-                    ]
-                }
-            ]
-        }
+                    kind: ReflectionKind.objectLiteral,
+                    types: [{ kind: ReflectionKind.propertySignature, name: 'brand', type: { kind: ReflectionKind.literal, literal: 'uuid' } }],
+                },
+            ],
+        },
     } as Type);
 });
 
@@ -1250,7 +1204,6 @@ test('fn default argument', () => {
     return typeOf<A>();`;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expect(type.kind).toEqual(ReflectionKind.string);
 });
@@ -1263,10 +1216,11 @@ test('ReceiveType standard function', () => {
     return cast<string>();`;
 
     const js = transpile(code);
-    console.log('js', js);
-    expect(js).toContain('type = cast.Ω?.[0]');
-    expect(js).toContain('cast.Ω = undefined');
-    expect(js).toContain('cast.Ω = [');
+    // Direct passing: type is passed as argument, no Ω at call site
+    expect(js).toContain('type = cast.Ω'); // declaration-side default still present
+    expect(js).toContain('cast.Ω = undefined'); // reset still present in body
+    // Call site uses direct arg passing (no Ω assignment)
+    expect(js).not.toContain('cast.Ω = [');
 
     const type = transpileAndReturn(code);
     expect(type).toEqual({ kind: ReflectionKind.string });
@@ -1280,10 +1234,11 @@ test('ReceiveType arrow function', () => {
     return cast<string>();`;
 
     const js = transpile(code);
-    console.log('js', js);
-    expect(js).toContain('type = cast.Ω?.[0]');
-    expect(js).toContain('cast.Ω = undefined');
-    expect(js).toContain('cast.Ω = [');
+    // Direct passing: type is passed as argument, no Ω at call site
+    expect(js).toContain('type = cast.Ω'); // declaration-side default still present
+    expect(js).toContain('cast.Ω = undefined'); // reset still present in body
+    // Call site uses direct arg passing (no Ω assignment)
+    expect(js).not.toContain('cast.Ω = [');
 
     const type = transpileAndReturn(code);
     expect(type).toEqual({ kind: ReflectionKind.string });
@@ -1300,15 +1255,118 @@ test('ReceiveType object property assignment arrow function', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
-    expect(js).toContain('type = obj.cast.Ω?.[0]');
-    expect(js).toContain('obj.cast.Ω = undefined');
-    expect(js).toContain('obj.cast.Ω = [');
+    // Direct passing: type is passed as argument, no Ω at call site
+    expect(js).toContain('type = obj.cast.Ω'); // declaration-side default still present
+    expect(js).toContain('obj.cast.Ω = undefined'); // reset still present in body
+    // Call site uses direct arg passing (no Ω assignment)
+    expect(js).not.toContain('obj.cast.Ω = [');
 
     const type = transpileAndReturn(code);
     expect(type).toEqual({ kind: ReflectionKind.string });
 });
 
+test('ReceiveType let binding falls back to Ω', () => {
+    const code = `
+    let cast = <T>(type: ReceiveType<T>) => {
+        return reflect(type);
+    };
+    return cast<string>();`;
+
+    const js = transpile(code);
+    // let binding is mutable — falls back to Ω side-channel
+    expect(js).toContain('cast.Ω =');
+
+    const type = transpileAndReturn(code);
+    expect(type).toEqual({ kind: ReflectionKind.string });
+});
+
+test('ReceiveType new expression with constructor', () => {
+    const code = `
+    class MyClass<T> {
+        type: any;
+        constructor(type: ReceiveType<T>) {
+            this.type = reflect(type);
+        }
+    }
+    const inst = new MyClass<string>();
+    return inst.type;`;
+
+    const js = transpile(code);
+    // Direct passing: type arg placed at constructor param position
+    expect(js).not.toContain('MyClass.Ω =');
+
+    const type = transpileAndReturn(code);
+    expect(type).toEqual({ kind: ReflectionKind.string });
+});
+
+test('ReceiveType this.method direct passing', () => {
+    const code = `
+    class Svc {
+        cast<T>(type: ReceiveType<T>) {
+            return reflect(type);
+        }
+        run() {
+            return this.cast<string>();
+        }
+    }
+    return new Svc().run();`;
+
+    const js = transpile(code);
+    // this.method call should use direct passing — call site has no Ω assignment
+    // (the declaration-side `type = this.cast.Ω` default and body reset are still present)
+    expect(js).toMatch(/this\.cast\(\[/); // direct arg passing at call site
+
+    const type = transpileAndReturn(code);
+    expect(type).toEqual({ kind: ReflectionKind.string });
+});
+
+test('ReceiveType chained call falls back to Ω', () => {
+    const code = `
+    function getService() {
+        return {
+            cast<T>(type: ReceiveType<T>) {
+                return reflect(type);
+            }
+        };
+    }
+    return getService().cast<string>();`;
+
+    const js = transpile(code);
+    // Chained call: can't resolve the return type, falls back to Ω
+    expect(js).toContain('.cast.Ω =');
+
+    const type = transpileAndReturn(code);
+    expect(type).toEqual({ kind: ReflectionKind.string });
+});
+
+test('ReceiveType multiple type params', () => {
+    const code = `
+    function multi<A, B>(a: any, typeA: ReceiveType<A>, typeB: ReceiveType<B>) {
+        return [reflect(typeA), reflect(typeB)];
+    }
+    return multi<string, number>(42);`;
+
+    const js = transpile(code);
+    // Direct passing: both type args placed at correct positions — call site has no Ω assignment
+    // (the declaration-side `multi.Ω?.[n]` defaults and body `multi.Ω = undefined` reset are still present)
+    expect(js).toMatch(/multi\(42,\s*\[/); // direct arg passing at call site
+
+    const type = transpileAndReturn(code);
+    expect(type).toEqual([{ kind: ReflectionKind.string }, { kind: ReflectionKind.number }]);
+});
+
+test('ReceiveType non-ReceiveType call skips Ω', () => {
+    // A call with type args where the target has no ReceiveType params
+    // should skip Ω entirely — no point setting it
+    const code = `
+    function noReceive<T>(x: number) { return x; }
+    return noReceive<string>(42);`;
+
+    const js = transpile(code);
+    // Resolved, no ReceiveType params → no Ω assignment and no direct passing
+    expect(js).not.toContain('noReceive.Ω =');
+    expect(js).toContain('noReceive(42)');
+});
 
 test('generic static', () => {
     const code = `
@@ -1323,21 +1381,19 @@ test('generic static', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
-                kind: ReflectionKind.propertySignature, name: 'body', type: {
-
+                kind: ReflectionKind.propertySignature,
+                name: 'body',
+                type: {
                     kind: ReflectionKind.objectLiteral,
-                    types: [
-                        { kind: ReflectionKind.propertySignature, name: 'title', type: { kind: ReflectionKind.string } },
-                    ]
-                }
+                    types: [{ kind: ReflectionKind.propertySignature, name: 'title', type: { kind: ReflectionKind.string } }],
+                },
             },
-        ]
+        ],
     });
 });
 
@@ -1354,15 +1410,16 @@ test('generic dynamic', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expect(type).toMatchObject({
         kind: ReflectionKind.objectLiteral,
         types: [
             {
-                kind: ReflectionKind.propertySignature, name: 'body', type: { kind: ReflectionKind.string },
-            }
-        ]
+                kind: ReflectionKind.propertySignature,
+                name: 'body',
+                type: { kind: ReflectionKind.string },
+            },
+        ],
     });
 });
 
@@ -1375,15 +1432,14 @@ test('map conditional infer', () => {
     return typeOf<Conditional<o>>();`;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
 
     expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
         types: [
-            { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string, } },
-            { kind: ReflectionKind.propertySignature, name: 'b', type: { kind: ReflectionKind.number, } },
-        ]
+            { kind: ReflectionKind.propertySignature, name: 'a', type: { kind: ReflectionKind.string } },
+            { kind: ReflectionKind.propertySignature, name: 'b', type: { kind: ReflectionKind.number } },
+        ],
     });
 });
 
@@ -1394,16 +1450,15 @@ test('tuple with generic', () => {
     return typeOf<r>();`;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
 
     expectEqualType(type, {
         kind: ReflectionKind.tuple,
         types: [
-            { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.literal, literal: 'hi', } },
+            { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.literal, literal: 'hi' } },
             { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.string } },
             { kind: ReflectionKind.tupleMember, type: { kind: ReflectionKind.number } },
-        ]
+        ],
     });
 });
 
@@ -1421,7 +1476,6 @@ test('class with constructor', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const classType = transpileAndReturn(code) as ClassType;
 
     const type = reflect(classType);
@@ -1435,7 +1489,7 @@ test('class with constructor', () => {
                 name: 'created',
                 // default: () => new Date,
                 visibility: ReflectionVisibility.public,
-                type: { kind: ReflectionKind.class, classType: Date, types: [] }
+                type: { kind: ReflectionKind.class, classType: Date, types: [] },
             },
             {
                 kind: ReflectionKind.method,
@@ -1447,15 +1501,15 @@ test('class with constructor', () => {
                         kind: ReflectionKind.parameter,
                         name: 'username',
                         visibility: ReflectionVisibility.public,
-                        type: { kind: ReflectionKind.string }
-                    }
-                ]
+                        type: { kind: ReflectionKind.string },
+                    },
+                ],
             },
             {
                 kind: ReflectionKind.property,
                 name: 'username',
                 visibility: ReflectionVisibility.public,
-                type: { kind: ReflectionKind.string }
+                type: { kind: ReflectionKind.string },
             },
             {
                 kind: ReflectionKind.method,
@@ -1466,11 +1520,11 @@ test('class with constructor', () => {
                     {
                         kind: ReflectionKind.parameter,
                         name: 'text',
-                        type: { kind: ReflectionKind.string }
-                    }
-                ]
+                        type: { kind: ReflectionKind.string },
+                    },
+                ],
             },
-        ]
+        ],
     } as TypeClass as Record<any, any>);
 });
 
@@ -1491,14 +1545,11 @@ test('description', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
 
     expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
-        types: [
-            { kind: ReflectionKind.propertySignature, name: 'username', description: 'Hello what up?\nasdasd\n\ndas', type: { kind: ReflectionKind.string } }
-        ]
+        types: [{ kind: ReflectionKind.propertySignature, name: 'username', description: 'Hello what up?\nasdasd\n\ndas', type: { kind: ReflectionKind.string } }],
     } as TypeObjectLiteral);
 });
 
@@ -1510,19 +1561,17 @@ test('brand with symbol property', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
                 {
-                    kind: ReflectionKind.objectLiteral, types: [
-                        { kind: ReflectionKind.propertySignature, name: Symbol.for('computedType1'), type: { kind: ReflectionKind.literal, literal: true }, optional: true }
-                    ]
+                    kind: ReflectionKind.objectLiteral,
+                    types: [{ kind: ReflectionKind.propertySignature, name: Symbol.for('computedType1'), type: { kind: ReflectionKind.literal, literal: true }, optional: true }],
                 },
-            ]
-        }
+            ],
+        },
     } as Type);
 });
 
@@ -1534,19 +1583,18 @@ test('intersection with symbol property', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
                 {
-                    kind: ReflectionKind.objectLiteral, typeName: 'MyBrand', types: [
-                        { kind: ReflectionKind.propertySignature, name: Symbol.for('computedType1'), type: { kind: ReflectionKind.literal, literal: true }, optional: true }
-                    ]
+                    kind: ReflectionKind.objectLiteral,
+                    typeName: 'MyBrand',
+                    types: [{ kind: ReflectionKind.propertySignature, name: Symbol.for('computedType1'), type: { kind: ReflectionKind.literal, literal: true }, optional: true }],
                 },
-            ]
-        }
+            ],
+        },
     } as Type);
 });
 
@@ -1557,24 +1605,24 @@ test('branded type 2', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
                 {
-                    kind: ReflectionKind.objectLiteral, types: [
+                    kind: ReflectionKind.objectLiteral,
+                    types: [
                         {
                             kind: ReflectionKind.propertySignature,
                             name: '__type',
                             type: { kind: ReflectionKind.literal, literal: 'primaryKey' },
-                            optional: true
-                        }
-                    ]
+                            optional: true,
+                        },
+                    ],
                 },
-            ]
-        }
+            ],
+        },
     } as Type);
 });
 
@@ -1586,19 +1634,18 @@ test('brand intersection', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
                 {
-                    kind: ReflectionKind.objectLiteral, typeName: 'PrimaryKey', types: [
-                        { kind: ReflectionKind.propertySignature, name: '__type', type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }
-                    ]
+                    kind: ReflectionKind.objectLiteral,
+                    typeName: 'PrimaryKey',
+                    types: [{ kind: ReflectionKind.propertySignature, name: '__type', type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }],
                 },
-            ]
-        }
+            ],
+        },
     } as Type);
 });
 
@@ -1615,15 +1662,13 @@ test('interface extends base', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
-    console.log('type', type);
     expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
         types: [
             { kind: ReflectionKind.propertySignature, name: 'base', type: { kind: ReflectionKind.boolean } },
             { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
-        ]
+        ],
     } as Type);
 });
 
@@ -1640,15 +1685,13 @@ test('interface extends generic', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
-    console.log('type', type);
     expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
         types: [
             { kind: ReflectionKind.propertySignature, name: 'base', type: { kind: ReflectionKind.boolean } },
             { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
-        ]
+        ],
     } as Type);
 });
 
@@ -1663,19 +1706,15 @@ test('interface extends decorator', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code) as Type;
-    console.log('type', type);
     expectEqualType(type, {
         kind: ReflectionKind.objectLiteral,
-        types: [
-            { kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } },
-        ]
+        types: [{ kind: ReflectionKind.propertySignature, name: 'id', type: { kind: ReflectionKind.number } }],
     } as Type);
 
     assertType(type, ReflectionKind.objectLiteral);
     expect(type.annotations).toEqual({
-        [primaryKeyAnnotation.symbol]: [true]
+        [primaryKeyAnnotation.symbol]: [true],
     });
 });
 
@@ -1688,19 +1727,18 @@ test('brand intersection symbol', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
     expectEqualType(type, {
         kind: ReflectionKind.string,
         annotations: {
             [defaultAnnotation.symbol]: [
                 {
-                    kind: ReflectionKind.objectLiteral, typeName: 'PrimaryKey', types: [
-                        { kind: ReflectionKind.propertySignature, name: Symbol.for('deepkit/meta'), type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }
-                    ]
+                    kind: ReflectionKind.objectLiteral,
+                    typeName: 'PrimaryKey',
+                    types: [{ kind: ReflectionKind.propertySignature, name: Symbol.for('deepkit/meta'), type: { kind: ReflectionKind.literal, literal: 'primaryKey' }, optional: true }],
                 },
-            ]
-        }
+            ],
+        },
     } as Type);
 });
 
@@ -1714,7 +1752,6 @@ test('circular 1', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     // const type = transpileAndReturn(code);
     // expect(type).toEqual({
     //     kind: ReflectionKind.intersection,
@@ -1728,7 +1765,6 @@ test('circular 1', () => {
     //     ]
     // } as Type);
 });
-
 
 test('circular 2', () => {
     const code = `
@@ -1745,7 +1781,6 @@ test('circular 2', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
 });
 
 test('circular class 2', () => {
@@ -1762,9 +1797,7 @@ test('circular class 2', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
-    console.log('type', type);
 });
 
 test('InlineRuntimeType', () => {
@@ -1775,9 +1808,7 @@ test('InlineRuntimeType', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
-    console.log('type', type.types[0].type);
     expect(type.types[0].type).toMatchObject({ kind: ReflectionKind.string });
 });
 
@@ -1789,41 +1820,35 @@ test('InstanceType', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
-    console.log('type', type);
     expect(type).toMatchObject({ kind: ReflectionKind.unknown });
 });
 
 test('import types named import esm simple', () => {
     const js = transpile({
-        'app': `
+        app: `
             import {User} from './user.js';
             typeOf<User>();
         `,
-        'user': `export interface User {id: number}`
+        user: `export interface User {id: number}`,
     });
-    console.log('js', js);
     expect(js['app.js']).toContain(`__ΩUser`);
 
     expect(js['user.js']).toContain(`export { __ΩUser as __ΩUser };`);
     expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
-
-    console.log(js);
 });
 
 test('import types named import esm', () => {
     const js = transpile({
-        'app': `
+        app: `
             import {User} from './user.js';
             export type bla = string;
             export const hi = 'yes';
             type a = Partial<User>;
             typeOf<a>();
         `,
-        'user': `export interface User {id: number}`
+        user: `export interface User {id: number}`,
     });
-    console.log('js', js);
     expect(js['app.js']).toContain(`__ΩUser`);
     expect(js['app.js']).toContain(`const __ΩPartial = [`);
     expect(js['app.js']).toContain(`export { __Ωbla as __Ωbla };`);
@@ -1831,22 +1856,22 @@ test('import types named import esm', () => {
 
     expect(js['user.js']).toContain(`export { __ΩUser as __ΩUser };`);
     expect(js['user.d.ts']).toContain(`export declare type __ΩUser = any[]`);
-
-    console.log(js);
 });
 
 test('import types named import cjs', () => {
-    const js = transpile({
-        'app': `
+    const js = transpile(
+        {
+            app: `
             import {User} from './user.js';
             export type bla = string;
             export const hi = 'yes';
             type a = Partial<User>;
             typeOf<a>();
         `,
-        'user': `export interface User {id: number}`
-    }, { module: ModuleKind.CommonJS });
-    console.log(js);
+            user: `export interface User {id: number}`,
+        },
+        { module: ModuleKind.CommonJS },
+    );
     expect(js['app.js']).toContain(`__ΩUser`);
     expect(js['app.js']).toContain(`const __ΩPartial = [`);
     expect(js['app.js']).toContain(`exports.__Ωbla = __Ωbla`);
@@ -1857,55 +1882,50 @@ test('import types named import cjs', () => {
 });
 
 test('emit typeName for type only imports', () => {
-    const js = transpile({
-        'app': `
+    const js = transpile(
+        {
+            app: `
             import type {User} from './user.js';
             typeOf<User>();
         `,
-        'user': `export interface User {id: number}`
-    }, {
-        module: ModuleKind.CommonJS
-    });
-    const typeOf = typeOf2;
-    expect(eval(js['app.js'])).toMatchInlineSnapshot(`
+            user: `export interface User {id: number}`,
+        },
         {
-          "kind": 1,
-          "typeName": "User",
-        }
-    `);
+            module: ModuleKind.CommonJS,
+        },
+    );
+    const typeOf = typeOf2;
+    expect(eval(js['app.js'])).toMatchObject({ kind: 1, typeName: 'User' });
 });
 
 test('emit typeName for named type only import', () => {
-    const js = transpile({
-        'app': `
+    const js = transpile(
+        {
+            app: `
             import {type User} from './user.js';
             typeOf<User>();
         `,
-        'user': `export interface User {id: number}`
-    }, {
-        module: ModuleKind.CommonJS
-    });
-    const typeOf = typeOf2;
-    expect(eval(js['app.js'])).toMatchInlineSnapshot(`
+            user: `export interface User {id: number}`,
+        },
         {
-          "kind": 1,
-          "typeName": "User",
-        }
-    `);
+            module: ModuleKind.CommonJS,
+        },
+    );
+    const typeOf = typeOf2;
+    expect(eval(js['app.js'])).toMatchObject({ kind: 1, typeName: 'User' });
 });
 
 test('import types named import typeOnly', () => {
     const js = transpile({
-        'app': `
+        app: `
             import {type User} from './user.js';
             export type bla = string;
             export const hi = 'yes';
             type a = Partial<User>;
             typeOf<a>();
         `,
-        'user': `export interface User {id: number}`
+        user: `export interface User {id: number}`,
     });
-    console.log(js);
     expect(js['app.js']).not.toContain(`__ΩUser`);
     expect(js['app.js']).toContain(`const __ΩPartial = [`);
     expect(js['app.js']).toContain(`export { __Ωbla as __Ωbla };`);
@@ -1917,14 +1937,14 @@ test('import types named import typeOnly', () => {
 
 test('import types named import with disabled reflection', () => {
     const js = transpile({
-        'app': `
+        app: `
             import {User} from './user.js';
             export type bla = string;
             export const hi = 'yes';
             type a = Partial<User>;
             typeOf<a>();
         `,
-        'user': `/** @reflection never */ export interface User {id: number}`
+        user: `/** @reflection never */ export interface User {id: number}`,
     });
     expect(js['app.js']).not.toContain(`__ΩUser`);
     expect(js['app.js']).toContain(`const __ΩPartial = [`);
@@ -1932,8 +1952,6 @@ test('import types named import with disabled reflection', () => {
     expect(js['app.js']).toContain(`const __Ωa = [`);
     expect(js['user.js']).not.toContain(`export { __ΩUser };`);
     expect(js['user.d.ts']).not.toContain(`__ΩUser`);
-
-    console.log(js);
 });
 
 test('import types star import', () => {
@@ -1944,9 +1962,8 @@ test('import types star import', () => {
             type a = Partial<user.User>;
             typeOf<a>();
         `,
-        'user.ts': `export interface User {id: number}`
+        'user.ts': `export interface User {id: number}`,
     });
-    console.log(js);
 });
 
 test('multiple exports', () => {
@@ -1967,7 +1984,6 @@ test('multiple exports', () => {
         export type ExtractClassType<T> = T extends ClassType<infer K> ? K : never;
 
     `);
-    console.log(js);
 });
 
 test('enum literals', () => {
@@ -1986,9 +2002,7 @@ test('enum literals', () => {
         return typeOf<Message>();
     `;
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
-    console.log('type', type);
     // expect(type).toMatchObject({ kind: ReflectionKind.unknown });
 });
 
@@ -2001,9 +2015,7 @@ test('class implements', () => {
         return typeOf<Clazz>();
     `;
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
-    console.log('type', type);
 });
 
 test('circular mapped type', () => {
@@ -2043,9 +2055,7 @@ test('circular mapped type', () => {
     `;
 
     const js = transpile(code);
-    console.log('js', js);
     const type = transpileAndReturn(code);
-    console.log('type', type);
 });
 
 test('pass type argument', () => {
@@ -2059,7 +2069,6 @@ test('pass type argument', () => {
 
     `;
     const js = transpile(code);
-    console.log('js', js);
 
     `
         (globals.Targs = () => [__ΩUser], test)();
@@ -2068,21 +2077,16 @@ test('pass type argument', () => {
     const t = () => a;
     const a = '';
 
-    function test(a = (test as any).targs) {
-        console.log('test', a);
-    }
+    function test(a = (test as any).targs) {}
 
     class Database {
-        query(a: any = (this as any).query.targs) {
-            console.log('query', a);
-        }
+        query(a: any = (this as any).query.targs) {}
     }
 
-
-    ((test as any).targs = () => [''], test)();
+    (((test as any).targs = () => ['']), test)();
 
     const db = new Database();
-    ((db.query as any).targs = [], db).query();
+    (((db.query as any).targs = []), db).query();
 
     // ((db.query as any).targs = () => [''], db.query)();
 

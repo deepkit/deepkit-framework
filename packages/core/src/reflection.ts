@@ -7,11 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-import { ClassType } from "./core.js";
+import { ClassType } from './core.js';
 
-const COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
-const DEFAULT_PARAMS = /=[^,]+/mg;
-const FAT_ARROWS = /=>.*$/mg;
+const COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/gm;
+const DEFAULT_PARAMS = /=[^,]+/gm;
+const FAT_ARROWS = /=>.*$/gm;
 
 export function extractParameters(fn: string | Function | ClassType): string[] {
     fn = typeof fn === 'string' ? fn : fn.toString();
@@ -60,7 +60,7 @@ export function extractMethodBody(classCode: string, name: string): string {
 
 export function removeStrings(code: string) {
     let result = '';
-    let inString: false | '"' | '\'' = false;
+    let inString: false | '"' | "'" = false;
     for (let i = 0; i < code.length; i++) {
         const char = code[i];
         if (inString && char === '\\') {
@@ -80,14 +80,14 @@ export function removeStrings(code: string) {
             }
         }
 
-        if (char === '\'') {
-            if (inString === '\'') {
+        if (char === "'") {
+            if (inString === "'") {
                 //end string
                 inString = false;
                 continue;
             }
             if (!inString) {
-                inString = '\'';
+                inString = "'";
                 continue;
             }
         }

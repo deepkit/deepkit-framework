@@ -1,0 +1,52 @@
+{
+  "name": "@deepkit/benchmarks",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Benchmark infrastructure for Deepkit Framework",
+  "scripts": {
+    "benchmark": "node --import @deepkit/run src/runner.ts",
+    "benchmark:core": "npm run benchmark -- -d src/benchmarks/core",
+    "benchmark:comparison": "npm run benchmark -- -d src/benchmarks/comparison",
+    "benchmark:debug": "npm run benchmark -- -d src/benchmarks/debug",
+    "benchmark:all": "npm run benchmark -- -d src/benchmarks",
+    "benchmark:json": "npm run benchmark -- -j results.json",
+    "benchmark:compare": "npm run benchmark -- --compare-baseline",
+    "benchmark:save-baseline": "npm run benchmark -- --save-baseline",
+    "report": "node --import @deepkit/run src/generate-report.ts",
+    "typeguard:compare": "node --import @deepkit/run src/benchmarks/comparison/typeguard/comparison.ts",
+    "typeguard:fast": "node --import @deepkit/run src/benchmarks/comparison/typeguard/fast-typeguard-benchmark.ts",
+    "typeguard:optimal": "node --import @deepkit/run src/benchmarks/comparison/typeguard/optimal-comparison.ts",
+    "typeguard:full": "node --import @deepkit/run src/benchmarks/comparison/typeguard/full-api-benchmark.ts"
+  },
+  "dependencies": {
+    "@deepkit/app": "file:../packages/app",
+    "@deepkit/bench": "file:../packages/bench",
+    "@deepkit/bson": "file:../packages/bson",
+    "@deepkit/core": "file:../packages/core",
+    "@deepkit/event": "file:../packages/event",
+    "@deepkit/http": "file:../packages/http",
+    "@deepkit/injector": "file:../packages/injector",
+    "@deepkit/logger": "file:../packages/logger",
+    "@deepkit/orm": "file:../packages/orm",
+    "@deepkit/rpc": "file:../packages/rpc",
+    "@deepkit/run": "file:../packages/run",
+    "@deepkit/sql": "file:../packages/sql",
+    "@deepkit/sqlite": "file:../packages/sqlite",
+    "@deepkit/type": "file:../packages/type",
+    "@deepkit/type-compiler": "file:../packages/type-compiler",
+    "glob": "^10.3.10",
+    "typia": "^11.0.2"
+  },
+  "optionalDependencies": {
+    "@sinclair/typebox": "^0.34.0",
+    "arktype": "^2.0.0",
+    "bson": "^6.0.0",
+    "class-transformer": "^0.5.1",
+    "reflect-metadata": "^0.2.2",
+    "valibot": "^1.0.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0"
+  }
+}

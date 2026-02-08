@@ -7,25 +7,31 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { ConnectionRequest, MongoConnection, MongoConnectionPool, MongoDatabaseTransaction, MongoStats } from './connection.js';
-import { isErrorRetryableRead, isErrorRetryableWrite, MongoError } from './error.js';
+import { BSONBinarySerializer } from '@deepkit/bson';
 import { sleep } from '@deepkit/core';
+import { EventDispatcher } from '@deepkit/event';
+import { ConsoleLogger, Logger } from '@deepkit/logger';
+import { ReflectionClass } from '@deepkit/type';
+
+import { mongoBinarySerializer } from '../mongo-serializer.js';
 import { Command } from './command/command.js';
 import { DropDatabaseCommand } from './command/dropDatabase.js';
 import { MongoClientConfig } from './config.js';
-import { ReflectionClass } from '@deepkit/type';
-import { mongoBinarySerializer } from '../mongo-serializer.js';
-import { BSONBinarySerializer } from '@deepkit/bson';
-import { EventDispatcher } from '@deepkit/event';
-import { ConsoleLogger, Logger } from '@deepkit/logger';
+import {
+    ConnectionRequest,
+    MongoConnection,
+    MongoConnectionPool,
+    MongoDatabaseTransaction,
+    MongoStats,
+} from './connection.js';
+import { MongoError, isErrorRetryableRead, isErrorRetryableWrite } from './error.js';
 
 export class MongoClient {
     protected inCloseProcedure: boolean = false;
 
     public readonly config: MongoClientConfig;
     public pool: MongoConnectionPool;
-    public stats: MongoStats = new MongoStats;
+    public stats: MongoStats = new MongoStats();
 
     protected serializer: BSONBinarySerializer = mongoBinarySerializer;
 
@@ -35,7 +41,13 @@ export class MongoClient {
         public logger: Logger = new ConsoleLogger(),
     ) {
         this.config = new MongoClientConfig(connectionString);
-        this.pool = new MongoConnectionPool(this.config, this.serializer, this.stats, this.logger, this.eventDispatcher);
+        this.pool = new MongoConnectionPool(
+            this.config,
+            this.serializer,
+            this.stats,
+            this.logger,
+            this.eventDispatcher,
+        );
         this.config.options.validate();
     }
 
@@ -69,7 +81,10 @@ export class MongoClient {
     /**
      * Returns an existing or new connection, that needs to be released once done using it.
      */
-    async getConnection(request: Partial<ConnectionRequest> = {}, transaction?: MongoDatabaseTransaction): Promise<MongoConnection> {
+    async getConnection(
+        request: Partial<ConnectionRequest> = {},
+        transaction?: MongoDatabaseTransaction,
+    ): Promise<MongoConnection> {
         if (transaction && transaction.connection) return transaction.connection;
         if (transaction) {
             request.writable = true;
@@ -83,7 +98,7 @@ export class MongoClient {
             } catch (error) {
                 transaction.ended = true;
                 connection.release();
-                throw new MongoError('Could not start transaction: ' + error);
+                throw new MongoError('DK-MG001', 'Could not start transaction: ' + error);
             }
         }
         return connection;
@@ -92,7 +107,7 @@ export class MongoClient {
     public async execute<T extends Command<unknown>>(
         command: T,
         request: Partial<ConnectionRequest> = {},
-        transaction?: MongoDatabaseTransaction
+        transaction?: MongoDatabaseTransaction,
     ): Promise<ReturnType<T['execute']>> {
         if (command.needsWritableHost()) request.writable = true;
 
@@ -118,6 +133,6 @@ export class MongoClient {
             }
         }
 
-        throw new MongoError(`Could not execute command since no connection found: ${command}`);
+        throw new MongoError('DK-MG001', `Could not execute command since no connection found: ${command}`);
     }
 }

@@ -7,10 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { arrayRemoveItem } from './array.js';
 
-const LOCKS: { [id: string]: { time: number, queue: Function[] } } = {};
+const LOCKS: { [id: string]: { time: number; queue: Function[] } } = {};
 
 /**
  * This lock mechanism works only for one process (worker).
@@ -24,10 +23,7 @@ export class ProcessLock {
     private holding = false;
     protected ttlTimeout: any;
 
-    constructor(
-        public readonly id: string,
-    ) {
-    }
+    constructor(public readonly id: string) {}
 
     public async acquire(ttl: number = 0, timeout: number = 0) {
         if (this.holding) {
@@ -60,7 +56,7 @@ export class ProcessLock {
             } else {
                 LOCKS[this.id] = {
                     time: Date.now() / 1000,
-                    queue: []
+                    queue: [],
                 };
 
                 this.holding = true;
@@ -85,7 +81,7 @@ export class ProcessLock {
         if (!LOCKS[this.id]) {
             LOCKS[this.id] = {
                 time: Date.now() / 1000,
-                queue: []
+                queue: [],
             };
             this.holding = true;
 
@@ -162,7 +158,7 @@ export class Mutex {
         while (this.promise) {
             await this.promise;
         }
-        this.promise = new Promise((resolver) => {
+        this.promise = new Promise(resolver => {
             this.resolver = resolver;
         });
     }

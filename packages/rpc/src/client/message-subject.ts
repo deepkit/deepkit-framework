@@ -7,13 +7,16 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { asyncOperation, CustomError } from '@deepkit/core';
+import { DeepkitError, asyncOperation } from '@deepkit/core';
 import { ReceiveType } from '@deepkit/type';
+
 import { RpcError, RpcTypes } from '../model.js';
 import type { RpcMessage } from '../protocol.js';
 
-export class UnexpectedMessageType extends CustomError {
+export class UnexpectedMessageType extends DeepkitError {
+    constructor(message: string, options?: { cause?: Error }) {
+        super('DK-R004', message, options);
+    }
 }
 
 function noop() {}
@@ -36,8 +39,7 @@ export class RpcMessageSubject {
          * otherwise dramatic performance decrease and memory leak will happen.
          */
         public release: () => void,
-    ) {
-    }
+    ) {}
 
     /**
      * Called when the underlying transport disconnected.
@@ -78,11 +80,7 @@ export class RpcMessageSubject {
      * Sends a message to the server in the context of this created subject.
      * If the connection meanwhile has been reconnected, and completed MessageSubject.
      */
-    public send<T>(
-        type: number,
-        body?: T,
-        schema?: ReceiveType<T>,
-    ): this {
+    public send<T>(type: number, body?: T, schema?: ReceiveType<T>): this {
         this.continuation(type, body, schema);
         return this;
     }
@@ -93,7 +91,7 @@ export class RpcMessageSubject {
     async ackThenClose(): Promise<undefined> {
         return asyncOperation<undefined>((resolve, reject) => {
             this.rejected = reject;
-            this.onReply((next) => {
+            this.onReply(next => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 this.release();
                 this.rejected = undefined;
@@ -117,7 +115,7 @@ export class RpcMessageSubject {
     async waitNextMessage<T>(): Promise<RpcMessage> {
         return asyncOperation<any>((resolve, reject) => {
             this.rejected = reject;
-            this.onReply((next) => {
+            this.onReply(next => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 return resolve(next);
             });
@@ -130,7 +128,7 @@ export class RpcMessageSubject {
     async waitNext<T>(type: number, schema?: ReceiveType<T>): Promise<T> {
         return asyncOperation<any>((resolve, reject) => {
             this.rejected = reject;
-            this.onReply((next) => {
+            this.onReply(next => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 if (next.type === type) {
                     return resolve(schema ? next.parseBody(schema) : undefined);
@@ -152,7 +150,7 @@ export class RpcMessageSubject {
     async firstThenClose<T = RpcMessage>(type: number, schema?: ReceiveType<T>): Promise<T> {
         return asyncOperation<any>((resolve, reject) => {
             this.rejected = reject;
-            this.onReply((next) => {
+            this.onReply(next => {
                 this.onReplyCallback = this.catchOnReplyCallback;
                 this.release();
 

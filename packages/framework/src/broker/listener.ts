@@ -7,14 +7,14 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { eventDispatcher } from '@deepkit/event';
-import { onServerMainBootstrap, onServerMainShutdown } from '../application-server.js';
-import { BrokerServer } from './broker.js';
-import { LoggerInterface } from '@deepkit/logger';
-import { BrokerConfig } from '../module.config.js';
 import { BrokerDeepkitAdapter } from '@deepkit/broker';
+import { eventDispatcher } from '@deepkit/event';
+import { LoggerInterface } from '@deepkit/logger';
 import { StopwatchStore } from '@deepkit/stopwatch';
+
+import { onServerMainBootstrap, onServerMainShutdown } from '../application-server.js';
+import { BrokerConfig } from '../module.config.js';
+import { BrokerServer } from './broker.js';
 
 export class BrokerListener {
     constructor(
@@ -24,14 +24,15 @@ export class BrokerListener {
         protected store: StopwatchStore,
         protected listen: BrokerConfig['listen'],
         protected startOnBootstrap: BrokerConfig['startOnBootstrap'],
-    ) {
-    }
+    ) {}
 
     @eventDispatcher.listen(onServerMainBootstrap)
     async onMainBootstrap() {
         if (this.startOnBootstrap) {
             await this.brokerServer.start();
-            this.logger.log(`Broker started at <green>${this.listen}</green>. Disable with "FrameworkModule({broker: {startOnBootstrap: false}})"`);
+            this.logger.log(
+                `Broker started at <green>${this.listen}</green>. Disable with "FrameworkModule({broker: {startOnBootstrap: false}})"`,
+            );
         }
     }
 

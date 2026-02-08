@@ -1,0 +1,380 @@
+name: Benchmarks
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+# Ensure only one benchmark workflow runs at a time for a given ref
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Regression threshold percentage - fail if performance drops by more than this
+  REGRESSION_THRESHOLD: 10
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history for baseline comparison
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn --frozen-lockfile
+        env:
+          CI: 'true'
+
+      - name: Build type-compiler
+        run: npm run postinstall
+
+      - name: Build framework
+        run: npm run build
+
+      - name: Install benchmark dependencies
+        working-directory: benchmarks
+        run: yarn --frozen-lockfile
+        env:
+          CI: 'true'
+
+      - name: Download baseline (if exists)
+        id: download-baseline
+        uses: actions/cache@v4
+        with:
+          path: benchmarks/baselines/master.json
+          key: benchmark-baseline-master
+          restore-keys: |
+            benchmark-baseline-
+
+      - name: Run P0 benchmarks (PR)
+        if: github.event_name == 'pull_request'
+        working-directory: benchmarks
+        run: |
+          npm run benchmark:p0 -- -j results.json
+        env:
+          NODE_OPTIONS: '--expose-gc --max_old_space_size=4096'
+
+      - name: Run all benchmarks (Push to master)
+        if: github.event_name == 'push'
+        working-directory: benchmarks
+        run: |
+          npm run benchmark:all -- -j results.json
+        env:
+          NODE_OPTIONS: '--expose-gc --max_old_space_size=4096'
+
+      - name: Compare with baseline
+        id: compare
+        working-directory: benchmarks
+        run: |
+          # Create comparison script
+          node --expose-gc << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+
+          const REGRESSION_THRESHOLD = parseFloat(process.env.REGRESSION_THRESHOLD) || 10;
+          const resultsPath = 'results.json';
+          const baselinePath = 'baselines/master.json';
+
+          // Read current results
+          if (!fs.existsSync(resultsPath)) {
+            console.log('No benchmark results found');
+            process.exit(1);
+          }
+          const currentResults = JSON.parse(fs.readFileSync(resultsPath, 'utf-8'));
+
+          // Check if baseline exists
+          const hasBaseline = fs.existsSync(baselinePath);
+
+          let comparison = {
+            hasBaseline: hasBaseline,
+            benchmarks: [],
+            summary: {
+              total: 0,
+              improved: 0,
+              unchanged: 0,
+              regressed: 0,
+              newBenchmarks: 0
+            },
+            failed: false
+          };
+
+          if (hasBaseline) {
+            const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf-8'));
+
+            // Compare each suite and benchmark
+            for (const [suiteName, suiteResults] of Object.entries(currentResults.suites || {})) {
+              const baselineSuite = baseline.suites?.[suiteName] || {};
+
+              for (const [benchName, benchResult] of Object.entries(suiteResults)) {
+                const currentHz = benchResult.hz;
+                const baselineHz = baselineSuite[benchName]?.hz;
+
+                comparison.summary.total++;
+
+                if (baselineHz === undefined) {
+                  comparison.benchmarks.push({
+                    suite: suiteName,
+                    name: benchName,
+                    currentHz: currentHz,
+                    baselineHz: null,
+                    changePercent: null,
+                    status: 'new'
+                  });
+                  comparison.summary.newBenchmarks++;
+                } else {
+                  const changePercent = ((currentHz - baselineHz) / baselineHz) * 100;
+                  let status = 'unchanged';
+
+                  if (changePercent > 5) {
+                    status = 'improved';
+                    comparison.summary.improved++;
+                  } else if (changePercent < -5) {
+                    status = 'regressed';
+                    comparison.summary.regressed++;
+                    if (changePercent < -REGRESSION_THRESHOLD) {
+                      comparison.failed = true;
+                    }
+                  } else {
+                    comparison.summary.unchanged++;
+                  }
+
+                  comparison.benchmarks.push({
+                    suite: suiteName,
+                    name: benchName,
+                    currentHz: currentHz,
+                    baselineHz: baselineHz,
+                    changePercent: changePercent,
+                    status: status
+                  });
+                }
+              }
+            }
+          } else {
+            // No baseline - just list current results
+            for (const [suiteName, suiteResults] of Object.entries(currentResults.suites || {})) {
+              for (const [benchName, benchResult] of Object.entries(suiteResults)) {
+                comparison.summary.total++;
+                comparison.summary.newBenchmarks++;
+                comparison.benchmarks.push({
+                  suite: suiteName,
+                  name: benchName,
+                  currentHz: benchResult.hz,
+                  baselineHz: null,
+                  changePercent: null,
+                  status: 'new'
+                });
+              }
+            }
+          }
+
+          // Write comparison results
+          fs.writeFileSync('comparison.json', JSON.stringify(comparison, null, 2));
+
+          // Set output
+          const outputFile = process.env.GITHUB_OUTPUT;
+          if (outputFile) {
+            fs.appendFileSync(outputFile, `has_baseline=${hasBaseline}\n`);
+            fs.appendFileSync(outputFile, `failed=${comparison.failed}\n`);
+            fs.appendFileSync(outputFile, `total=${comparison.summary.total}\n`);
+            fs.appendFileSync(outputFile, `improved=${comparison.summary.improved}\n`);
+            fs.appendFileSync(outputFile, `regressed=${comparison.summary.regressed}\n`);
+          }
+
+          console.log('Comparison complete:');
+          console.log(`  Total benchmarks: ${comparison.summary.total}`);
+          console.log(`  Improved: ${comparison.summary.improved}`);
+          console.log(`  Unchanged: ${comparison.summary.unchanged}`);
+          console.log(`  Regressed: ${comparison.summary.regressed}`);
+          console.log(`  New: ${comparison.summary.newBenchmarks}`);
+
+          if (comparison.failed) {
+            console.log('\nRegression detected exceeding threshold!');
+          }
+          EOF
+
+      - name: Generate PR comment
+        if: github.event_name == 'pull_request'
+        id: generate-comment
+        working-directory: benchmarks
+        run: |
+          node << 'EOF'
+          const fs = require('fs');
+
+          const comparison = JSON.parse(fs.readFileSync('comparison.json', 'utf-8'));
+          const REGRESSION_THRESHOLD = parseFloat(process.env.REGRESSION_THRESHOLD) || 10;
+
+          function formatHz(hz) {
+            if (hz >= 1000000) {
+              return (hz / 1000000).toFixed(2) + 'M';
+            } else if (hz >= 1000) {
+              return (hz / 1000).toFixed(2) + 'K';
+            }
+            return hz.toFixed(2);
+          }
+
+          function getStatusIcon(status, changePercent) {
+            if (status === 'new') return ':new:';
+            if (status === 'improved') return ':white_check_mark:';
+            if (status === 'regressed') {
+              if (changePercent < -REGRESSION_THRESHOLD) return ':x:';
+              return ':warning:';
+            }
+            return ':heavy_minus_sign:';
+          }
+
+          let comment = '## Benchmark Results\n\n';
+
+          if (!comparison.hasBaseline) {
+            comment += ':information_source: **No baseline available for comparison.** This is the first benchmark run.\n\n';
+          }
+
+          // Summary
+          comment += '### Summary\n\n';
+          comment += `| Metric | Count |\n`;
+          comment += `|--------|-------|\n`;
+          comment += `| Total Benchmarks | ${comparison.summary.total} |\n`;
+          comment += `| :white_check_mark: Improved | ${comparison.summary.improved} |\n`;
+          comment += `| :heavy_minus_sign: Unchanged | ${comparison.summary.unchanged} |\n`;
+          comment += `| :warning: Regressed | ${comparison.summary.regressed} |\n`;
+          if (comparison.summary.newBenchmarks > 0) {
+            comment += `| :new: New | ${comparison.summary.newBenchmarks} |\n`;
+          }
+          comment += '\n';
+
+          // Detailed results table
+          if (comparison.benchmarks.length > 0) {
+            comment += '### Detailed Results\n\n';
+            comment += '| Status | Benchmark | Current (ops/sec) | Baseline (ops/sec) | Change |\n';
+            comment += '|--------|-----------|-------------------|--------------------|---------|\n';
+
+            // Sort: regressions first, then by change percentage
+            comparison.benchmarks.sort((a, b) => {
+              if (a.status === 'regressed' && b.status !== 'regressed') return -1;
+              if (b.status === 'regressed' && a.status !== 'regressed') return 1;
+              if (a.changePercent === null) return 1;
+              if (b.changePercent === null) return -1;
+              return a.changePercent - b.changePercent;
+            });
+
+            for (const bench of comparison.benchmarks) {
+              const icon = getStatusIcon(bench.status, bench.changePercent);
+              const name = `${bench.suite} / ${bench.name}`;
+              const current = formatHz(bench.currentHz);
+              const baseline = bench.baselineHz ? formatHz(bench.baselineHz) : 'N/A';
+              const change = bench.changePercent !== null
+                ? (bench.changePercent >= 0 ? '+' : '') + bench.changePercent.toFixed(2) + '%'
+                : 'N/A';
+
+              comment += `| ${icon} | ${name} | ${current} | ${baseline} | ${change} |\n`;
+            }
+            comment += '\n';
+          }
+
+          // Footer
+          if (comparison.failed) {
+            comment += `---\n\n`;
+            comment += `:x: **Performance regression detected!** One or more benchmarks regressed by more than ${REGRESSION_THRESHOLD}%.\n`;
+          } else if (comparison.summary.regressed > 0) {
+            comment += `---\n\n`;
+            comment += `:warning: **Minor regressions detected.** Review the results above.\n`;
+          } else {
+            comment += `---\n\n`;
+            comment += `:white_check_mark: **All benchmarks passed!**\n`;
+          }
+
+          comment += `\n<details><summary>Environment</summary>\n\n`;
+          comment += `- Node.js: ${process.version}\n`;
+          comment += `- Platform: ${process.platform}\n`;
+          comment += `- Arch: ${process.arch}\n`;
+          comment += `</details>\n`;
+
+          // Write comment to file (handle multiline)
+          fs.writeFileSync('pr-comment.md', comment);
+          console.log('PR comment generated');
+          EOF
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const commentBody = fs.readFileSync('benchmarks/pr-comment.md', 'utf-8');
+
+            // Find existing benchmark comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('## Benchmark Results')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+              console.log('Updated existing benchmark comment');
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+              console.log('Created new benchmark comment');
+            }
+
+      - name: Update baseline (master push)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: |
+          # Copy results to baseline
+          cp benchmarks/results.json benchmarks/baselines/master.json
+          echo "Baseline updated with latest results"
+
+      - name: Cache updated baseline
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/cache/save@v4
+        with:
+          path: benchmarks/baselines/master.json
+          key: benchmark-baseline-master-${{ github.sha }}
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            benchmarks/results.json
+            benchmarks/comparison.json
+          retention-days: 30
+
+      - name: Fail on regression
+        if: steps.compare.outputs.failed == 'true'
+        run: |
+          echo "Performance regression detected exceeding ${REGRESSION_THRESHOLD}% threshold"
+          echo "Please review the benchmark results and address the performance issues."
+          exit 1

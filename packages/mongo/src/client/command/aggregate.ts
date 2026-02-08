@@ -7,27 +7,37 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { toFastProperties } from '@deepkit/core';
-import { BaseResponse, CollationMessage, Command, HintMessage, ReadPreferenceMessage, TransactionalMessage, WriteConcernMessage } from './command.js';
-import { getTypeJitContainer, InlineRuntimeType, isType, ReflectionClass, Type, typeOf } from '@deepkit/type';
-import { MongoError } from '../error.js';
-import { GetMoreMessage } from './getMore.js';
+import { InlineRuntimeType, ReflectionClass, Type, getTypeJitContainer, isType, typeOf } from '@deepkit/type';
+
 import { MongoClientConfig } from '../config.js';
-import type { Host } from '../host.js';
 import type { MongoDatabaseTransaction } from '../connection.js';
+import { MongoError } from '../error.js';
+import type { Host } from '../host.js';
+import {
+    BaseResponse,
+    CollationMessage,
+    Command,
+    HintMessage,
+    ReadPreferenceMessage,
+    TransactionalMessage,
+    WriteConcernMessage,
+} from './command.js';
+import { GetMoreMessage } from './getMore.js';
 
 type AggregateMessage = {
     aggregate: string;
     $db: string;
-    pipeline: any[],
+    pipeline: any[];
     cursor: {
-        batchSize: number,
-    },
+        batchSize: number;
+    };
     allowDiskUse?: boolean;
     collation?: CollationMessage;
     hint?: HintMessage;
-} & TransactionalMessage & WriteConcernMessage & ReadPreferenceMessage;
+} & TransactionalMessage &
+    WriteConcernMessage &
+    ReadPreferenceMessage;
 
 export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
     partial: boolean = false;
@@ -80,7 +90,7 @@ export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
                         id: number;
                         firstBatch?: Array<Partial<resultSchema>>;
                         nextBatch?: Array<Partial<resultSchema>>;
-                    },
+                    };
                 }
 
                 jit.mdbAggregatePartial = specialisedResponse = typeOf<SpecialisedResponse>();
@@ -90,7 +100,7 @@ export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
                         id: number;
                         firstBatch?: Array<resultSchema>;
                         nextBatch?: Array<resultSchema>;
-                    },
+                    };
                 }
 
                 jit.mdbAggregate = specialisedResponse = typeOf<SpecialisedResponse>();
@@ -99,11 +109,11 @@ export class AggregateCommand<T, R = BaseResponse> extends Command<R[]> {
         }
 
         interface Response extends BaseResponse {
-            cursor: { id: bigint, firstBatch?: any[], nextBatch?: any[] };
+            cursor: { id: bigint; firstBatch?: any[]; nextBatch?: any[] };
         }
 
         const res = await this.sendAndWait<AggregateMessage, Response>(cmd, undefined, specialisedResponse);
-        if (!res.cursor.firstBatch) throw new MongoError(`No firstBatch received`);
+        if (!res.cursor.firstBatch) throw new MongoError('DK-MG001', `No firstBatch received`);
 
         const result: R[] = res.cursor.firstBatch;
 

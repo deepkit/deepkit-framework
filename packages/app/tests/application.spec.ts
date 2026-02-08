@@ -1,10 +1,12 @@
 import { beforeEach, expect, test } from '@jest/globals';
-import { App, onAppError, onAppExecute, onAppExecuted, onAppShutdown } from '../src/app.js';
-import { ClassType, getCurrentDirName, Inject, isClass } from '@deepkit/core';
+
+import { ClassType, Inject, getCurrentDirName, isClass } from '@deepkit/core';
+import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, EventOfEventToken, EventToken, eventDispatcher } from '@deepkit/event';
 import { ProviderWithScope, Token } from '@deepkit/injector';
+
+import { App, onAppError, onAppExecute, onAppExecuted, onAppShutdown } from '../src/app.js';
+import { Command, Flag, cli } from '../src/command.js';
 import { AppModule, createModule, createModuleClass } from '../src/module.js';
-import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, eventDispatcher, EventOfEventToken, EventToken } from '@deepkit/event';
-import { cli, Command, Flag } from '../src/command.js';
 import { ControllerConfig, ServiceContainer } from '../src/service-container.js';
 
 const dirname = getCurrentDirName();
@@ -16,8 +18,7 @@ class BaseConfig {
 }
 
 class BaseService {
-    constructor(public db: BaseConfig['db']) {
-    }
+    constructor(public db: BaseConfig['db']) {}
 }
 
 class BaseModule extends createModuleClass({ name: 'base', config: BaseConfig, providers: [BaseService] }) {
@@ -29,8 +30,7 @@ class Config {
 }
 
 class Service {
-    constructor(public token: Config['token']) {
-    }
+    constructor(public token: Config['token']) {}
 }
 
 beforeEach(() => {
@@ -40,7 +40,7 @@ beforeEach(() => {
 test('loadConfigFromEnvVariables', async () => {
     process.env.APP_TOKEN = 'fromBefore';
     process.env.APP_BASE_DB = 'changed2';
-    const app = new App({ config: Config, providers: [Service], imports: [new BaseModule] });
+    const app = new App({ config: Config, providers: [Service], imports: [new BaseModule()] });
     app.loadConfigFromEnv();
 
     const service = app.get(Service);
@@ -60,8 +60,7 @@ test('loadConfigFromEnvVariables upper same', async () => {
     }
 
     class Service {
-        constructor(public key: Config['PREVIEW_INTERNAL_KEY']) {
-        }
+        constructor(public key: Config['PREVIEW_INTERNAL_KEY']) {}
     }
 
     const app = new App({ config: Config, providers: [Service] });
@@ -72,7 +71,7 @@ test('loadConfigFromEnvVariables upper same', async () => {
 });
 
 test('loadConfigFromEnvFile', async () => {
-    const app = new App({ config: Config, providers: [Service], imports: [new BaseModule] });
+    const app = new App({ config: Config, providers: [Service], imports: [new BaseModule()] });
     app.loadConfigFromEnv({ envFilePath: dirname + '/test.env' });
 
     const service = app.get(Service);
@@ -89,7 +88,7 @@ test('loadConfigFromEnvVariable', async () => {
             db: 'changed4',
         },
     });
-    const app = new App({ config: Config, providers: [Service], imports: [new BaseModule] });
+    const app = new App({ config: Config, providers: [Service], imports: [new BaseModule()] });
     app.loadConfigFromEnvVariable('APP_CONFIG');
 
     const service = app.get(Service);
@@ -105,8 +104,7 @@ test('loadConfigFromEnvVariables non-root import', async () => {
     }
 
     class BaseService {
-        constructor(public db: BaseConfig['db']) {
-        }
+        constructor(public db: BaseConfig['db']) {}
     }
 
     const baseModule = new AppModule({}, { name: 'base', config: BaseConfig, providers: [BaseService] });
@@ -129,9 +127,7 @@ test('validation fails when setupConfig sets wrong values', async () => {
         })
         .setup((module, config) => {
             expect(config.log).toBe(true);
-        })
-    ;
-
+        });
     const app = new App({ imports: [baseModule] });
     expect(() => app.serviceContainer.process()).toThrow('log(type): Not a boolean');
 });
@@ -141,12 +137,10 @@ test('validation fails when env is wrong', async () => {
         log: boolean = false;
     }
 
-    const baseModule = new (createModuleClass({ config: BaseConfig, providers: [BaseService] }));
-    baseModule
-        .setup((module, config) => {
-            if (!config.log) throw new Error('log needs to be true');
-        })
-    ;
+    const baseModule = new (createModuleClass({ config: BaseConfig, providers: [BaseService] }))();
+    baseModule.setup((module, config) => {
+        if (!config.log) throw new Error('log needs to be true');
+    });
 
     process.env['APP_log'] = 'asdf';
 
@@ -180,9 +174,11 @@ test('required value can be set via env or setupConfig', async () => {
 
     {
         const app = new App({
-            imports: [new BaseModule().setupConfig((module, config) => {
-                config.log = true;
-            })],
+            imports: [
+                new BaseModule().setupConfig((module, config) => {
+                    config.log = true;
+                }),
+            ],
         });
         app.serviceContainer.process();
     }
@@ -225,10 +221,9 @@ test('loadConfigFromEnvVariables() happens before setup() calls', async () => {
         log: boolean = false;
     }
 
-    const baseModule = new AppModule<BaseConfig>({}, { name: 'base', config: BaseConfig })
-        .setup((module, config) => {
-            expect(config.log).toBe(true);
-        });
+    const baseModule = new AppModule<BaseConfig>({}, { name: 'base', config: BaseConfig }).setup((module, config) => {
+        expect(config.log).toBe(true);
+    });
 
     const app = new App({ imports: [baseModule] });
     process.env.APP_BASE_LOG = '1';
@@ -270,10 +265,9 @@ test('loadConfigFromEnvVariable() happens before setup() calls', async () => {
         log: boolean = false;
     }
 
-    const baseModule = createModule({ name: 'base', config: BaseConfig })
-        .setup((module, config) => {
-            expect(config.log).toBe(true);
-        });
+    const baseModule = createModule({ name: 'base', config: BaseConfig }).setup((module, config) => {
+        expect(config.log).toBe(true);
+    });
 
     {
         const app = new App({ imports: [baseModule] });
@@ -309,25 +303,27 @@ test('listen() with dependencies', async () => {
 
     const myEvent = new DataEventToken<EventData>('my-event');
 
-    class MyService {
-    }
+    class MyService {}
 
     class MyConfig {
         environment: string = 'dev';
     }
 
     const gotEvents: number[] = [];
-    const myModule = new AppModule({}, {
-        config: MyConfig,
-        providers: [MyService],
-        listeners: [
-            myEvent.listen((event, service: MyService, env: MyConfig['environment']) => {
-                if (!(service instanceof MyService)) throw new Error('Got no service');
-                expect(env).toBe('dev');
-                gotEvents.push(event.data.id);
-            }),
-        ],
-    });
+    const myModule = new AppModule(
+        {},
+        {
+            config: MyConfig,
+            providers: [MyService],
+            listeners: [
+                myEvent.listen((event, service: MyService, env: MyConfig['environment']) => {
+                    if (!(service instanceof MyService)) throw new Error('Got no service');
+                    expect(env).toBe('dev');
+                    gotEvents.push(event.data.id);
+                }),
+            ],
+        },
+    );
 
     const app = new App({ imports: [myModule] });
     const dispatcher = app.get(EventDispatcher);
@@ -342,11 +338,16 @@ test('non-forRoot module with fn listeners works without exports', async () => {
     const myEvent = new EventToken('my-event');
 
     let executed = false;
-    const myModule = new AppModule({}, {
-        listeners: [myEvent.listen(() => {
-            executed = true;
-        })],
-    });
+    const myModule = new AppModule(
+        {},
+        {
+            listeners: [
+                myEvent.listen(() => {
+                    executed = true;
+                }),
+            ],
+        },
+    );
     const app = new App({ imports: [myModule] });
     await app.get(EventDispatcher).dispatch(myEvent, new BaseEvent());
     expect(executed).toBe(true);
@@ -363,7 +364,10 @@ test('cli controllers in sub modules are in correct injector context', async () 
 
     @cli.controller('test')
     class MyController implements Command {
-        constructor(private service: MyService, protected yes: Inject<boolean, 'onlyInCLI'>) {
+        constructor(
+            private service: MyService,
+            protected yes: Inject<boolean, 'onlyInCLI'>,
+        ) {
             created++;
         }
 
@@ -376,11 +380,10 @@ test('cli controllers in sub modules are in correct injector context', async () 
     class MyModule extends createModuleClass({
         providers: [MyService, { provide: 'onlyInCLI', scope: 'cli', useValue: true }],
         controllers: [MyController],
-    }) {
-    }
+    }) {}
 
     {
-        const app = new App({ imports: [new MyModule] });
+        const app = new App({ imports: [new MyModule()] });
 
         {
             const res = await app.execute(['test']);
@@ -398,9 +401,11 @@ test('cli controllers in sub modules are in correct injector context', async () 
 
     {
         const app = new App({
-            imports: [new MyModule().setup((module) => {
-                module.addProvider({ provide: 'onlyInCLI', scope: 'cli', useValue: false });
-            })],
+            imports: [
+                new MyModule().setup(module => {
+                    module.addProvider({ provide: 'onlyInCLI', scope: 'cli', useValue: false });
+                }),
+            ],
         });
         const res = await app.execute(['test']);
         expect(res).toBe(10);
@@ -413,30 +418,33 @@ test('config deps and @inject() in FactoryProvider', async () => {
     }
 
     class MyClass {
-        constructor(public readonly host: string) {
-        }
+        constructor(public readonly host: string) {}
     }
 
     type MyClassConfig = Pick<Config, 'host'>;
 
-    class Unknown {
-    }
+    class Unknown {}
 
-    const module = new AppModule({}, {
-        config: Config,
-        providers: [
-            {
-                provide: MyClass, useFactory(config: MyClassConfig) {
-                    return new MyClass(config.host);
+    const module = new AppModule(
+        {},
+        {
+            config: Config,
+            providers: [
+                {
+                    provide: MyClass,
+                    useFactory(config: MyClassConfig) {
+                        return new MyClass(config.host);
+                    },
                 },
-            },
-            {
-                provide: 'configHost', useFactory(host: Config['host']) {
-                    return host;
+                {
+                    provide: 'configHost',
+                    useFactory(host: Config['host']) {
+                        return host;
+                    },
                 },
-            },
-        ],
-    });
+            ],
+        },
+    );
 
     {
         const app = App.fromModule(module);
@@ -446,20 +454,23 @@ test('config deps and @inject() in FactoryProvider', async () => {
     }
 
     {
-        const module = new AppModule({}, {
-            providers: [
-                {
-                    provide: 'undefinedDep', useFactory(host: string) {
-                        return host;
+        const module = new AppModule(
+            {},
+            {
+                providers: [
+                    {
+                        provide: 'undefinedDep',
+                        useFactory(host: string) {
+                            return host;
+                        },
                     },
-                },
-            ],
-        });
+                ],
+            },
+        );
         const app = App.fromModule(module);
         expect(() => app.get('undefinedDep')).toThrow(`Undefined dependency "host: string" of useFactory(?). Type has no provider`);
     }
 });
-
 
 test('service container hooks', () => {
     class MyModule extends createModuleClass({}) {
@@ -485,7 +496,7 @@ test('service container hooks', () => {
     }
 
     {
-        const m = new MyModule;
+        const m = new MyModule();
         const app = new ServiceContainer(new AppModule({}, { imports: [m] }));
         app.process();
         expect(m.providersFound.length).toBe(9); //9 is the default, as the ServiceContainer adds default services
@@ -493,10 +504,9 @@ test('service container hooks', () => {
     }
 
     {
-        class Controller {
-        }
+        class Controller {}
 
-        const m = new MyModule;
+        const m = new MyModule();
         const app = new ServiceContainer(new AppModule({}, { controllers: [Controller], imports: [m] }));
         app.process();
         expect(m.providersFound.length).toBe(10);
@@ -504,10 +514,9 @@ test('service container hooks', () => {
     }
 
     {
-        class Controller {
-        }
+        class Controller {}
 
-        const m = new MyModule;
+        const m = new MyModule();
         const app = new ServiceContainer(new AppModule({}, { providers: [Controller], imports: [m] }));
         app.process();
         expect(m.providersFound.length).toBe(10);
@@ -515,18 +524,19 @@ test('service container hooks', () => {
     }
 
     {
-        class Controller {
-        }
+        class Controller {}
 
-        class Service {
-        }
+        class Service {}
 
-        const baseModule = new AppModule({}, {
-            controllers: [Controller],
-            providers: [Service],
-        });
+        const baseModule = new AppModule(
+            {},
+            {
+                controllers: [Controller],
+                providers: [Service],
+            },
+        );
 
-        const m = new MyModule;
+        const m = new MyModule();
         const app = new ServiceContainer(new AppModule({}, { imports: [baseModule, m] }));
         app.process();
         expect(m.providersFound.length).toBe(11);
@@ -540,12 +550,14 @@ test('App.get generic', () => {
     }
 
     const app = new App({
-        providers: [{
-            provide: 'service', useClass: class {
-                add() {
-                }
+        providers: [
+            {
+                provide: 'service',
+                useClass: class {
+                    add() {}
+                },
             },
-        }],
+        ],
     });
 
     const service = app.get<Service>('service' as any);
@@ -556,7 +568,6 @@ test('event dispatch', () => {
     interface User {
         username: string;
     }
-
 
     class Logger {
         buffer: string[][] = [];
@@ -582,8 +593,7 @@ test('event dispatch', () => {
 });
 
 test('command callback', async () => {
-    class MyService {
-    }
+    class MyService {}
 
     const app = new App({
         providers: [MyService],
@@ -597,8 +607,7 @@ test('command callback', async () => {
 });
 
 test('command callback array', async () => {
-    class MyService {
-    }
+    class MyService {}
 
     const app = new App({
         providers: [MyService],
@@ -612,8 +621,7 @@ test('command callback array', async () => {
 });
 
 test('events', async () => {
-    class MyService {
-    }
+    class MyService {}
 
     let executeEvent: EventOfEventToken<typeof onAppExecute> | undefined = undefined;
     let executedEvent: EventOfEventToken<typeof onAppExecuted> | undefined = undefined;
@@ -621,25 +629,23 @@ test('events', async () => {
     let shutdownEvent: EventOfEventToken<typeof onAppShutdown> | undefined = undefined;
 
     const app = new App({
-            providers: [MyService],
+        providers: [MyService],
+    })
+        .command('test', (id: number, check: boolean & Flag = false) => {
+            if (id === 404) throw new Error('error');
         })
-            .command('test', (id: number, check: boolean & Flag = false) => {
-                if (id === 404) throw new Error('error');
-            })
-            .listen(onAppExecute, (event) => {
-                executeEvent = event.data;
-            })
-            .listen(onAppExecuted, (event) => {
-                executedEvent = event.data;
-            })
-            .listen(onAppError, (event) => {
-                errorEvent = event.data;
-            })
-            .listen(onAppShutdown, (event) => {
-                shutdownEvent = event.data;
-            })
-    ;
-
+        .listen(onAppExecute, event => {
+            executeEvent = event.data;
+        })
+        .listen(onAppExecuted, event => {
+            executedEvent = event.data;
+        })
+        .listen(onAppError, event => {
+            errorEvent = event.data;
+        })
+        .listen(onAppShutdown, event => {
+            shutdownEvent = event.data;
+        });
     {
         executeEvent = undefined;
         executedEvent = undefined;

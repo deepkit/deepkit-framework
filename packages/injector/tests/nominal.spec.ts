@@ -1,21 +1,21 @@
 import { expect, test } from '@jest/globals';
-import { InjectorModule } from '../src/module.js';
+
+import { ReflectionKind, assertType, findMember, typeOf } from '@deepkit/type';
+
 import { InjectorContext } from '../src/injector.js';
+import { InjectorModule } from '../src/module.js';
 import { provide } from '../src/provider.js';
-import { assertType, findMember, ReflectionKind, typeOf } from '@deepkit/type';
 
 test('nominal alias types are unique', () => {
     class Service {
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     type A = Service;
     type B = Service;
 
     class Manager {
-        constructor(public service: A) {
-        }
+        constructor(public service: A) {}
     }
 
     const t1 = typeOf<Manager>();
@@ -28,37 +28,25 @@ test('nominal alias types are unique', () => {
     expect(prop.type.id).toBe(ta.id);
     expect(ta.id).not.toBe(tb.id);
 
-    const rootModule = new InjectorModule([
-        Manager,
-        provide<A>({ useValue: new Service('A') }),
-        provide<B>({ useValue: new Service('B') }),
-    ]);
+    const rootModule = new InjectorModule([Manager, provide<A>({ useValue: new Service('A') }), provide<B>({ useValue: new Service('B') })]);
     const injector = new InjectorContext(rootModule);
     expect(injector.get<A>().name).toBe('A');
     expect(injector.get<B>().name).toBe('B');
 
     const database = injector.get(Manager);
     expect(database.service.name).toBe('A');
-
 });
 
 test('child implementation not override better match', () => {
-    class MyService {
-    }
+    class MyService {}
 
-    class ScopedMyService extends MyService {
-    }
+    class ScopedMyService extends MyService {}
 
     class User {
-        constructor(public service: MyService) {
-        }
+        constructor(public service: MyService) {}
     }
 
-    const rootModule = new InjectorModule([
-        User,
-        { provide: MyService },
-        { provide: ScopedMyService },
-    ]);
+    const rootModule = new InjectorModule([User, { provide: MyService }, { provide: ScopedMyService }]);
     const injector = new InjectorContext(rootModule);
 
     const s1 = injector.get(MyService);
@@ -70,24 +58,16 @@ test('child implementation not override better match', () => {
     expect(user.service).not.toBeInstanceOf(ScopedMyService);
 });
 
-
 test('child implementation in different scope', () => {
-    class MyService {
-    }
+    class MyService {}
 
-    class ScopedMyService extends MyService {
-    }
+    class ScopedMyService extends MyService {}
 
     class User {
-        constructor(public service: MyService) {
-        }
+        constructor(public service: MyService) {}
     }
 
-    const rootModule = new InjectorModule([
-        User,
-        { provide: MyService },
-        { provide: ScopedMyService, scope: 'rpc' },
-    ]);
+    const rootModule = new InjectorModule([User, { provide: MyService }, { provide: ScopedMyService, scope: 'rpc' }]);
     const injector = new InjectorContext(rootModule);
 
     const user = injector.get(User);
@@ -96,8 +76,7 @@ test('child implementation in different scope', () => {
 
 test('child implementation from imported module encapsulated', () => {
     class User {
-        constructor(public context: InjectorContext) {
-        }
+        constructor(public context: InjectorContext) {}
     }
 
     let injectorContext: InjectorContext | undefined;
@@ -108,9 +87,7 @@ test('child implementation from imported module encapsulated', () => {
         { provide: InjectorContext },
     ]);
 
-    const rootModule = new InjectorModule([
-        { provide: InjectorContext, useFactory: () => injectorContext! },
-    ]).addImport(module);
+    const rootModule = new InjectorModule([{ provide: InjectorContext, useFactory: () => injectorContext! }]).addImport(module);
     injectorContext = new InjectorContext(rootModule);
 
     const user = injectorContext.get(User, module);
@@ -119,8 +96,7 @@ test('child implementation from imported module encapsulated', () => {
 
 test('child implementation from imported module partly exported', () => {
     class User {
-        constructor(public context: InjectorContext) {
-        }
+        constructor(public context: InjectorContext) {}
     }
 
     let injectorContext: InjectorContext | undefined;
@@ -131,9 +107,7 @@ test('child implementation from imported module partly exported', () => {
         { provide: InjectorContext },
     ]).addExport(User);
 
-    const rootModule = new InjectorModule([
-        { provide: InjectorContext, useFactory: () => injectorContext! },
-    ]).addImport(module);
+    const rootModule = new InjectorModule([{ provide: InjectorContext, useFactory: () => injectorContext! }]).addImport(module);
     injectorContext = new InjectorContext(rootModule);
 
     const user = injectorContext.get(User);
@@ -142,8 +116,7 @@ test('child implementation from imported module partly exported', () => {
 
 test('child implementation from imported module exported', () => {
     class User {
-        constructor(public context: InjectorContext) {
-        }
+        constructor(public context: InjectorContext) {}
     }
 
     let injectorContext: InjectorContext | undefined;
@@ -154,9 +127,7 @@ test('child implementation from imported module exported', () => {
         { provide: InjectorContext },
     ]).addExport(User, InjectorContext);
 
-    const rootModule = new InjectorModule([
-        { provide: InjectorContext, useFactory: () => injectorContext! },
-    ]).addImport(module);
+    const rootModule = new InjectorModule([{ provide: InjectorContext, useFactory: () => injectorContext! }]).addImport(module);
     injectorContext = new InjectorContext(rootModule);
 
     const user = injectorContext.get(User);
@@ -168,13 +139,11 @@ test('nominal alias of arbitrary type', () => {
     type SomeOtherType = any;
 
     class MyService {
-        constructor(public type: SomeType) {
-        }
+        constructor(public type: SomeType) {}
     }
 
     class MyService2 {
-        constructor(public type: SomeOtherType) {
-        }
+        constructor(public type: SomeOtherType) {}
     }
 
     const someType = typeOf<SomeType>();
@@ -184,12 +153,7 @@ test('nominal alias of arbitrary type', () => {
     expect(someOtherType.id).toBeGreaterThan(0);
     expect(someOtherType.id).not.toBe(someType.id);
 
-    const rootModule = new InjectorModule([
-        MyService,
-        MyService2,
-        provide<SomeType>({ useValue: 'foo' }),
-        provide<SomeOtherType>({ useValue: 'bar' }),
-    ]);
+    const rootModule = new InjectorModule([MyService, MyService2, provide<SomeType>({ useValue: 'foo' }), provide<SomeOtherType>({ useValue: 'bar' })]);
 
     const injector = new InjectorContext(rootModule);
     const myService = injector.get(MyService);
@@ -198,4 +162,3 @@ test('nominal alias of arbitrary type', () => {
     const myService2 = injector.get(MyService2);
     expect(myService2.type).toBe('bar');
 });
-

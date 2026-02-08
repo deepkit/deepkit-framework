@@ -7,6 +7,7 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { Observable, Subject, Subscription, isObservable } from 'rxjs';
 
 import {
     ClassType,
@@ -18,71 +19,79 @@ import {
     isPrototypeOfBase,
     toFastProperties,
 } from '@deepkit/core';
-import { isBehaviorSubject, isSubject, ProgressTracker, ProgressTrackerState } from '@deepkit/core-rxjs';
+import { ProgressTracker, ProgressTrackerState, isBehaviorSubject, isSubject } from '@deepkit/core-rxjs';
+import { DataEvent, EventDispatcher } from '@deepkit/event';
+import { InjectorContext, InjectorModule } from '@deepkit/injector';
+import { LoggerInterface } from '@deepkit/logger';
 import {
-    assertType,
-    getValidatorFunction,
     Guard,
-    parametersToTuple,
     ReflectionClass,
     ReflectionKind,
-    serializeType,
     Type,
     TypeObjectLiteral,
-    typeOf,
     TypeTuple,
     ValidationError,
     ValidationErrorItem,
+    assertType,
+    getValidatorFunction,
+    parametersToTuple,
+    serializeType,
+    typeOf,
 } from '@deepkit/type';
-import { isObservable, Observable, Subject, Subscription } from 'rxjs';
-import { Collection, CollectionEvent, CollectionQueryModel, CollectionQueryModelInterface, CollectionState } from '../collection.js';
+
+import {
+    Collection,
+    CollectionEvent,
+    CollectionQueryModel,
+    CollectionQueryModelInterface,
+    CollectionState,
+} from '../collection.js';
 import { getActions } from '../decorators.js';
+import { RpcActionTimings, RpcControllerAccessEventStart, onRpcAction, onRpcControllerAccess } from '../events.js';
 import {
     ActionMode,
     ActionObservableTypes,
     ActionStats,
     EntitySubject,
-    isEntitySubject,
     NumericKeys,
+    RpcError,
+    RpcStats,
+    RpcTypes,
+    isEntitySubject,
     rpcAction,
     rpcActionObservableSubscribeId,
     rpcActionType,
-    RpcError,
     rpcResponseActionCollectionRemove,
     rpcResponseActionCollectionSort,
     rpcResponseActionObservable,
     rpcResponseActionObservableSubscriptionError,
     rpcResponseActionType,
-    RpcStats,
-    RpcTypes,
 } from '../model.js';
-import { createBodyDecoder, rpcEncodeError, RpcMessage } from '../protocol.js';
+import { RpcMessage, createBodyDecoder, rpcEncodeError } from '../protocol.js';
 import { RpcCache, RpcCacheAction, RpcKernelBaseConnection, RpcMessageBuilder } from './kernel.js';
 import { RpcControllerAccess, RpcKernelSecurity, SessionState } from './security.js';
-import { InjectorContext, InjectorModule } from '@deepkit/injector';
-import { LoggerInterface } from '@deepkit/logger';
-import { onRpcAction, onRpcControllerAccess, RpcActionTimings, RpcControllerAccessEventStart } from '../events.js';
-import { DataEvent, EventDispatcher } from '@deepkit/event';
 
 export type ActionTypes = {
     strictSerialization: boolean;
-    actionCallSchema: TypeObjectLiteral, //with args as property
-    parametersValidate: Guard<any>,
+    actionCallSchema: TypeObjectLiteral; //with args as property
+    parametersValidate: Guard<any>;
 
-    parameters: TypeTuple,
+    parameters: TypeTuple;
     mode: ActionMode;
     type: Type; //the type T of Collection<T>, EntitySubject<T>, Observable<T>, or return type of the function if mode=arbitrary
 
-    resultSchema: TypeObjectLiteral, //with v as property
-    observableNextSchema?: TypeObjectLiteral, //with v as property
-    collectionSchema?: Type, //with v as array property
-    collectionQueryModel?: Type,
+    resultSchema: TypeObjectLiteral; //with v as property
+    observableNextSchema?: TypeObjectLiteral; //with v as property
+    collectionSchema?: Type; //with v as array property
+    collectionQueryModel?: Type;
 
     noTypeWarned: boolean;
 };
 
 function createNoTypeError(classType: ClassType, method: string) {
-    return new RpcError(`No observable type on RPC action ${getClassName(classType)}.${method} detected. Either no return type Observable<T> defined or wrong RxJS nominal type.`);
+    return new RpcError(
+        `No observable type on RPC action ${getClassName(classType)}.${method} detected. Either no return type Observable<T> defined or wrong RxJS nominal type.`,
+    );
 }
 
 function createNoObservableWarning(classType: ClassType, method: string) {
@@ -91,7 +100,9 @@ function createNoObservableWarning(classType: ClassType, method: string) {
 
 function createNoTypeWarning(classType: ClassType, method: string, value: any) {
     const firstKey = Object.keys(value)[0];
-    return new RpcError(`RPC action ${getClassName(classType)}.${method} returns an object, but no specific type (e.g. { ${firstKey || 'v'}: T }) or 'any | unknown' type is defined. This might lead to slow performance.`);
+    return new RpcError(
+        `RPC action ${getClassName(classType)}.${method} returns an object, but no specific type (e.g. { ${firstKey || 'v'}: T }) or 'any | unknown' type is defined. This might lead to slow performance.`,
+    );
 }
 
 function validV(type: Type, index = 0): boolean {
@@ -117,64 +128,68 @@ const anyBodyType: Type = {
 };
 const anyParametersType: Type = {
     kind: ReflectionKind.tuple,
-    types: [{
-        kind: ReflectionKind.tupleMember,
-        parent: undefined as any,
-        type: {
-            kind: ReflectionKind.rest,
+    types: [
+        {
+            kind: ReflectionKind.tupleMember,
             parent: undefined as any,
-            type: { kind: ReflectionKind.any },
+            type: {
+                kind: ReflectionKind.rest,
+                parent: undefined as any,
+                type: { kind: ReflectionKind.any },
+            },
         },
-    }],
+    ],
 };
 
 const rpcActionTypeDecoder = createBodyDecoder<rpcActionType>();
 const rpcActionDecoder = createBodyDecoder<rpcAction>();
 
 export interface RpcServerActionObservableSubject {
-    subject: Subject<any>,
-    trackingType: NumericKeys<ActionStats>,
-    completed: boolean,
-    completedByClient: boolean,
-    subscription: Subscription
+    subject: Subject<any>;
+    trackingType: NumericKeys<ActionStats>;
+    completed: boolean;
+    completedByClient: boolean;
+    subscription: Subscription;
 }
 
 export class RpcServerAction {
     protected observableSubjects: {
-        [id: number]: RpcServerActionObservableSubject
+        [id: number]: RpcServerActionObservableSubject;
     } = {};
 
     protected collections: {
         [id: number]: {
-            collection: Collection<any>,
-            unsubscribe: () => void
-        }
+            collection: Collection<any>;
+            unsubscribe: () => void;
+        };
     } = {};
 
     protected observables: {
         [id: number]: {
-            observable: Observable<any>,
-            classType: ClassType,
-            method: string,
-            types: ActionTypes,
-            subscriptions: { [id: number]: { sub?: Subscription, active: boolean, complete: () => void } },
-        }
+            observable: Observable<any>;
+            classType: ClassType;
+            method: string;
+            types: ActionTypes;
+            subscriptions: { [id: number]: { sub?: Subscription; active: boolean; complete: () => void } };
+        };
     } = {};
 
-    protected context: { connection: RpcKernelBaseConnection, injector: InjectorContext } = { connection: this.connection, injector: this.injector };
+    protected context: { connection: RpcKernelBaseConnection; injector: InjectorContext } = {
+        connection: this.connection,
+        injector: this.injector,
+    };
 
     constructor(
         protected stats: RpcStats,
         protected cache: RpcCache,
         protected connection: RpcKernelBaseConnection,
-        protected controllers: Map<string, { controller: ClassType, module?: InjectorModule }>,
+        protected controllers: Map<string, { controller: ClassType; module?: InjectorModule }>,
         protected injector: InjectorContext,
         protected eventDispatcher: EventDispatcher,
         protected security: RpcKernelSecurity,
         protected sessionState: SessionState,
         protected logger: LoggerInterface,
-    ) {
-    }
+    ) {}
 
     public async handleActionTypes(message: RpcMessage, response: RpcMessageBuilder) {
         const body = message.decodeBody(rpcActionTypeDecoder);
@@ -212,11 +227,17 @@ export class RpcServerAction {
         this.observableSubjects = {};
     }
 
-    protected async hasControllerAccess(controller: RpcControllerAccess, connection: RpcKernelBaseConnection): Promise<boolean> {
+    protected async hasControllerAccess(
+        controller: RpcControllerAccess,
+        connection: RpcKernelBaseConnection,
+    ): Promise<boolean> {
         const session = this.sessionState.getSession();
 
         const event = new DataEvent<RpcControllerAccessEventStart>({
-            phase: 'start', session, controller, context: this.context,
+            phase: 'start',
+            session,
+            controller,
+            context: this.context,
         });
         await this.eventDispatcher.dispatch(onRpcControllerAccess, event, this.injector);
 
@@ -225,14 +246,29 @@ export class RpcServerAction {
             if ('undefined' === typeof granted) {
                 granted = await this.security.hasControllerAccess(session, controller, connection);
             }
-            await this.eventDispatcher.dispatch(onRpcControllerAccess, () => ({
-                phase: granted ? 'success' : 'denied', session, controller, context: this.context,
-            }), this.injector);
+            await this.eventDispatcher.dispatch(
+                onRpcControllerAccess,
+                () => ({
+                    phase: granted ? 'success' : 'denied',
+                    session,
+                    controller,
+                    context: this.context,
+                }),
+                this.injector,
+            );
             return granted;
         } catch (error) {
-            await this.eventDispatcher.dispatch(onRpcControllerAccess, () => ({
-                phase: 'fail', error: ensureError(''), session, controller, context: this.context,
-            }), this.injector);
+            await this.eventDispatcher.dispatch(
+                onRpcControllerAccess,
+                () => ({
+                    phase: 'fail',
+                    error: ensureError(''),
+                    session,
+                    controller,
+                    context: this.context,
+                }),
+                this.injector,
+            );
             throw error;
         }
     }
@@ -258,9 +294,7 @@ export class RpcServerAction {
 
         const actionCallSchema: TypeObjectLiteral = {
             kind: ReflectionKind.objectLiteral,
-            types: [
-                { kind: ReflectionKind.propertySignature, name: 'args', parent: Object as any, type: parameters },
-            ],
+            types: [{ kind: ReflectionKind.propertySignature, name: 'args', parent: Object as any, type: parameters }],
         };
 
         let unwrappedReturnType = methodReflection.getReturnType();
@@ -271,7 +305,9 @@ export class RpcServerAction {
         const fullType = unwrappedReturnType;
         if (unwrappedReturnType.kind === ReflectionKind.union) {
             //if e.g. Subject | undefined, we take the non-undefined type
-            const nonNullUndefined = unwrappedReturnType.types.filter(v => v.kind !== ReflectionKind.undefined && v.kind !== ReflectionKind.null);
+            const nonNullUndefined = unwrappedReturnType.types.filter(
+                v => v.kind !== ReflectionKind.undefined && v.kind !== ReflectionKind.null,
+            );
             if (nonNullUndefined.length === 1) {
                 unwrappedReturnType = nonNullUndefined[0];
             }
@@ -285,42 +321,52 @@ export class RpcServerAction {
         if (unwrappedReturnType.kind === ReflectionKind.class) {
             if (isPrototypeOfBase(unwrappedReturnType.classType, Collection)) {
                 mode = 'collection';
-                type = unwrappedReturnType.typeArguments ? unwrappedReturnType.typeArguments[0] : { kind: ReflectionKind.any };
+                type = unwrappedReturnType.typeArguments
+                    ? unwrappedReturnType.typeArguments[0]
+                    : { kind: ReflectionKind.any };
                 collectionSchema = {
                     kind: ReflectionKind.objectLiteral,
-                    types: [{
-                        kind: ReflectionKind.propertySignature,
-                        name: 'v',
-                        parent: Object as any,
-                        optional: true,
-                        type: { kind: ReflectionKind.array, type: type },
-                    }],
+                    types: [
+                        {
+                            kind: ReflectionKind.propertySignature,
+                            name: 'v',
+                            parent: Object as any,
+                            optional: true,
+                            type: { kind: ReflectionKind.array, type: type },
+                        },
+                    ],
                 };
 
                 collectionQueryModel = typeOf<CollectionQueryModelInterface<unknown>>([type]) as TypeObjectLiteral;
             } else if (isPrototypeOfBase(unwrappedReturnType.classType, EntitySubject)) {
                 mode = 'entitySubject';
-                type = unwrappedReturnType.typeArguments ? unwrappedReturnType.typeArguments[0] : { kind: ReflectionKind.any };
+                type = unwrappedReturnType.typeArguments
+                    ? unwrappedReturnType.typeArguments[0]
+                    : { kind: ReflectionKind.any };
             } else if (isPrototypeOfBase(unwrappedReturnType.classType, ProgressTracker)) {
                 mode = 'observable';
                 type = typeOf<ProgressTrackerState[] | undefined>();
                 nextType = type;
             } else if (isPrototypeOfBase(unwrappedReturnType.classType, Observable)) {
                 mode = 'observable';
-                type = unwrappedReturnType.typeArguments ? unwrappedReturnType.typeArguments[0] : { kind: ReflectionKind.any };
+                type = unwrappedReturnType.typeArguments
+                    ? unwrappedReturnType.typeArguments[0]
+                    : { kind: ReflectionKind.any };
                 nextType = type;
             }
         }
 
         const resultSchema: TypeObjectLiteral = {
             kind: ReflectionKind.objectLiteral,
-            types: [{
-                kind: ReflectionKind.propertySignature,
-                name: 'v',
-                parent: Object as any,
-                optional: true,
-                type: type,
-            }],
+            types: [
+                {
+                    kind: ReflectionKind.propertySignature,
+                    name: 'v',
+                    parent: Object as any,
+                    optional: true,
+                    type: type,
+                },
+            ],
         };
 
         types = this.cache.actionsTypes[cacheId] = {
@@ -333,18 +379,21 @@ export class RpcServerAction {
             parametersValidate: getValidatorFunction(undefined, parameters),
             observableNextSchema: {
                 kind: ReflectionKind.objectLiteral,
-                types: [{
-                    kind: ReflectionKind.propertySignature,
-                    name: 'id',
-                    parent: Object as any,
-                    type: { kind: ReflectionKind.number },
-                }, {
-                    kind: ReflectionKind.propertySignature,
-                    name: 'v',
-                    parent: Object as any,
-                    optional: true,
-                    type: nextType || { kind: ReflectionKind.any },
-                }],
+                types: [
+                    {
+                        kind: ReflectionKind.propertySignature,
+                        name: 'id',
+                        parent: Object as any,
+                        type: { kind: ReflectionKind.number },
+                    },
+                    {
+                        kind: ReflectionKind.propertySignature,
+                        name: 'v',
+                        parent: Object as any,
+                        optional: true,
+                        type: nextType || { kind: ReflectionKind.any },
+                    },
+                ],
             },
             collectionSchema,
             collectionQueryModel,
@@ -367,7 +416,8 @@ export class RpcServerAction {
 
                 const { types, classType, method } = observable;
                 const body = message.parseBody<rpcActionObservableSubscribeId>();
-                if (observable.subscriptions[body.id]) return response.error(new RpcError('Subscription already created'));
+                if (observable.subscriptions[body.id])
+                    return response.error(new RpcError('Subscription already created'));
                 if (!types.observableNextSchema) return response.error(createNoTypeError(classType, method));
 
                 if (!types.noTypeWarned && (types.mode !== 'observable' || !validV(types.observableNextSchema, 1))) {
@@ -375,7 +425,7 @@ export class RpcServerAction {
                     this.logger.warn(createNoObservableWarning(classType, method));
                 }
 
-                const sub: { active: boolean, sub?: Subscription, complete: () => void } = {
+                const sub: { active: boolean; sub?: Subscription; complete: () => void } = {
                     active: true,
                     complete: () => {
                         sub.active = false;
@@ -389,25 +439,36 @@ export class RpcServerAction {
 
                 this.stats.total.increase('subscriptions', 1);
                 response.errorLabel = `Observable ${getClassName(observable.classType)}.${observable.method} next serialization error`;
-                sub.sub = observable.observable.subscribe((next) => {
-                    if (!sub.active) return;
-                    response.reply(RpcTypes.ResponseActionObservableNext, {
-                        id: body.id,
-                        v: next,
-                    }, types.observableNextSchema);
-                }, (error) => {
-                    this.stats.total.increase('subscriptions', -1);
-                    const extracted = rpcEncodeError(this.security.transformError(error));
-                    response.reply<rpcResponseActionObservableSubscriptionError>(RpcTypes.ResponseActionObservableError, {
-                        ...extracted,
-                        id: body.id,
-                    });
-                }, () => {
-                    this.stats.total.increase('subscriptions', -1);
-                    response.reply<rpcActionObservableSubscribeId>(RpcTypes.ResponseActionObservableComplete, {
-                        id: body.id,
-                    });
-                });
+                sub.sub = observable.observable.subscribe(
+                    next => {
+                        if (!sub.active) return;
+                        response.reply(
+                            RpcTypes.ResponseActionObservableNext,
+                            {
+                                id: body.id,
+                                v: next,
+                            },
+                            types.observableNextSchema,
+                        );
+                    },
+                    error => {
+                        this.stats.total.increase('subscriptions', -1);
+                        const extracted = rpcEncodeError(this.security.transformError(error));
+                        response.reply<rpcResponseActionObservableSubscriptionError>(
+                            RpcTypes.ResponseActionObservableError,
+                            {
+                                ...extracted,
+                                id: body.id,
+                            },
+                        );
+                    },
+                    () => {
+                        this.stats.total.increase('subscriptions', -1);
+                        response.reply<rpcActionObservableSubscribeId>(RpcTypes.ResponseActionObservableComplete, {
+                            id: body.id,
+                        });
+                    },
+                );
 
                 break;
             }
@@ -454,7 +515,8 @@ export class RpcServerAction {
                 break;
             }
 
-            case RpcTypes.ActionObservableSubjectUnsubscribe: { //aka completed
+            case RpcTypes.ActionObservableSubjectUnsubscribe: {
+                //aka completed
                 const subject = this.observableSubjects[message.id];
                 if (!subject) return response.error(new RpcError('No subject to unsubscribe found'));
                 if (subject.completed) return;
@@ -466,9 +528,11 @@ export class RpcServerAction {
                 break;
             }
 
-            case RpcTypes.ActionObservableProgressNext: { //ProgressTracker changes from client (e.g. stop signal)
+            case RpcTypes.ActionObservableProgressNext: {
+                //ProgressTracker changes from client (e.g. stop signal)
                 const observable = this.observables[message.id];
-                if (!observable || !(observable.observable instanceof ProgressTracker)) return response.error(new RpcError('No observable ProgressTracker to sync found'));
+                if (!observable || !(observable.observable instanceof ProgressTracker))
+                    return response.error(new RpcError('No observable ProgressTracker to sync found'));
                 response.strictSerialization = observable.types.strictSerialization;
                 observable.observable.next(message.parseBody<ProgressTrackerState[]>());
                 break;
@@ -501,7 +565,12 @@ export class RpcServerAction {
             const resolver = this.injector.resolve(classType.module, classType.controller);
             const bodyDecoder = createBodyDecoder(action.strictSerialization ? types.actionCallSchema : anyBodyType);
             cache = {
-                controller, types, fn, resolver, action, label,
+                controller,
+                types,
+                fn,
+                resolver,
+                action,
+                label,
                 bodyDecoder,
             } as RpcCacheAction;
             this.cache.actions[cacheKey] = cache;
@@ -511,15 +580,30 @@ export class RpcServerAction {
 
         const timing = { start: performance.now(), end: 0 } as RpcActionTimings;
 
-        this.eventDispatcher.dispatch(onRpcAction, () => ({
-            phase: 'start', context: this.context, timing, controller,
-        }), this.injector);
+        this.eventDispatcher.dispatch(
+            onRpcAction,
+            () => ({
+                phase: 'start',
+                context: this.context,
+                timing,
+                controller,
+            }),
+            this.injector,
+        );
 
         const triggerError = (error?: any) => {
             timing.end = performance.now();
-            this.eventDispatcher.dispatch(onRpcAction, () => ({
-                phase: 'fail', error: ensureError(error, RpcError), context: this.context, timing, controller,
-            }), this.injector);
+            this.eventDispatcher.dispatch(
+                onRpcAction,
+                () => ({
+                    phase: 'fail',
+                    error: ensureError(error, RpcError),
+                    context: this.context,
+                    timing,
+                    controller,
+                }),
+                this.injector,
+            );
         };
 
         const access = await this.hasControllerAccess(controller, this.connection);
@@ -588,9 +672,16 @@ export class RpcServerAction {
             // so we use `apply` instead of `method(...value.args)`
             const result = await fn.apply(controllerInstance, value.args);
             timing.end = performance.now();
-            this.eventDispatcher.dispatch(onRpcAction, () => ({
-                phase: 'success', context: this.context, timing, controller,
-            }), this.injector);
+            this.eventDispatcher.dispatch(
+                onRpcAction,
+                () => ({
+                    phase: 'success',
+                    context: this.context,
+                    timing,
+                    controller,
+                }),
+                this.injector,
+            );
 
             if (isEntitySubject(result)) {
                 response.reply(RpcTypes.ResponseEntity, { v: result.value }, types.resultSchema);
@@ -599,7 +690,8 @@ export class RpcServerAction {
                 if (!types.collectionSchema) throw new RpcError('No collectionSchema set');
                 if (!types.collectionQueryModel) throw new RpcError('No collectionQueryModel set');
 
-                response.composite(RpcTypes.ResponseActionCollection)
+                response
+                    .composite(RpcTypes.ResponseActionCollection)
                     .add(RpcTypes.ResponseActionCollectionModel, collection.model, types.collectionQueryModel)
                     .add<CollectionState>(RpcTypes.ResponseActionCollectionState, collection.state)
                     .add(RpcTypes.ResponseActionCollectionSet, { v: collection.all() }, types.collectionSchema)
@@ -609,30 +701,52 @@ export class RpcServerAction {
 
                 //we queue many events up for the next microtask using collectForMicrotask, and then send
                 //everything as one composite message.
-                const eventsSub = collection.event.subscribe(collectForMicrotask((events: CollectionEvent<any>[]) => {
-                    if (unsubscribed) return;
-                    const composite = response.composite(RpcTypes.ResponseActionCollectionChange);
+                const eventsSub = collection.event.subscribe(
+                    collectForMicrotask((events: CollectionEvent<any>[]) => {
+                        if (unsubscribed) return;
+                        const composite = response.composite(RpcTypes.ResponseActionCollectionChange);
 
-                    for (const event of events) {
-                        if (event.type === 'add') {
-                            //when the user has already a EntitySubject on one of those event.items,
-                            //then we technically send it unnecessarily. However, we would have to introduce
-                            //a new RpcType to send only the IDs, which is not yet implemented.
-                            composite.add(RpcTypes.ResponseActionCollectionAdd, { v: event.items }, types.collectionSchema);
-                        } else if (event.type === 'remove') {
-                            composite.add<rpcResponseActionCollectionRemove>(RpcTypes.ResponseActionCollectionRemove, { ids: event.ids });
-                        } else if (event.type === 'update') {
-                            composite.add(RpcTypes.ResponseActionCollectionUpdate, { v: event.items }, types.collectionSchema);
-                        } else if (event.type === 'set') {
-                            composite.add(RpcTypes.ResponseActionCollectionSet, { v: collection.all() }, types.collectionSchema);
-                        } else if (event.type === 'state') {
-                            composite.add<CollectionState>(RpcTypes.ResponseActionCollectionState, collection.state);
-                        } else if (event.type === 'sort') {
-                            composite.add<rpcResponseActionCollectionSort>(RpcTypes.ResponseActionCollectionSort, { ids: event.ids });
+                        for (const event of events) {
+                            if (event.type === 'add') {
+                                //when the user has already a EntitySubject on one of those event.items,
+                                //then we technically send it unnecessarily. However, we would have to introduce
+                                //a new RpcType to send only the IDs, which is not yet implemented.
+                                composite.add(
+                                    RpcTypes.ResponseActionCollectionAdd,
+                                    { v: event.items },
+                                    types.collectionSchema,
+                                );
+                            } else if (event.type === 'remove') {
+                                composite.add<rpcResponseActionCollectionRemove>(
+                                    RpcTypes.ResponseActionCollectionRemove,
+                                    { ids: event.ids },
+                                );
+                            } else if (event.type === 'update') {
+                                composite.add(
+                                    RpcTypes.ResponseActionCollectionUpdate,
+                                    { v: event.items },
+                                    types.collectionSchema,
+                                );
+                            } else if (event.type === 'set') {
+                                composite.add(
+                                    RpcTypes.ResponseActionCollectionSet,
+                                    { v: collection.all() },
+                                    types.collectionSchema,
+                                );
+                            } else if (event.type === 'state') {
+                                composite.add<CollectionState>(
+                                    RpcTypes.ResponseActionCollectionState,
+                                    collection.state,
+                                );
+                            } else if (event.type === 'sort') {
+                                composite.add<rpcResponseActionCollectionSort>(RpcTypes.ResponseActionCollectionSort, {
+                                    ids: event.ids,
+                                });
+                            }
                         }
-                    }
-                    composite.send();
-                }));
+                        composite.send();
+                    }),
+                );
 
                 collection.addTeardown(() => {
                     const c = this.collections[message.id];
@@ -673,35 +787,49 @@ export class RpcServerAction {
                         }
                     }
 
-                    const v = this.observableSubjects[message.id] = {
+                    const v = (this.observableSubjects[message.id] = {
                         subject: result,
                         trackingType,
                         completed: false,
                         completedByClient: false,
-                        subscription: result.subscribe((next) => {
-                            response.reply(RpcTypes.ResponseActionObservableNext, {
-                                id: message.id,
-                                v: next,
-                            }, types.observableNextSchema);
-                        }, (error) => {
-                            if (v.completed) return;
-                            v.completed = true;
-                            this.stats.active.increase(trackingType, -1);
-                            const extracted = rpcEncodeError(this.security.transformError(error));
-                            response.reply<rpcResponseActionObservableSubscriptionError>(RpcTypes.ResponseActionObservableError, {
-                                ...extracted,
-                                id: message.id,
-                            });
-                        }, () => {
-                            if (v.completed) return;
-                            v.completed = true;
-                            this.stats.active.increase(trackingType, -1);
-                            if (v.completedByClient) return; //we don't send ResponseActionObservableComplete when the client issued unsubscribe
-                            response.reply<rpcActionObservableSubscribeId>(RpcTypes.ResponseActionObservableComplete, {
-                                id: message.id,
-                            });
-                        }),
-                    } as RpcServerActionObservableSubject;
+                        subscription: result.subscribe(
+                            next => {
+                                response.reply(
+                                    RpcTypes.ResponseActionObservableNext,
+                                    {
+                                        id: message.id,
+                                        v: next,
+                                    },
+                                    types.observableNextSchema,
+                                );
+                            },
+                            error => {
+                                if (v.completed) return;
+                                v.completed = true;
+                                this.stats.active.increase(trackingType, -1);
+                                const extracted = rpcEncodeError(this.security.transformError(error));
+                                response.reply<rpcResponseActionObservableSubscriptionError>(
+                                    RpcTypes.ResponseActionObservableError,
+                                    {
+                                        ...extracted,
+                                        id: message.id,
+                                    },
+                                );
+                            },
+                            () => {
+                                if (v.completed) return;
+                                v.completed = true;
+                                this.stats.active.increase(trackingType, -1);
+                                if (v.completedByClient) return; //we don't send ResponseActionObservableComplete when the client issued unsubscribe
+                                response.reply<rpcActionObservableSubscribeId>(
+                                    RpcTypes.ResponseActionObservableComplete,
+                                    {
+                                        id: message.id,
+                                    },
+                                );
+                            },
+                        ),
+                    } as RpcServerActionObservableSubject);
                 }
 
                 this.stats.active.increase(trackingType, 1);

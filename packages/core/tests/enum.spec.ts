@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+
 import { getEnumLabels, getEnumValues } from '../src/enum.js';
 
 test('getEnumLabels numbered index', () => {
@@ -55,7 +56,6 @@ test('getEnumLabels mixed string index', () => {
     expect(getEnumValues(MyEnum)).toEqual([0, 'my_second', 'my_third']);
     expect(getEnumLabels(MyEnum)).toEqual(['first', 'second', 'third']);
 });
-
 
 test('getEnumLabels string index same name', () => {
     enum MyEnum {

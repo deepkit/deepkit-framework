@@ -7,8 +7,8 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { DatabaseQueryModel, OrmEntity, Query, Sort } from '@deepkit/orm';
+
 import { CommandOptions } from './client/options.js';
 import { FilterQuery, MongoQueryModel } from './query.model.js';
 import { MongoQueryResolver } from './query.resolver.js';

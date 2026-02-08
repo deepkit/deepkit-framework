@@ -1,10 +1,9 @@
 /** @group KeyValue */
-
-import { parseTime } from './utils.js';
-import { ReceiveType, resolveReceiveType, Type } from '@deepkit/type';
-import { BrokerAdapterBase } from './broker.js';
 import { ConsoleLogger, LoggerInterface } from '@deepkit/logger';
+import { ReceiveType, Type, resolveReceiveType } from '@deepkit/type';
 
+import { BrokerAdapterBase } from './broker.js';
+import { parseTime } from './utils.js';
 
 export interface BrokerKeyValueOptions {
     /**
@@ -41,9 +40,7 @@ export class BrokerKeyValueItem<T> {
         private type: Type,
         private adapter: BrokerAdapterKeyValue,
         private options: BrokerKeyValueOptionsResolved,
-    ) {
-
-    }
+    ) {}
 
     /**
      * @see BrokerKeyValue.get
@@ -87,7 +84,9 @@ export class BrokerKeyValue {
      */
     item<T>(key: string, options?: Partial<BrokerKeyValueOptions>, type?: ReceiveType<T>): BrokerKeyValueItem<T> {
         return new BrokerKeyValueItem(
-            key, resolveReceiveType(type), this.adapter,
+            key,
+            resolveReceiveType(type),
+            this.adapter,
             parseBrokerKeyValueOptions(Object.assign({}, this.config, options)),
         );
     }
@@ -102,8 +101,15 @@ export class BrokerKeyValue {
     /**
      * Sets the value for the given key.
      */
-    async set<T>(key: string, value: T, options?: Partial<BrokerKeyValueOptions>, type?: ReceiveType<T>): Promise<void> {
-        return this.adapter.set(key, value,
+    async set<T>(
+        key: string,
+        value: T,
+        options?: Partial<BrokerKeyValueOptions>,
+        type?: ReceiveType<T>,
+    ): Promise<void> {
+        return this.adapter.set(
+            key,
+            value,
             options ? parseBrokerKeyValueOptions(Object.assign({}, this.config, options)) : this.config,
             resolveReceiveType(type),
         );

@@ -57,7 +57,9 @@
     "moduleNameMapper": {
       "(.+)\\.js": "$1"
     },
-    "testTimeout": 50000,
+    "setupFilesAfterEnv": [
+      "../../jest-setup-timeout.js"
+    ],
     "testMatch": [
       "**/tests/**/*.spec.ts"
     ]

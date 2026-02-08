@@ -23,6 +23,9 @@
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
+  "dependencies": {
+    "@deepkit/core": "^1.0.1-alpha.153"
+  },
   "jest": {
     "testEnvironment": "node",
     "transform": {

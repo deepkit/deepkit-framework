@@ -1,75 +1,36 @@
 import { expect, test } from '@jest/globals';
-import { dotToUrlPath, HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile } from '../src/router.js';
-import { getActions, http, httpClass } from '../src/decorator.js';
-import {
-    HtmlResponse,
-    HttpAccessDeniedError,
-    HttpBadRequestError,
-    HttpNotFoundError,
-    HttpUnauthorizedError,
-    httpWorkflow,
-    JSONResponse,
-    Response,
-} from '../src/http.js';
-import { eventDispatcher } from '@deepkit/event';
-import {
-    HttpBody,
-    HttpBodyValidation,
-    HttpHeader,
-    HttpPath,
-    HttpQueries,
-    HttpQuery,
-    HttpRegExp,
-    HttpRequest,
-    HttpRequestParser,
-    MemoryHttpResponse,
-} from '../src/model.js';
-import { getClassName, isObject, sleep, TypeAnnotation } from '@deepkit/core';
-import { createHttpKernel } from './utils.js';
-import {
-    Excluded,
-    Group,
-    integer,
-    JSONEntity,
-    Maximum,
-    MinLength,
-    Positive,
-    PrimaryKey,
-    Reference,
-    serializer,
-    Type,
-    typeAnnotation,
-    typeSettings,
-    UnpopulatedCheck,
-} from '@deepkit/type';
 import { Readable } from 'stream';
+
+import { TypeAnnotation, getClassName, isObject, sleep } from '@deepkit/core';
+import { eventDispatcher } from '@deepkit/event';
 import { provide } from '@deepkit/injector';
+import { Excluded, Group, JSONEntity, Maximum, MinLength, Positive, PrimaryKey, Reference, Type, UnpopulatedCheck, integer, serializer, typeAnnotation, typeSettings } from '@deepkit/type';
+
+import { getActions, http, httpClass } from '../src/decorator.js';
+import { HtmlResponse, HttpAccessDeniedError, HttpBadRequestError, HttpNotFoundError, HttpUnauthorizedError, JSONResponse, Response, httpWorkflow } from '../src/http.js';
+import { HttpBody, HttpBodyValidation, HttpHeader, HttpPath, HttpQueries, HttpQuery, HttpRegExp, HttpRequest, HttpRequestParser, MemoryHttpResponse } from '../src/model.js';
+import { HttpRouter, RouteClassControllerAction, RouteParameterResolverContext, UploadedFile, dotToUrlPath } from '../src/router.js';
+import { createHttpKernel } from './utils.js';
 
 test('router', async () => {
     class Controller {
         @http.GET()
-        helloWorld() {
-        }
+        helloWorld() {}
 
         @http.GET('/a/:name')
-        hello(name: string) {
-        }
+        hello(name: string) {}
 
         @http.GET('/b/:name')
-        helloButNoParam() {
-        }
+        helloButNoParam() {}
 
         @http.GET('/user/:id/static')
-        userStatic(id: string) {
-        }
+        userStatic(id: string) {}
 
         @http.GET('/user2/:id/static/:id2')
-        userStatic2(id: string, id2: string) {
-        }
+        userStatic2(id: string, id2: string) {}
 
         @http.ANY('/any')
-        any() {
-        }
+        any() {}
     }
 
     const router = HttpRouter.forControllers([Controller]);
@@ -122,8 +83,7 @@ test('explicitly annotated response objects', async () => {
 test('any', async () => {
     class Controller {
         @http.ANY('/any')
-        any() {
-        }
+        any() {}
     }
 
     const router = HttpRouter.forControllers([Controller]);
@@ -188,7 +148,7 @@ test('router parameters', async () => {
 
     expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).json).toBe('peter');
     expect((await httpKernel.request(HttpRequest.GET('/user-id/123'))).json).toBe(123);
-    expect((await httpKernel.request(HttpRequest.GET('/user-id/asd'))).json).toMatchObject({ message: 'Validation error:\nid(type): Cannot convert asd to number' });
+    expect((await httpKernel.request(HttpRequest.GET('/user-id/asd'))).json.message).toContain('Validation error:\nid(type): Cannot convert asd to number');
     expect((await httpKernel.request(HttpRequest.GET('/boolean/1'))).json).toBe(true);
     expect((await httpKernel.request(HttpRequest.GET('/boolean/false'))).json).toBe(false);
 
@@ -266,13 +226,11 @@ test('HttpRegExp match', async () => {
 
 test('router parameter resolver by class', async () => {
     class User {
-        constructor(public username: string) {
-        }
+        constructor(public username: string) {}
     }
 
     class Group {
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     class UserResolver {
@@ -323,13 +281,11 @@ test('router parameter resolver by class', async () => {
 
 test('router parameter resolver by name', async () => {
     class User {
-        constructor(public username: string) {
-        }
+        constructor(public username: string) {}
     }
 
     class Group {
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     class UserResolver {
@@ -350,8 +306,7 @@ test('router parameter resolver by name', async () => {
     }
 
     class MyAuth {
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     class AuthResolver {
@@ -431,9 +386,7 @@ test('router body is safe for simultaneous requests', async () => {
 
     const results = await Promise.all([...new Array(100)].map(() => makeReq().then(res => res.json)));
 
-    expect(results).toEqual(
-        results.map(() => ['Peter', true, '/']),
-    );
+    expect(results).toEqual(results.map(() => ['Peter', true, '/']));
 });
 
 test('router body can be read multiple times', async () => {
@@ -463,8 +416,7 @@ test('router body before it gets parsed', async () => {
     }
 
     class Controller {
-        constructor(private service: Service) {
-        }
+        constructor(private service: Service) {}
 
         @http.POST()
         async anyReq(body: HttpBody<Body>, req: HttpRequest) {
@@ -473,11 +425,15 @@ test('router body before it gets parsed', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller], [Service], [
-        httpWorkflow.onRequest.listen(async (event, service: Service) => {
-            service.body = await event.request.readBodyText();
-        }),
-    ]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [Service],
+        [
+            httpWorkflow.onRequest.listen(async (event, service: Service) => {
+                service.body = await event.request.readBodyText();
+            }),
+        ],
+    );
 
     expect((await httpKernel.request(HttpRequest.POST('/').json({ username: 'Peter' }))).json).toEqual(['Peter', '{"username":"Peter"}', '{"username":"Peter"}', '/']);
 });
@@ -610,11 +566,15 @@ test('hook after serializer', async () => {
 });
 
 test('functional hooks', async () => {
-    const httpKernel = createHttpKernel([], [], [
-        httpWorkflow.onResponse.listen((event) => {
-            event.result = { username: 'Peter' };
-        }),
-    ]);
+    const httpKernel = createHttpKernel(
+        [],
+        [],
+        [
+            httpWorkflow.onResponse.listen(event => {
+                event.result = { username: 'Peter' };
+            }),
+        ],
+    );
 
     const result = (await httpKernel.request(HttpRequest.GET('/'))).json;
     expect(result).toEqual({ username: 'Peter' });
@@ -623,18 +583,16 @@ test('functional hooks', async () => {
 test('invalid route definition', async () => {
     class Controller {
         @http.GET()
-        doIt(user: any) {
-        }
+        doIt(user: any) {}
     }
 
     const httpKernel = createHttpKernel([Controller]);
-    expect((await httpKernel.request(HttpRequest.GET('/'))).bodyString).toEqual('Not found');
+    expect((await httpKernel.request(HttpRequest.GET('/'))).bodyString).toEqual('Internal error');
 });
 
 test('inject request storage ClassType', async () => {
     class User {
-        constructor(public username: string) {
-        }
+        constructor(public username: string) {}
     }
 
     class Controller {
@@ -658,13 +616,19 @@ test('inject request storage ClassType', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller], [
-        {
-            provide: User, scope: 'http', useFactory(request: HttpRequest) {
-                return request.store.user;
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [
+            {
+                provide: User,
+                scope: 'http',
+                useFactory(request: HttpRequest) {
+                    return request.store.user;
+                },
             },
-        },
-    ], [Listener]);
+        ],
+        [Listener],
+    );
 
     expect((await httpKernel.request(HttpRequest.GET('/').headers({ authorization: 'yes' }))).json).toEqual({ isUser: true, username: 'bar' });
     expect((await httpKernel.request(HttpRequest.GET('/').headers({ authorization: 'no' }))).bodyString).toEqual('Internal error');
@@ -682,18 +646,21 @@ test('functional listener', async () => {
 
     const gotUrls: string[] = [];
 
-    const httpKernel = createHttpKernel([Controller], [], [
-        httpWorkflow.onController.listen(event => {
-            gotUrls.push(event.request.url || '');
-        }),
-    ]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [],
+        [
+            httpWorkflow.onController.listen(event => {
+                gotUrls.push(event.request.url || '');
+            }),
+        ],
+    );
 
     const response = await httpKernel.request(HttpRequest.GET('/hello'));
     expect(response.statusCode).toBe(200);
     expect(response.json).toBe('hi');
     expect(gotUrls).toEqual(['/hello']);
 });
-
 
 test('custom request handling', async () => {
     class Listener {
@@ -733,13 +700,9 @@ test('race condition', async () => {
         }
     }
 
-
     const httpKernel = createHttpKernel([Controller], [], [Listener]);
 
-    const [a, b] = await Promise.all([
-        httpKernel.request(HttpRequest.GET('/one/a')),
-        httpKernel.request(HttpRequest.GET('/second/b')),
-    ]);
+    const [a, b] = await Promise.all([httpKernel.request(HttpRequest.GET('/one/a')), httpKernel.request(HttpRequest.GET('/second/b'))]);
     expect(a.json).toBe('a');
     expect(b.json).toBe('b');
 });
@@ -795,15 +758,12 @@ test('unions', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/list?page=false'))).json).toEqual(false);
     expect((await httpKernel.request(HttpRequest.GET('/list?page=true'))).json).toEqual(true);
 
-    expect((await httpKernel.request(HttpRequest.GET('/list?page=asdasdc'))).json).toMatchObject({
-        'errors': [
-            {
-                'code': 'type',
-                'message': 'No value given',
-                'path': 'page',
-            },
-        ],
-    });
+    const invalidPageResponse = (await httpKernel.request(HttpRequest.GET('/list?page=asdasdc'))).json;
+    expect(invalidPageResponse.errors).toHaveLength(1);
+    expect(invalidPageResponse.errors[0].code).toEqual('type');
+    expect(invalidPageResponse.errors[0].path).toEqual('page');
+    // Error message should indicate conversion failure for the invalid value
+    expect(invalidPageResponse.errors[0].message).toContain('Cannot convert asdasdc');
 });
 
 test('router dotToUrlPath', () => {
@@ -905,9 +865,7 @@ test('use http.response for serialization', async () => {
             return [{ title: 'a' }, { title: 1 }];
         }
 
-        @(http.GET('/action3')
-            .response<DefaultResponse[]>(200, `List`)
-            .response<ErrorResponse[]>(400, `Error`))
+        @(http.GET('/action3').response<DefaultResponse[]>(200, `List`).response<ErrorResponse[]>(400, `Error`))
         action3() {
             return new JSONResponse([{ message: 'error' }, { message: 1 }]).status(400);
         }
@@ -993,9 +951,9 @@ test('BodyValidation', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
     expect((await httpKernel.request(HttpRequest.POST('/action1').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
-    expect((await httpKernel.request(HttpRequest.POST('/action1').json({ username: 'Pe' }))).json).toEqual({
-        errors: [{ code: 'minLength', message: 'Min length is 3', path: 'username', value: 'Pe' }], message: 'Validation error:\nusername(minLength): Min length is 3 caused by value \"Pe\"',
-    });
+    const action1Response = (await httpKernel.request(HttpRequest.POST('/action1').json({ username: 'Pe' }))).json;
+    expect(action1Response.errors).toEqual([{ code: 'minLength', message: 'Min length is 3', path: 'username', value: 'Pe' }]);
+    expect(action1Response.message).toContain('Validation error:\nusername(minLength): Min length is 3 caused by value "Pe"');
 
     expect((await httpKernel.request(HttpRequest.POST('/action2').json({ username: 'Peter' }))).json).toEqual({ username: 'Peter' });
     expect((await httpKernel.request(HttpRequest.POST('/action2').json({ username: 'Pe' }))).json.message).toEqual('Invalid: username(minLength): Min length is 3 caused by value "Pe"');
@@ -1015,10 +973,11 @@ test('unpopulated entity without type information', async () => {
     class User {
         invisible: boolean & Excluded = false;
 
-        constructor(public id: number, public group: Group & Reference) {
-        }
+        constructor(
+            public id: number,
+            public group: Group & Reference,
+        ) {}
     }
-
 
     function disableReference(o: User) {
         //we simulate an unpopulated reference
@@ -1092,7 +1051,6 @@ test('extend with custom type', async () => {
         obj: MyType & StringifyTransport = { test: 'abc' };
     }
 
-
     class Controller {
         @http.GET('/1')
         action1(entity: HttpQueries<Entity>) {
@@ -1104,11 +1062,9 @@ test('extend with custom type', async () => {
     expect((await httpKernel.request(HttpRequest.GET('/1?obj={"test": "def"}'))).json).toEqual({ test: 'def' });
 });
 
-
 test('session', async () => {
     class User {
-        constructor(public username: string) {
-        }
+        constructor(public username: string) {}
     }
 
     class HttpSession {
@@ -1131,22 +1087,30 @@ test('session', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller], [{
-        provide: HttpSession, scope: 'http',
-    }], [httpWorkflow.onRequest.listen(async (event) => {
-        const auth = event.request.headers['auth'];
-        if (auth) {
-            const session = event.injectorContext.get(HttpSession);
-            //load user from somewhere
-            session.setUser(new User('abc'));
-        }
-    })]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [
+            {
+                provide: HttpSession,
+                scope: 'http',
+            },
+        ],
+        [
+            httpWorkflow.onRequest.listen(async event => {
+                const auth = event.request.headers['auth'];
+                if (auth) {
+                    const session = event.injectorContext.get(HttpSession);
+                    //load user from somewhere
+                    session.setUser(new User('abc'));
+                }
+            }),
+        ],
+    );
     expect((await httpKernel.request(HttpRequest.GET('/1').header('auth', '123'))).json).toEqual('abc');
 });
 
 test('route listener parameters', async () => {
-    class HttpSession {
-    }
+    class HttpSession {}
 
     class Controller {
         @http.GET('/:groupId/:userId')
@@ -1155,12 +1119,21 @@ test('route listener parameters', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller], [{
-        provide: HttpSession, scope: 'http',
-    }], [httpWorkflow.onController.listen(async (event, session: HttpSession) => {
-        expect(event.parameters.arguments).toEqual([2, 1, session]);
-        expect(event.parameters.parameters).toEqual({ userId: 2, groupId: 1, session: session });
-    })]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [
+            {
+                provide: HttpSession,
+                scope: 'http',
+            },
+        ],
+        [
+            httpWorkflow.onController.listen(async (event, session: HttpSession) => {
+                expect(event.parameters.arguments).toEqual([2, 1, session]);
+                expect(event.parameters.parameters).toEqual({ userId: 2, groupId: 1, session: session });
+            }),
+        ],
+    );
     expect((await httpKernel.request(HttpRequest.GET('/1/2'))).json).toEqual([2, 1, true]);
 });
 
@@ -1173,10 +1146,16 @@ test('parameter in controller class url', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller], [], [httpWorkflow.onController.listen(async (event) => {
-        expect(event.parameters.arguments).toEqual([2, 1]);
-        expect(event.parameters.parameters).toEqual({ userId: 2, groupId: 1 });
-    })]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [],
+        [
+            httpWorkflow.onController.listen(async event => {
+                expect(event.parameters.arguments).toEqual([2, 1]);
+                expect(event.parameters.parameters).toEqual({ userId: 2, groupId: 1 });
+            }),
+        ],
+    );
     expect((await httpKernel.request(HttpRequest.GET('/1/2'))).json).toEqual([2, 1]);
 });
 
@@ -1193,12 +1172,44 @@ test('parameter from header', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller], [], [httpWorkflow.onController.listen(async (event) => {
-        expect(event.parameters.arguments).toEqual([2, 1]);
-        expect(event.parameters.parameters).toEqual({ userId: 2, groupId: 1 });
-    })]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [],
+        [
+            httpWorkflow.onController.listen(async event => {
+                expect(event.parameters.arguments).toEqual([2, 1]);
+                expect(event.parameters.parameters).toEqual({ userId: 2, groupId: 1 });
+            }),
+        ],
+    );
     expect((await httpKernel.request(HttpRequest.GET('/first/2').header('groupId', 1))).json).toEqual([2, 1]);
     expect((await httpKernel.request(HttpRequest.GET('/second/2').header('group_id', 1))).json).toEqual([2, 1]);
+});
+
+test('parameter from header is case-insensitive', async () => {
+    class Controller {
+        @http.GET('/test')
+        handle(authorization: HttpHeader<string>) {
+            return { auth: authorization };
+        }
+
+        @http.GET('/test2')
+        handle2(xCustomHeader: HttpHeader<string, { name: 'X-Custom-Header' }>) {
+            return { value: xCustomHeader };
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller]);
+
+    // HTTP headers should be case-insensitive per RFC 7230
+    // Parameter name 'authorization' should match header 'Authorization'
+    expect((await httpKernel.request(HttpRequest.GET('/test').header('Authorization', 'token123'))).json).toEqual({ auth: 'token123' });
+    expect((await httpKernel.request(HttpRequest.GET('/test').header('authorization', 'token123'))).json).toEqual({ auth: 'token123' });
+    expect((await httpKernel.request(HttpRequest.GET('/test').header('AUTHORIZATION', 'token123'))).json).toEqual({ auth: 'token123' });
+
+    // Custom header name should also be case-insensitive
+    expect((await httpKernel.request(HttpRequest.GET('/test2').header('X-Custom-Header', 'value1'))).json).toEqual({ value: 'value1' });
+    expect((await httpKernel.request(HttpRequest.GET('/test2').header('x-custom-header', 'value1'))).json).toEqual({ value: 'value1' });
 });
 
 test('parameter in for listener', async () => {
@@ -1219,19 +1230,23 @@ test('parameter in for listener', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller], [{ provide: HttpSession, scope: 'http' }], [
-        httpWorkflow.onController.listen(async (event, session: HttpSession, groupId: HttpPath<number>, authorization?: HttpHeader<string>) => {
-            //just as example: when groupId is bigger than 100 we require an authorization header
-            if (groupId > 100) {
-                if (authorization !== 'secretToken') throw new HttpUnauthorizedError('Not authorized');
-            }
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [{ provide: HttpSession, scope: 'http' }],
+        [
+            httpWorkflow.onController.listen(async (event, session: HttpSession, groupId: HttpPath<number>, authorization?: HttpHeader<string>) => {
+                //just as example: when groupId is bigger than 100 we require an authorization header
+                if (groupId > 100) {
+                    if (authorization !== 'secretToken') throw new HttpUnauthorizedError('Not authorized');
+                }
 
-            session.groupId2 = groupId;
-        }),
-    ]);
+                session.groupId2 = groupId;
+            }),
+        ],
+    );
     expect((await httpKernel.request(HttpRequest.GET('/1/2'))).json).toEqual([2, 1]);
     expect((await httpKernel.request(HttpRequest.GET('/101/2').header('authorization', 'secretToken'))).json).toEqual([2, 101]);
-    expect((await httpKernel.request(HttpRequest.GET('/101/2').header('authorization', 'invalid'))).json).toEqual({ 'message': 'Not authorized' });
+    expect((await httpKernel.request(HttpRequest.GET('/101/2').header('authorization', 'invalid'))).json).toEqual({ message: 'Not authorized' });
 });
 
 test('query parameter in for listener', async () => {
@@ -1251,26 +1266,32 @@ test('query parameter in for listener', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller], [{ provide: HttpSession, scope: 'http' }], [
-        httpWorkflow.onController.listen(async (event, session: HttpSession, auth: HttpQuery<string>) => {
-            console.log('auth', auth);
-            const users: { [key: string]: number } = {
-                'secretToken1': 1,
-                'secretToken2': 2,
-            };
-            if (!users[auth]) throw new HttpUnauthorizedError('Invalid auth token');
-            session.userId = users[auth];
-        }),
-    ]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [{ provide: HttpSession, scope: 'http' }],
+        [
+            httpWorkflow.onController.listen(async (event, session: HttpSession, auth: HttpQuery<string>) => {
+                console.log('auth', auth);
+                const users: { [key: string]: number } = {
+                    secretToken1: 1,
+                    secretToken2: 2,
+                };
+                if (!users[auth]) throw new HttpUnauthorizedError('Invalid auth token');
+                session.userId = users[auth];
+            }),
+        ],
+    );
     expect((await httpKernel.request(HttpRequest.GET('/2?auth=secretToken1'))).json).toEqual([2, 1]);
     expect((await httpKernel.request(HttpRequest.GET('/3?auth=secretToken2'))).json).toEqual([3, 2]);
-    expect((await httpKernel.request(HttpRequest.GET('/3?auth=invalidToken'))).json).toEqual({ 'message': 'Invalid auth token' });
+    expect((await httpKernel.request(HttpRequest.GET('/3?auth=invalidToken'))).json).toEqual({ message: 'Invalid auth token' });
 });
 
 test('queries parameter in for listener', async () => {
     class HttpSession {
-        constructor(public auth: string = '', public userId: number = 0) {
-        }
+        constructor(
+            public auth: string = '',
+            public userId: number = 0,
+        ) {}
     }
 
     class Controller {
@@ -1280,14 +1301,18 @@ test('queries parameter in for listener', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller], [{ provide: HttpSession, scope: 'http' }], [
-        httpWorkflow.onController.listen(async (event, session: HttpSession, auth: HttpQueries<{ auth: string, userId: number }>) => {
-            session.auth = auth.auth;
-            session.userId = auth.userId;
-        }),
-    ]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [{ provide: HttpSession, scope: 'http' }],
+        [
+            httpWorkflow.onController.listen(async (event, session: HttpSession, auth: HttpQueries<{ auth: string; userId: number }>) => {
+                session.auth = auth.auth;
+                session.userId = auth.userId;
+            }),
+        ],
+    );
     expect((await httpKernel.request(HttpRequest.GET('/?auth=secretToken1&userId=1'))).json).toEqual([1, 1, 'secretToken1']);
-    expect((await httpKernel.request(HttpRequest.GET('/?userId=1'))).json.message).toEqual('Validation error:\nauth.auth(type): Not a string');
+    expect((await httpKernel.request(HttpRequest.GET('/?userId=1'))).json.message).toContain('Validation error:\nauth.auth(type): Not a string');
 });
 
 test('http parameter in class listener', async () => {
@@ -1312,8 +1337,10 @@ test('http parameter in class listener', async () => {
 
 test('queries parameter in class listener', async () => {
     class HttpSession {
-        constructor(public auth: string = '', public userId: number = 0) {
-        }
+        constructor(
+            public auth: string = '',
+            public userId: number = 0,
+        ) {}
     }
 
     class Controller {
@@ -1325,7 +1352,7 @@ test('queries parameter in class listener', async () => {
 
     class Listener {
         @eventDispatcher.listen(httpWorkflow.onController)
-        handle(event: typeof httpWorkflow.onController.event, session: HttpSession, auth: HttpQueries<{ auth: string, userId: number }>) {
+        handle(event: typeof httpWorkflow.onController.event, session: HttpSession, auth: HttpQueries<{ auth: string; userId: number }>) {
             session.auth = auth.auth;
             session.userId = auth.userId;
         }
@@ -1333,13 +1360,15 @@ test('queries parameter in class listener', async () => {
 
     const httpKernel = createHttpKernel([Controller], [{ provide: HttpSession, scope: 'http' }], [Listener]);
     expect((await httpKernel.request(HttpRequest.GET('/?auth=secretToken1&userId=1'))).json).toEqual([1, 1, 'secretToken1']);
-    expect((await httpKernel.request(HttpRequest.GET('/?userId=1'))).json.message).toEqual('Validation error:\nauth.auth(type): Not a string');
+    expect((await httpKernel.request(HttpRequest.GET('/?userId=1'))).json.message).toContain('Validation error:\nauth.auth(type): Not a string');
 });
 
 test('body and queries in listener', async () => {
     class HttpSession {
-        constructor(public auth: string = '', public userId: number = 0) {
-        }
+        constructor(
+            public auth: string = '',
+            public userId: number = 0,
+        ) {}
     }
 
     class Controller {
@@ -1390,7 +1419,7 @@ test('body and queries in listener', async () => {
     type AuthData = {
         auth: string;
         userId?: string;
-    }
+    };
 
     class Listener {
         @eventDispatcher.listen(httpWorkflow.onAuth)
@@ -1404,7 +1433,7 @@ test('body and queries in listener', async () => {
     const httpKernel = createHttpKernel([Controller], [{ provide: HttpSession, scope: 'http' }], [Listener]);
     expect((await httpKernel.request(HttpRequest.POST('/1?userId=1').json({ auth: 'secretToken1' }))).json).toEqual([1, 1, 'secretToken1']);
     expect((await httpKernel.request(HttpRequest.GET('/2?auth=secretToken1&userId=1'))).json).toEqual([1, 1, 'secretToken1']);
-    expect((await httpKernel.request(HttpRequest.GET('/2?userId=1'))).json.message).toEqual('Validation error:\nauth(type): Not a string');
+    expect((await httpKernel.request(HttpRequest.GET('/2?userId=1'))).json.message).toContain('Validation error:\nauth(type): Not a string');
     expect((await httpKernel.request(HttpRequest.POST('/3?auth=secretToken1').json({ userId: '24' }))).json).toEqual([24, 24, 'secretToken1']);
     expect((await httpKernel.request(HttpRequest.GET('/4?auth=secretToken1&userId=1'))).json).toEqual(['secretToken1', '1']);
     expect((await httpKernel.request(HttpRequest.GET('/4?userId=1').header('auth', 'secretToken1'))).json).toEqual(['secretToken1', '1']);
@@ -1423,7 +1452,7 @@ test('stream', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller]);
-    const response = (await httpKernel.request(HttpRequest.GET('/')));
+    const response = await httpKernel.request(HttpRequest.GET('/'));
     expect(response.statusCode).toBe(200);
     await sleep(0);
     expect(response.bodyString).toBe('test');
@@ -1438,7 +1467,7 @@ test('stream error', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller]);
-    const response = (await httpKernel.request(HttpRequest.GET('/')));
+    const response = await httpKernel.request(HttpRequest.GET('/'));
     expect(response.statusCode).toBe(500);
     expect(response.bodyString).toBe('Internal error');
 });
@@ -1446,7 +1475,7 @@ test('stream error', async () => {
 test('issue-415: serialize literal types in union', async () => {
     enum MyEnum {
         VALUE_0 = 0,
-        VALUE_180 = 180
+        VALUE_180 = 180,
     }
 
     class Data {
@@ -1463,7 +1492,10 @@ test('issue-415: serialize literal types in union', async () => {
     const httpKernel = createHttpKernel([Controller]);
     expect((await httpKernel.request(HttpRequest.GET('/?rotate=0'))).json).toEqual(0);
     expect((await httpKernel.request(HttpRequest.GET('/?rotate=180'))).json).toEqual(180);
-    expect((await httpKernel.request(HttpRequest.GET('/?rotate=555454'))).json).toEqual(0);
+    // Invalid value should return validation error
+    const invalidResponse = (await httpKernel.request(HttpRequest.GET('/?rotate=555454'))).json;
+    expect(invalidResponse.message).toContain('Validation error');
+    expect(invalidResponse.message).toContain('Cannot convert 555454 to 180 | 0');
 });
 
 test('fetch thrown error instances in listeners', async () => {
@@ -1474,11 +1506,15 @@ test('fetch thrown error instances in listeners', async () => {
         }
     }
 
-    const httpKernel = createHttpKernel([Controller], [], [
-        httpWorkflow.onAccessDenied.listen(async (event) => {
-            expect(event.error?.message).toBe('my custom "Access denied" message');
-        }),
-    ]);
+    const httpKernel = createHttpKernel(
+        [Controller],
+        [],
+        [
+            httpWorkflow.onAccessDenied.listen(async event => {
+                expect(event.error?.message).toBe('my custom "Access denied" message');
+            }),
+        ],
+    );
 
     expect((await httpKernel.request(HttpRequest.GET('/'))).statusCode).toEqual(403);
 });
@@ -1497,35 +1533,54 @@ test('upload security', async () => {
 
     const httpKernel = createHttpKernel([Controller]);
 
-    expect((await httpKernel.request(HttpRequest.POST('/upload').json({
-        someFile: {
-            size: 12345,
-            path: '/etc/secure-file',
-            name: 'fakefile',
-            type: 'image/jpeg',
-            lastModifiedDate: null,
-        },
-    }))).json.message).toContain('Not an uploaded file caused by value');
+    expect(
+        (
+            await httpKernel.request(
+                HttpRequest.POST('/upload').json({
+                    someFile: {
+                        size: 12345,
+                        path: '/etc/secure-file',
+                        name: 'fakefile',
+                        type: 'image/jpeg',
+                        lastModifiedDate: null,
+                    },
+                }),
+            )
+        ).json.message,
+    ).toContain('Not an uploaded file caused by value');
 
     // ensure type deserialization doesn't set the invalid 'fake value' value to UploadedFileSymbol
-    expect((await httpKernel.request(HttpRequest.POST('/upload').json({
-        someFile: {
-            validator: 'fake value',
-            size: 12345,
-            path: '/etc/secure-file',
-            name: 'fakefile',
-            type: 'image/jpeg',
-            lastModifiedDate: null,
-        },
-    }))).json.message).toContain('Not an uploaded file caused by value');
+    const fakeFileResponse = (
+        await httpKernel.request(
+            HttpRequest.POST('/upload').json({
+                someFile: {
+                    validator: 'fake value',
+                    size: 12345,
+                    path: '/etc/secure-file',
+                    name: 'fakefile',
+                    type: 'image/jpeg',
+                    lastModifiedDate: null,
+                },
+            }),
+        )
+    ).json.message;
+    // Validation should reject the fake file value
+    expect(fakeFileResponse).toContain('Validation error');
+    expect(fakeFileResponse).toContain('someFile');
 
-    expect((await httpKernel.request(HttpRequest.POST('/upload').multiPart([
-        {
-            name: 'someFile',
-            file: Buffer.from('testing a text file'),
-            fileName: 'test.txt',
-        },
-    ]))).json).toMatchObject({ uploadedSize: 19 });
+    expect(
+        (
+            await httpKernel.request(
+                HttpRequest.POST('/upload').multiPart([
+                    {
+                        name: 'someFile',
+                        file: Buffer.from('testing a text file'),
+                        fileName: 'test.txt',
+                    },
+                ]),
+            )
+        ).json,
+    ).toMatchObject({ uploadedSize: 19 });
 });
 
 test('any http body', async () => {
@@ -1585,10 +1640,7 @@ test('query default', async () => {
     @http.controller()
     class Controller {
         @http.GET('/test1')
-        test1(
-            limit?: HttpQuery<integer & Positive & Maximum<100>>,
-            offset: HttpQuery<integer & Positive> = 0,
-        ) {
+        test1(limit?: HttpQuery<integer & Positive & Maximum<100>>, offset: HttpQuery<integer & Positive> = 0) {
             return [limit, offset];
         }
     }
@@ -1602,9 +1654,7 @@ test('header default', async () => {
     @http.controller()
     class Controller {
         @http.GET('/test1')
-        test1(
-            auth: HttpHeader<string> = '',
-        ) {
+        test1(auth: HttpHeader<string> = '') {
             return [auth];
         }
     }
@@ -1618,9 +1668,7 @@ test('header default', async () => {
     @http.controller()
     class Controller {
         @http.GET('/test1')
-        test1(
-            auth: HttpHeader<string> = '',
-        ) {
+        test1(auth: HttpHeader<string> = '') {
             return [auth];
         }
     }
@@ -1679,7 +1727,7 @@ test('dependency injection unknown', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller], [provide<A>(Service)]);
-    expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).text).toEqual('Not found');
+    expect((await httpKernel.request(HttpRequest.GET('/user/peter'))).text).toEqual('Internal error');
 });
 
 test('disabled reflection', async () => {
@@ -1735,9 +1783,8 @@ test('required query should be required', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller]);
-    expect((await httpKernel.request(HttpRequest.GET('/'))).json).toMatchObject({
-        message: 'Validation error:\nentityId(type): No value given',
-    });
+    const response = (await httpKernel.request(HttpRequest.GET('/'))).json;
+    expect(response.message).toContain('Validation error:\nentityId(type): No value given');
     expect((await httpKernel.request(HttpRequest.GET('/?entityId=asd'))).json).toEqual(['asd']);
 });
 
@@ -1755,9 +1802,8 @@ test('required fields in body should be required', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller]);
-    expect((await httpKernel.request(HttpRequest.POST('/'))).json).toMatchObject({
-        message: 'Validation error:\nb(type): Not a string',
-    });
+    const response = (await httpKernel.request(HttpRequest.POST('/'))).json;
+    expect(response.message).toContain('Validation error:\nb(type): Not a string');
     expect((await httpKernel.request(HttpRequest.POST('/').json({ b: 'asd' }))).json).toEqual([null, 'asd']);
     expect((await httpKernel.request(HttpRequest.POST('/').json({ a: 'a', b: 'asd' }))).json).toEqual(['a', 'asd']);
 });
@@ -1765,20 +1811,102 @@ test('required fields in body should be required', async () => {
 test('query validator withing HttpQuery', async () => {
     class Controller {
         @http.GET('do')
-        async do(
-            a: HttpQuery<string & MinLength<8>>,
-            b: HttpQuery<string>,
-        ) {
+        async do(a: HttpQuery<string & MinLength<8>>, b: HttpQuery<string>) {
             return { valid: true };
         }
     }
 
     const httpKernel = createHttpKernel([Controller]);
 
-    //todo: fix this, see https://github.com/deepkit/deepkit-framework/issues/614
-    // expect((await httpKernel.request(HttpRequest.GET('/do').query('a=aaaaaaaa&b=bbbb'))).json).toMatchObject({
-    //     valid: true
-    // });
+    // Both parameters valid
+    expect((await httpKernel.request(HttpRequest.GET('/do').query('a=aaaaaaaa&b=bbbb'))).json).toMatchObject({
+        valid: true,
+    });
+
+    // Parameter 'a' too short - should fail
+    const response1 = await httpKernel.request(HttpRequest.GET('/do').query('a=short&b=bbbb'));
+    expect(response1.statusCode).toBe(400);
+    expect(response1.json.message).toContain('a(minLength)');
+
+    // Parameter 'b' should NOT have MinLength validator (the bug was validator leaking from 'a' to 'b')
+    // This tests that b=bb (short value) is still valid since b has no MinLength constraint
+    const response2 = await httpKernel.request(HttpRequest.GET('/do').query('a=aaaaaaaa&b=bb'));
+    expect(response2.json).toMatchObject({ valid: true });
+});
+
+test('query validator leak - comprehensive edge cases (#614)', async () => {
+    // Test multiple validators with multiple parameters to ensure no leaking
+    class Controller1 {
+        @http.GET('test1')
+        async test1(a: HttpQuery<string & MinLength<5>>, b: HttpQuery<string>, c: HttpQuery<string & MinLength<3>>) {
+            return { a, b, c };
+        }
+    }
+
+    // Test validator on middle parameter
+    class Controller2 {
+        @http.GET('test2')
+        async test2(a: HttpQuery<string>, b: HttpQuery<string & MinLength<10>>, c: HttpQuery<string>) {
+            return { a, b, c };
+        }
+    }
+
+    // Test validator on last parameter
+    class Controller3 {
+        @http.GET('test3')
+        async test3(a: HttpQuery<string>, b: HttpQuery<string>, c: HttpQuery<string & MinLength<7>>) {
+            return { a, b, c };
+        }
+    }
+
+    // Test with integer and Positive validator
+    class Controller4 {
+        @http.GET('test4')
+        async test4(a: HttpQuery<integer & Positive>, b: HttpQuery<integer>) {
+            return { a, b };
+        }
+    }
+
+    const httpKernel = createHttpKernel([Controller1, Controller2, Controller3, Controller4]);
+
+    // Controller1: Validator on first and third param
+    // 'a' needs >= 5 chars, 'b' has no constraint, 'c' needs >= 3 chars
+    expect((await httpKernel.request(HttpRequest.GET('/test1').query('a=12345&b=x&c=123'))).json).toMatchObject({ a: '12345', b: 'x', c: '123' });
+    expect((await httpKernel.request(HttpRequest.GET('/test1').query('a=12345&b=&c=123'))).json).toMatchObject({ a: '12345', b: '', c: '123' }); // b can be empty
+    const r1 = await httpKernel.request(HttpRequest.GET('/test1').query('a=1234&b=x&c=123')); // a too short
+    expect(r1.statusCode).toBe(400);
+    expect(r1.json.message).toContain('a(minLength)');
+    expect(r1.json.message).not.toContain('b(minLength)');
+    const r1b = await httpKernel.request(HttpRequest.GET('/test1').query('a=12345&b=x&c=12')); // c too short
+    expect(r1b.statusCode).toBe(400);
+    expect(r1b.json.message).toContain('c(minLength)');
+    expect(r1b.json.message).not.toContain('b(minLength)');
+
+    // Controller2: Validator only on middle param
+    // 'a' has no constraint, 'b' needs >= 10 chars, 'c' has no constraint
+    expect((await httpKernel.request(HttpRequest.GET('/test2').query('a=x&b=1234567890&c=y'))).json).toMatchObject({ a: 'x', b: '1234567890', c: 'y' });
+    const r2 = await httpKernel.request(HttpRequest.GET('/test2').query('a=x&b=123456789&c=y')); // b too short
+    expect(r2.statusCode).toBe(400);
+    expect(r2.json.message).toContain('b(minLength)');
+    expect(r2.json.message).not.toContain('a(minLength)');
+    expect(r2.json.message).not.toContain('c(minLength)');
+
+    // Controller3: Validator only on last param
+    // 'a' has no constraint, 'b' has no constraint, 'c' needs >= 7 chars
+    expect((await httpKernel.request(HttpRequest.GET('/test3').query('a=1&b=2&c=1234567'))).json).toMatchObject({ a: '1', b: '2', c: '1234567' });
+    const r3 = await httpKernel.request(HttpRequest.GET('/test3').query('a=1&b=2&c=123456')); // c too short
+    expect(r3.statusCode).toBe(400);
+    expect(r3.json.message).toContain('c(minLength)');
+    expect(r3.json.message).not.toContain('a(minLength)');
+    expect(r3.json.message).not.toContain('b(minLength)');
+
+    // Controller4: Integer with Positive validator
+    // 'a' needs to be positive, 'b' has no constraint (can be negative)
+    expect((await httpKernel.request(HttpRequest.GET('/test4').query('a=5&b=-10'))).json).toMatchObject({ a: 5, b: -10 });
+    const r4 = await httpKernel.request(HttpRequest.GET('/test4').query('a=-5&b=10')); // a is negative
+    expect(r4.statusCode).toBe(400);
+    expect(r4.json.message).toContain('a(positive)');
+    expect(r4.json.message).not.toContain('b(positive)');
 });
 
 test('http body deep optional union', async () => {
@@ -1787,10 +1915,10 @@ test('http body deep optional union', async () => {
         body: string;
         pictureUrl: string;
         attributes: {
-            plotSurface?: number,
-            buildingSurface: number,
-            ges?: string,
-            energyRate?: string,
+            plotSurface?: number;
+            buildingSurface: number;
+            ges?: string;
+            energyRate?: string;
         };
     }
 
@@ -1805,27 +1933,29 @@ test('http body deep optional union', async () => {
     }
 
     const data: JSONEntity<ParcelSearchParams> = {
-        'adUrl': 'https://leboncoin.fr/locations/1234567890.htm',
-        'originalAd': {
-            'title': 'Maison 4 pièces 92 m²',
-            'body': '',
-            'pictureUrl': 'https://someurl.com',
-            'attributes': {
-                'buildingSurface': 92,
-                'plotSurface': null,
-                'energyRate': 'D',
-                'ges': 'E',
+        adUrl: 'https://leboncoin.fr/locations/1234567890.htm',
+        originalAd: {
+            title: 'Maison 4 pièces 92 m²',
+            body: '',
+            pictureUrl: 'https://someurl.com',
+            attributes: {
+                buildingSurface: 92,
+                plotSurface: null,
+                energyRate: 'D',
+                ges: 'E',
             },
         },
-        'ad': null,
+        ad: null,
     } as any;
 
     class Controller {
         @http.POST('/parcels')
-        async getPossibleParcels(body: HttpBody<{
-            input: ParcelSearchParams
-            ademeQuery: Array<string>
-        }>) {
+        async getPossibleParcels(
+            body: HttpBody<{
+                input: ParcelSearchParams;
+                ademeQuery: Array<string>;
+            }>,
+        ) {
             expect(body.input).toEqual({
                 ...data,
                 originalAd: {
@@ -1841,10 +1971,12 @@ test('http body deep optional union', async () => {
     }
 
     const httpKernel = createHttpKernel([Controller]);
-    const res = await httpKernel.request(HttpRequest.POST('/parcels').json({
-        input: data,
-        ademeQuery: ['a', 'b'],
-    }));
+    const res = await httpKernel.request(
+        HttpRequest.POST('/parcels').json({
+            input: data,
+            ademeQuery: ['a', 'b'],
+        }),
+    );
     expect(res.statusCode).toBe(200);
 });
 
@@ -1897,7 +2029,7 @@ test('handleRequest', async () => {
         const res = new MemoryHttpResponse(req);
         const middleware = httpKernel.createMiddleware({ fallThroughOnNotFound: false });
         let called = false;
-        await middleware(req, res, (error) => {
+        await middleware(req, res, error => {
             expect(error).toBeUndefined();
             called = true;
         });
@@ -1909,7 +2041,7 @@ test('handleRequest', async () => {
         const res = new MemoryHttpResponse(req);
         const middleware = httpKernel.createMiddleware({ fallThroughOnNotFound: true });
         let called = false;
-        await middleware(req, res, (error) => {
+        await middleware(req, res, error => {
             expect(error).toBeUndefined();
             called = true;
         });

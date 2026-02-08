@@ -1,28 +1,32 @@
-import { HttpListener, HttpResultFormatter, httpWorkflow } from './http.js';
-import { HttpConfig } from './module.config.js';
 import { AddedListener, AppModule, ControllerConfig, createModuleClass, stringifyListener } from '@deepkit/app';
-import { HttpRouter, HttpRouterRegistry, RouteConfig } from './router.js';
-import { HttpKernel } from './kernel.js';
-import { HttpRouterFilterResolver } from './filter.js';
-import { HttpControllers } from './controllers.js';
-import { ConsoleTransport, Logger } from '@deepkit/logger';
-import { HttpRequest, HttpResponse } from './model.js';
-import '@deepkit/type';
-import { httpClass } from './decorator.js';
+import { DeepkitError } from '@deepkit/core';
 import { EventToken } from '@deepkit/event';
-import { ReflectionKind, ReflectionParameter, Type, typeAnnotation } from '@deepkit/type';
-import { buildRequestParser } from './request-parser.js';
 import { InjectorContext } from '@deepkit/injector';
+import { ConsoleTransport, Logger } from '@deepkit/logger';
+import '@deepkit/type';
+import { ReflectionKind, ReflectionParameter, Type, typeAnnotation } from '@deepkit/type';
+
+import { HttpControllers } from './controllers.js';
+import { CorsListener } from './cors.js';
+import { httpClass } from './decorator.js';
+import { HttpRouterFilterResolver } from './filter.js';
+import { HttpListener, HttpResultFormatter, httpWorkflow } from './http.js';
+import { HttpKernel } from './kernel.js';
+import { HttpRequest, HttpResponse } from './model.js';
+import { HttpConfig } from './module.config.js';
+import { buildRequestParser } from './request-parser.js';
+import { HttpRouter, HttpRouterRegistry, RouteConfig } from './router.js';
 
 function parameterRequiresRequest(parameter: ReflectionParameter): boolean {
-    return Boolean(typeAnnotation.getType(parameter.type, 'httpQueries')
-        || typeAnnotation.getType(parameter.type, 'httpQuery')
-        || typeAnnotation.getType(parameter.type, 'httpBody')
-        || typeAnnotation.getType(parameter.type, 'httpRequestParser')
-        || typeAnnotation.getType(parameter.type, 'httpPath')
-        || typeAnnotation.getType(parameter.type, 'httpHeader'));
+    return Boolean(
+        typeAnnotation.getType(parameter.type, 'httpQueries') ||
+            typeAnnotation.getType(parameter.type, 'httpQuery') ||
+            typeAnnotation.getType(parameter.type, 'httpBody') ||
+            typeAnnotation.getType(parameter.type, 'httpRequestParser') ||
+            typeAnnotation.getType(parameter.type, 'httpPath') ||
+            typeAnnotation.getType(parameter.type, 'httpHeader'),
+    );
 }
-
 
 export class HttpModule extends createModuleClass({
     config: HttpConfig,
@@ -38,12 +42,8 @@ export class HttpModule extends createModuleClass({
         { provide: RouteConfig, useValue: undefined, scope: 'http' },
         { provide: Logger, useValue: new Logger([new ConsoleTransport()]) },
     ],
-    listeners: [
-        HttpListener,
-    ],
-    workflows: [
-        httpWorkflow
-    ],
+    listeners: [HttpListener],
+    workflows: [httpWorkflow],
     exports: [
         HttpRouter,
         HttpRouterRegistry,
@@ -56,15 +56,24 @@ export class HttpModule extends createModuleClass({
         HttpControllers,
         RouteConfig,
         Logger,
-    ]
+    ],
 }) {
-    protected httpControllers = new HttpControllers;
+    protected httpControllers = new HttpControllers();
 
     process() {
         this.addProvider({ provide: HttpControllers, useValue: this.httpControllers });
+
+        // Register CORS listener if configured
+        if (this.config.cors) {
+            this.addListener(CorsListener);
+        }
     }
 
-    protected patchEventsForHttpRequestAccess: EventToken<any>[] = [httpWorkflow.onRequest, httpWorkflow.onAuth, httpWorkflow.onController];
+    protected patchEventsForHttpRequestAccess: EventToken<any>[] = [
+        httpWorkflow.onRequest,
+        httpWorkflow.onAuth,
+        httpWorkflow.onController,
+    ];
 
     processListener(module: AppModule<any>, listener: AddedListener) {
         if (!this.patchEventsForHttpRequestAccess.includes(listener.eventToken)) return;
@@ -80,7 +89,10 @@ export class HttpModule extends createModuleClass({
 
         if (needsAsync) {
             //not yet supported since we have to patch the listener to be async and redirect the call (as the DI container is sync).
-            throw new Error(`Listener ${stringifyListener(listener)} requires async HttpBody. This is not yet supported. You have to parse the request manually by injecting HttpRequest.`);
+            throw new DeepkitError(
+                'DK-H002',
+                `Listener ${stringifyListener(listener)} requires async HttpBody. This is not yet supported. You have to parse the request manually by injecting HttpRequest.`,
+            );
         }
 
         const parserCache = new Map<RouteConfig, Function>();
@@ -96,7 +108,13 @@ export class HttpModule extends createModuleClass({
             let i = index;
 
             this.addProvider({
-                provide: uniqueType, useFactory: (httpConfig: HttpConfig, request: HttpRequest, injector: InjectorContext, config?: RouteConfig) => {
+                provide: uniqueType,
+                useFactory: (
+                    httpConfig: HttpConfig,
+                    request: HttpRequest,
+                    injector: InjectorContext,
+                    config?: RouteConfig,
+                ) => {
                     let build = config && parserCache.get(config);
                     if (!build) {
                         const params = listener.reflection.getParameters().slice(1);
@@ -107,7 +125,8 @@ export class HttpModule extends createModuleClass({
                     const parser = build(request);
                     const result = parser(injector);
                     return result.arguments[i];
-                }, scope: 'http'
+                },
+                scope: 'http',
             });
             this.addExport(uniqueType);
         }

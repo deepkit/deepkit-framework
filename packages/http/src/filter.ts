@@ -1,6 +1,7 @@
-import { ClassType } from '@deepkit/core';
 import { AppModule } from '@deepkit/app';
-import { RouteConfig, HttpRouter } from './router.js';
+import { ClassType } from '@deepkit/core';
+
+import { HttpRouter, RouteConfig } from './router.js';
 
 export interface HttpRouteFilterRoute {
     path?: string;
@@ -57,8 +58,7 @@ function match(routeConfig: RouteConfig, route: HttpRouteFilterRoute): boolean {
 }
 
 export class HttpRouterFilterResolver {
-    constructor(protected router: HttpRouter) {
-    }
+    constructor(protected router: HttpRouter) {}
 
     /**
      * Resolves
@@ -66,96 +66,105 @@ export class HttpRouterFilterResolver {
     public resolve(filter: HttpRouteFilterModel): RouteConfig[] {
         const result: RouteConfig[] = [];
 
-        outer:
-            for (const routeConfig of this.router.getRoutes()) {
-                if (filter.controllers.length && routeConfig.action.type === 'controller' && !filter.controllers.includes(routeConfig.action.controller)) continue;
+        outer: for (const routeConfig of this.router.getRoutes()) {
+            if (
+                filter.controllers.length &&
+                routeConfig.action.type === 'controller' &&
+                !filter.controllers.includes(routeConfig.action.controller)
+            )
+                continue;
 
-                if (filter.excludeControllers.length && routeConfig.action.type === 'controller' && filter.excludeControllers.includes(routeConfig.action.controller)) continue;
+            if (
+                filter.excludeControllers.length &&
+                routeConfig.action.type === 'controller' &&
+                filter.excludeControllers.includes(routeConfig.action.controller)
+            )
+                continue;
 
-                if (filter.modules.length) {
-                    if (!routeConfig.module) continue;
-                    let found: boolean = false;
-                    for (const module of filter.modules) {
-                        //modules get cloned everywhere, but id is sticky. So we compare that.
-                        if (routeConfig.module.id === module.id) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) continue;
-                }
-
-                if (filter.excludeModules.length) {
-                    if (!routeConfig.module) continue;
-                    for (const module of filter.excludeModules) {
-                        //modules get cloned everywhere, but id is sticky. So we compare that.
-                        if (routeConfig.module.id === module.id) continue outer;
-                    }
-                }
-
-                if (filter.moduleClasses.length) {
-                    if (!routeConfig.module) continue;
-                    let found: boolean = false;
-                    for (const module of filter.moduleClasses) {
-                        if (routeConfig.module instanceof module) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) continue;
-                }
-
-                if (filter.excludeModuleClasses.length) {
-                    if (!routeConfig.module) continue;
-                    for (const module of filter.excludeModuleClasses) {
-                        if (routeConfig.module instanceof module) continue outer;
+            if (filter.modules.length) {
+                if (!routeConfig.module) continue;
+                let found: boolean = false;
+                for (const module of filter.modules) {
+                    //modules get cloned everywhere, but id is sticky. So we compare that.
+                    if (routeConfig.module.id === module.id) {
+                        found = true;
+                        break;
                     }
                 }
-
-                if (filter.routeNames.length) {
-                    let found: boolean = false;
-                    for (const name of filter.routeNames) {
-                        if (name.includes('*')) {
-                            const regex = new RegExp('^' + name.replace(/\*/g, '.*') + '$');
-                            if (regex.test(routeConfig.name)) {
-                                found = true;
-                                break;
-                            }
-                        } else if (name === routeConfig.name) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) continue;
-                }
-
-                if (filter.excludeRouteNames.length) {
-                    for (const name of filter.excludeRouteNames) {
-                        if (name.includes('*')) {
-                            const regex = new RegExp('^' + name.replace(/\*/g, '.*') + '$');
-                            if (regex.test(routeConfig.name)) continue outer;
-                        } else if (name == routeConfig.name) {
-                            continue outer;
-                        }
-                    }
-                }
-
-                if (filter.routes.length) {
-                    let found: boolean = false;
-                    for (const route of filter.routes) {
-                        if (match(routeConfig, route)) {
-                            found = true;
-                        }
-                    }
-                    if (!found) continue;
-                }
-
-                for (const route of filter.excludeRoutes) {
-                    if (match(routeConfig, route)) continue outer;
-                }
-
-                result.push(routeConfig);
+                if (!found) continue;
             }
+
+            if (filter.excludeModules.length) {
+                if (!routeConfig.module) continue;
+                for (const module of filter.excludeModules) {
+                    //modules get cloned everywhere, but id is sticky. So we compare that.
+                    if (routeConfig.module.id === module.id) continue outer;
+                }
+            }
+
+            if (filter.moduleClasses.length) {
+                if (!routeConfig.module) continue;
+                let found: boolean = false;
+                for (const module of filter.moduleClasses) {
+                    if (routeConfig.module instanceof module) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) continue;
+            }
+
+            if (filter.excludeModuleClasses.length) {
+                if (!routeConfig.module) continue;
+                for (const module of filter.excludeModuleClasses) {
+                    if (routeConfig.module instanceof module) continue outer;
+                }
+            }
+
+            if (filter.routeNames.length) {
+                let found: boolean = false;
+                for (const name of filter.routeNames) {
+                    if (name.includes('*')) {
+                        const regex = new RegExp('^' + name.replace(/\*/g, '.*') + '$');
+                        if (regex.test(routeConfig.name)) {
+                            found = true;
+                            break;
+                        }
+                    } else if (name === routeConfig.name) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) continue;
+            }
+
+            if (filter.excludeRouteNames.length) {
+                for (const name of filter.excludeRouteNames) {
+                    if (name.includes('*')) {
+                        const regex = new RegExp('^' + name.replace(/\*/g, '.*') + '$');
+                        if (regex.test(routeConfig.name)) continue outer;
+                    } else if (name == routeConfig.name) {
+                        continue outer;
+                    }
+                }
+            }
+
+            if (filter.routes.length) {
+                let found: boolean = false;
+                for (const route of filter.routes) {
+                    if (match(routeConfig, route)) {
+                        found = true;
+                    }
+                }
+                if (!found) continue;
+            }
+
+            for (const route of filter.excludeRoutes) {
+                if (match(routeConfig, route)) continue outer;
+            }
+
+            result.push(routeConfig);
+        }
 
         return result;
     }
@@ -194,7 +203,7 @@ export class HttpRouteFilter {
 
     forRouteNames(...names: string[]): this {
         this.model.routeNames.push(...names);
-        return this
+        return this;
     }
 
     excludeRouteNames(...names: string[]): this {

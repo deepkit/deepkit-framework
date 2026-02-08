@@ -1,12 +1,14 @@
-import { App, AppModule } from '@deepkit/app';
 import { expect, test } from '@jest/globals';
-import { HttpModule } from '../src/module.js';
-import { HttpKernel } from '../src/kernel.js';
-import { HttpRequest } from '../src/model.js';
+
+import { App, AppModule } from '@deepkit/app';
+import { provide } from '@deepkit/injector';
+
 import { http } from '../src/decorator.js';
 import { HttpUnauthorizedError, httpWorkflow } from '../src/http.js';
+import { HttpKernel } from '../src/kernel.js';
+import { HttpRequest } from '../src/model.js';
+import { HttpModule } from '../src/module.js';
 import { HttpRouterRegistry, RouteConfig } from '../src/router.js';
-import { provide } from '@deepkit/injector';
 
 test('module basic functionality', async () => {
     class Controller {
@@ -17,12 +19,8 @@ test('module basic functionality', async () => {
     }
 
     const app = new App({
-        controllers: [
-            Controller,
-        ],
-        imports: [
-            new HttpModule(),
-        ],
+        controllers: [Controller],
+        imports: [new HttpModule()],
     });
 
     const httpKernel = app.get(HttpKernel);
@@ -44,17 +42,13 @@ test('functional listener', async () => {
 
     const gotUrls: string[] = [];
     const app = new App({
-        controllers: [
-            Controller,
-        ],
+        controllers: [Controller],
         listeners: [
             httpWorkflow.onController.listen(event => {
                 gotUrls.push(event.request.url || '');
             }),
         ],
-        imports: [
-            new HttpModule(),
-        ],
+        imports: [new HttpModule()],
     });
 
     const httpKernel = app.get(HttpKernel);
@@ -75,10 +69,13 @@ test('functional listener', async () => {
 });
 
 test('functional routes using use()', async () => {
-    type User = { id: number, username: string };
+    type User = { id: number; username: string };
 
     class MyService {
-        users: User[] = [{ id: 1, username: 'peter' }, { id: 2, username: 'marie' }];
+        users: User[] = [
+            { id: 1, username: 'peter' },
+            { id: 2, username: 'marie' },
+        ];
     }
 
     const app = new App({
@@ -98,7 +95,10 @@ test('functional routes using use()', async () => {
     {
         const response = await httpKernel.request(HttpRequest.GET('/users'));
         expect(response.statusCode).toBe(200);
-        expect(response.json).toEqual([{ id: 1, username: 'peter' }, { id: 2, username: 'marie' }]);
+        expect(response.json).toEqual([
+            { id: 1, username: 'peter' },
+            { id: 2, username: 'marie' },
+        ]);
     }
 
     {
@@ -115,11 +115,14 @@ test('dynamic route', async () => {
     });
 
     app.configureProvider<HttpRouterRegistry>(router => {
-        router.addRoute(new RouteConfig('name', ['GET'], '/users/:id', {
-            type: 'function', fn: (id: number) => {
-                return { id };
-            },
-        }));
+        router.addRoute(
+            new RouteConfig('name', ['GET'], '/users/:id', {
+                type: 'function',
+                fn: (id: number) => {
+                    return { id };
+                },
+            }),
+        );
 
         router.get('/users', () => {
             return [{ id: 1 }, { id: 2 }];
@@ -139,8 +142,7 @@ test('dynamic route', async () => {
 
 test('encapsulated service in router methods', async () => {
     class User {
-        constructor(public username: string) {
-        }
+        constructor(public username: string) {}
     }
 
     class MyController {
@@ -154,10 +156,12 @@ test('encapsulated service in router methods', async () => {
     myModule.addController(MyController);
     myModule.addProvider(provide<User>({ scope: 'http', useFactory: (req: HttpRequest) => req.store.user }));
 
-    myModule.addListener(httpWorkflow.onAuth.listen((event, request: HttpRequest) => {
-        if (!request.headers.authorization) throw new HttpUnauthorizedError();
-        request.store.user = new User('Peter:' + request.headers.authorization);
-    }));
+    myModule.addListener(
+        httpWorkflow.onAuth.listen((event, request: HttpRequest) => {
+            if (!request.headers.authorization) throw new HttpUnauthorizedError();
+            request.store.user = new User('Peter:' + request.headers.authorization);
+        }),
+    );
 
     const app = new App({
         imports: [new HttpModule(), myModule],

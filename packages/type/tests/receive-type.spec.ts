@@ -1,4 +1,7 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
+
 import { ReceiveType, resolveReceiveType, typeOf } from '../src/reflection/reflection.js';
 import { ReflectionKind, Type } from '../src/reflection/type.js';
 import { validates } from '../src/validator.js';
@@ -55,15 +58,13 @@ test('decorator call', () => {
         }
     }
 
-    const http = new HttpDecorator;
+    const http = new HttpDecorator();
 
-    interface User {
-    }
+    interface User {}
 
     class Controller {
         @(http.something().response<User>('abc'))
-        action() {
-        }
+        action() {}
     }
 
     expect(got).toMatchObject({ kind: ReflectionKind.objectLiteral, typeName: 'User' });
@@ -99,10 +100,12 @@ test('class constructor multiple', () => {
 });
 
 test('function with ReceiveType return expression', () => {
-    const typeValidation = <T>(type?: ReceiveType<T>) => (value: any) => {
-        type = resolveReceiveType(type);
-        return validates(value, type);
-    }
+    const typeValidation =
+        <T>(type?: ReceiveType<T>) =>
+        (value: any) => {
+            type = resolveReceiveType(type);
+            return validates(value, type);
+        };
 
     const validateString = typeValidation<string>();
     expect(validateString('hello')).toBe(true);

@@ -7,16 +7,17 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 // @ts-ignore
-import { indent } from './indent.js';
 import { hasProperty } from './core.js';
+import { indent } from './indent.js';
 
-declare var process: {
-    env: Record<string, string>;
-} | undefined;
+declare var process:
+    | {
+          env: Record<string, string>;
+      }
+    | undefined;
 
-const indentCode = ('undefined' !== typeof process && process.env?.DEBUG || '').includes('deepkit');
+const indentCode = (('undefined' !== typeof process && process.env?.DEBUG) || '').includes('deepkit');
 
 export class CompilerContext {
     public readonly context = new Map<string, any>();
@@ -100,7 +101,7 @@ export class CompilerContext {
 
     protected format(code: string): string {
         if (indentCode || this.config.indent) return indent.js(code, { tabString: '    ' });
-       return code;
+        return code;
     }
 
     build(functionCode: string, ...args: string[]): any {

@@ -9,7 +9,6 @@
  */
 
 /** @group Event */
-
 import { arrayRemoveItem } from './array.js';
 
 type AsyncSubscriber<T> = (event: T) => Promise<void> | void;
@@ -44,8 +43,7 @@ export class EmitterEvent {
 export class EventEmitter<T extends EmitterEvent> {
     protected subscribers: Subscriber<T>[] = [];
 
-    constructor(protected parent?: EventEmitter<any>) {
-    }
+    constructor(protected parent?: EventEmitter<any>) {}
 
     public subscribe(callback: Subscriber<T>): EventSubscription {
         this.subscribers.push(callback);
@@ -53,7 +51,7 @@ export class EventEmitter<T extends EmitterEvent> {
         return {
             unsubscribe: () => {
                 arrayRemoveItem(this.subscribers, callback);
-            }
+            },
         };
     }
 
@@ -75,8 +73,7 @@ export class EventEmitter<T extends EmitterEvent> {
 export class AsyncEventEmitter<T extends EmitterEvent> {
     protected subscribers: AsyncSubscriber<T>[] = [];
 
-    constructor(protected parent?: AsyncEventEmitter<any>) {
-    }
+    constructor(protected parent?: AsyncEventEmitter<any>) {}
 
     public subscribe(callback: AsyncSubscriber<T>): AsyncEventSubscription {
         this.subscribers.push(callback);
@@ -84,7 +81,7 @@ export class AsyncEventEmitter<T extends EmitterEvent> {
         return {
             unsubscribe: () => {
                 arrayRemoveItem(this.subscribers, callback);
-            }
+            },
         };
     }
 

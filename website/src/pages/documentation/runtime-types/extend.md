@@ -7,11 +7,13 @@ You can extend the serialization of a type by defining either write your own `Se
 This example shows how to serialize and deserialize a class `Point` to a tuple `[number, number]`.
 
 ```typescript
-import { serializer, SerializationError } from '@deepkit/type';
+import { SerializationError, serializer } from '@deepkit/type';
 
 class Point {
-  constructor(public x: number, public y: number) {
-  }
+  constructor(
+    public x: number,
+    public y: number,
+  ) {}
 }
 
 // deserialize means from JSON to (class) instance.
@@ -23,7 +25,8 @@ serializer.deserializeRegistry.registerClass(Point, (type, state) => {
     // at this point `v` could be anything (except undefined), so we need to check
     if (!Array.isArray(v)) throw new SerializationError('Expected array');
     if (v.length !== 2) throw new SerializationError('Expected array with two elements');
-    if (typeof v[0] !== 'number' || typeof v[1] !== 'number') throw new SerializationError('Expected array with two numbers');
+    if (typeof v[0] !== 'number' || typeof v[1] !== 'number')
+      throw new SerializationError('Expected array with two numbers');
     return new Point(v[0], v[1]);
   });
 });
@@ -43,7 +46,7 @@ expect(point.y).toBe(2);
 
 {
   expect(() => deserialize<Point>(['vbb'])).toThrowError(SerializationError);
-  expect(() => deserialize<Point>(['vbb'])).toThrow('Expected array with two elements')
+  expect(() => deserialize<Point>(['vbb'])).toThrow('Expected array with two elements');
 }
 
 // serialize uses `serializer` by default

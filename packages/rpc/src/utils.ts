@@ -1,4 +1,5 @@
 import { Subject } from 'rxjs';
+
 import { isFunction } from '@deepkit/core';
 
 /**
@@ -80,11 +81,14 @@ async function resolveProducer<T>(producer: InstanceProducer<T>): Promise<T> {
  */
 export function instantSubject<T>(producer: InstanceProducer<Subject<T>>): Subject<T> {
     const subject = new Subject<T>();
-    resolveProducer(producer).then((s) => {
-        s.subscribe(subject);
-        subject.subscribe().add(() => s.complete());
-    }, (error) => {
-        subject.error(error);
-    });
+    resolveProducer(producer).then(
+        s => {
+            s.subscribe(subject);
+            subject.subscribe().add(() => s.complete());
+        },
+        error => {
+            subject.error(error);
+        },
+    );
     return subject;
 }

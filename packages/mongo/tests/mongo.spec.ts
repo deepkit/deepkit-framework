@@ -1,11 +1,13 @@
 import { expect, jest, test } from '@jest/globals';
-import { arrayBufferFrom, AutoIncrement, BackReference, cast, entity, MongoId, nodeBufferToArrayBuffer, PrimaryKey, Reference, ReflectionClass, ReflectionKind, serialize, Unique, UUID, uuid } from '@deepkit/type';
-import { Database, getInstanceStateFromItem, UniqueConstraintFailure } from '@deepkit/orm';
+
+import { ObjectId } from '@deepkit/bson';
+import { MemoryLogger } from '@deepkit/logger';
+import { Database, UniqueConstraintFailure, getInstanceStateFromItem } from '@deepkit/orm';
+import { AutoIncrement, BackReference, MongoId, PrimaryKey, Reference, ReflectionClass, ReflectionKind, UUID, Unique, arrayBufferFrom, cast, entity, nodeBufferToArrayBuffer, serialize, uuid } from '@deepkit/type';
+
+import { MongoDatabaseAdapter } from '../src/adapter.js';
 import { SimpleModel, SuperSimple } from './entities.js';
 import { createDatabase } from './utils.js';
-import { MongoDatabaseAdapter } from '../src/adapter.js';
-import { MemoryLogger } from '@deepkit/logger';
-import { ObjectId } from '@deepkit/bson';
 
 Error.stackTraceLimit = 100;
 jest.setTimeout(10000);
@@ -26,8 +28,7 @@ test('test save undefined values', async () => {
     class Model {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name?: string) {
-        }
+        constructor(public name?: string) {}
     }
 
     // const collection = await session.adapter.connection.getCollection(getClassSchema(Model));
@@ -206,15 +207,38 @@ test('test patchAll', async () => {
     await database.persist(new SimpleModel('myName2'));
     await database.persist(new SimpleModel('peter'));
 
-    expect(await session.query(SimpleModel).filter({ name: { $regex: /^myName?/ } }).count()).toBe(2);
-    expect(await session.query(SimpleModel).filter({ name: { $regex: /^peter.*/ } }).count()).toBe(1);
+    expect(
+        await session
+            .query(SimpleModel)
+            .filter({ name: { $regex: /^myName?/ } })
+            .count(),
+    ).toBe(2);
+    expect(
+        await session
+            .query(SimpleModel)
+            .filter({ name: { $regex: /^peter.*/ } })
+            .count(),
+    ).toBe(1);
 
-    await session.query(SimpleModel).filter({ name: { $regex: /^myName?/ } }).patchMany({
-        name: 'peterNew',
-    });
+    await session
+        .query(SimpleModel)
+        .filter({ name: { $regex: /^myName?/ } })
+        .patchMany({
+            name: 'peterNew',
+        });
 
-    expect(await session.query(SimpleModel).filter({ name: { $regex: /^myName?/ } }).count()).toBe(0);
-    expect(await session.query(SimpleModel).filter({ name: { $regex: /^peter.*/ } }).count()).toBe(3);
+    expect(
+        await session
+            .query(SimpleModel)
+            .filter({ name: { $regex: /^myName?/ } })
+            .count(),
+    ).toBe(0);
+    expect(
+        await session
+            .query(SimpleModel)
+            .filter({ name: { $regex: /^peter.*/ } })
+            .count(),
+    ).toBe(3);
 
     const fields = await session.query(SimpleModel).filter({ name: 'peterNew' }).select('name').findOne();
     expect(fields!.name).toBe('peterNew');
@@ -273,8 +297,22 @@ test('test delete', async () => {
     expect(getInstanceStateFromItem(instance2).isKnownInDatabase()).toBe(true);
     expect(await session.query(SimpleModel).count()).toBe(2);
 
-    expect((await session.query(SimpleModel).filter({ name: { $regex: /myName[0-9]/ } }).find()).length).toBe(2);
-    expect((await session.query(SimpleModel).filter({ name: { $regex: /myName[0-9]/ } }).deleteMany()).modified).toBe(2);
+    expect(
+        (
+            await session
+                .query(SimpleModel)
+                .filter({ name: { $regex: /myName[0-9]/ } })
+                .find()
+        ).length,
+    ).toBe(2);
+    expect(
+        (
+            await session
+                .query(SimpleModel)
+                .filter({ name: { $regex: /myName[0-9]/ } })
+                .deleteMany()
+        ).modified,
+    ).toBe(2);
     expect(await session.query(SimpleModel).count()).toBe(0);
 
     expect(getInstanceStateFromItem(instance1).isKnownInDatabase()).toBe(false);
@@ -284,10 +322,16 @@ test('test delete', async () => {
     await session.commit();
     expect(await session.query(SimpleModel).count()).toBe(2);
 
-    await session.query(SimpleModel).filter({ name: { $regex: /myName[0-9]/ } }).deleteOne();
+    await session
+        .query(SimpleModel)
+        .filter({ name: { $regex: /myName[0-9]/ } })
+        .deleteOne();
     expect(await session.query(SimpleModel).count()).toBe(1);
 
-    await session.query(SimpleModel).filter({ name: { $regex: /myName[0-9]/ } }).deleteOne();
+    await session
+        .query(SimpleModel)
+        .filter({ name: { $regex: /myName[0-9]/ } })
+        .deleteOne();
     expect(await session.query(SimpleModel).count()).toBe(0);
     database.disconnect();
 });
@@ -352,7 +396,6 @@ test('no id', async () => {
     database.disconnect();
 });
 
-
 test('second object id', async () => {
     const database = await createDatabase('testing');
     const session = database.createSession();
@@ -404,8 +447,7 @@ test('references back', async () => {
 
         public images: Image[] & BackReference = [];
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     @entity.name('image1')
@@ -540,36 +582,32 @@ test('test identityMap', async () => {
 test('aggregation without accumulators', async () => {
     class File {
         public _id: MongoId & PrimaryKey = '';
-        created: Date = new Date;
+        created: Date = new Date();
 
         downloads: number = 0;
 
         category: string = 'none';
 
-        constructor(public path: string) {
-        }
+        constructor(public path: string) {}
     }
 
     const database = await createDatabase('aggregation');
 
-    await database.persist(cast<File>({ path: 'file1', category: 'images' }),
-        cast<File>({ path: 'file2', category: 'images' }),
-        cast<File>({ path: 'file3', category: 'pdfs' }));
+    await database.persist(cast<File>({ path: 'file1', category: 'images' }), cast<File>({ path: 'file2', category: 'images' }), cast<File>({ path: 'file3', category: 'pdfs' }));
 
-    await database.query(File).filter({ path: 'file1' }).patchOne({ $inc: { downloads: 15 } });
-    await database.query(File).filter({ path: 'file2' }).patchOne({ $inc: { downloads: 5 } });
+    await database
+        .query(File)
+        .filter({ path: 'file1' })
+        .patchOne({ $inc: { downloads: 15 } });
+    await database
+        .query(File)
+        .filter({ path: 'file2' })
+        .patchOne({ $inc: { downloads: 5 } });
 
-    const res = await database.query(File)
-        .groupBy('category')
-        .orderBy('category', 'asc')
-        .find();
+    const res = await database.query(File).groupBy('category').orderBy('category', 'asc').find();
     expect(res).toEqual([{ category: 'images' }, { category: 'pdfs' }]);
 
-    const res2 = await database.query(File)
-        .withSum('downloads', 'downloadsSum')
-        .groupBy('category')
-        .orderBy('category', 'asc')
-        .find();
+    const res2 = await database.query(File).withSum('downloads', 'downloadsSum').groupBy('category').orderBy('category', 'asc').find();
 
     expect(res2).toEqual([
         { downloadsSum: 20, category: 'images' },
@@ -582,8 +620,7 @@ test('raw', async () => {
     class Model {
         public _id: MongoId & PrimaryKey = '';
 
-        constructor(public id: number) {
-        }
+        constructor(public id: number) {}
     }
 
     const database = await createDatabase('raw');
@@ -607,8 +644,7 @@ test('batch', async () => {
     class Model {
         public _id: MongoId & PrimaryKey = '';
 
-        constructor(public id: number) {
-        }
+        constructor(public id: number) {}
     }
 
     const database = await createDatabase('batch');
@@ -637,8 +673,7 @@ test('unique constraint 1', async () => {
     class Model {
         id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public username: string & Unique = '') {
-        }
+        constructor(public username: string & Unique = '') {}
     }
 
     const database = await createDatabase('unique');
@@ -680,8 +715,7 @@ test('collation', async () => {
     class User {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = await createDatabase('collation');
@@ -691,7 +725,8 @@ test('collation', async () => {
     await database.persist(new User('eclair'), new User('éclair'), new User('Napoleon'));
 
     {
-        const users = await database.query(User)
+        const users = await database
+            .query(User)
             .filter({ name: 'eclair' })
             .withOptions({ collation: { locale: 'en', strength: 1 } })
             .select('name')
@@ -699,7 +734,8 @@ test('collation', async () => {
         expect(users).toEqual([{ name: 'eclair' }, { name: 'éclair' }]);
     }
     {
-        const users = await database.query(User)
+        const users = await database
+            .query(User)
             .filter({ name: 'eclair' })
             .withOptions({ collation: { locale: 'en', strength: 1 } })
             .count();
@@ -707,53 +743,42 @@ test('collation', async () => {
     }
 
     {
-        const users = await database.query(User)
-            .filter({ name: 'eclair' })
-            .select('name')
-            .find();
+        const users = await database.query(User).filter({ name: 'eclair' }).select('name').find();
         expect(users).toEqual([{ name: 'eclair' }]);
     }
 
     {
-        const users = await database.raw<User, { name: string }>([
-            { $match: { name: 'eclair' } },
-            { $project: { name: 1 } },
-        ]).find();
+        const users = await database.raw<User, { name: string }>([{ $match: { name: 'eclair' } }, { $project: { name: 1 } }]).find();
         expect(users).toEqual([{ name: 'eclair' }]);
     }
 
     {
-        const users = await database.raw<User, { name: string }>([
-            { $match: { name: 'eclair' } },
-            { $project: { name: 1 } },
-        ])
+        const users = await database
+            .raw<User, { name: string }>([{ $match: { name: 'eclair' } }, { $project: { name: 1 } }])
             .withOptions({ collation: { locale: 'en', strength: 1 } })
             .find();
         expect(users).toEqual([{ name: 'eclair' }, { name: 'éclair' }]);
     }
 
     {
-        const users = await database.raw<User, { name: string }>([
-            { $match: { name: 'eclair' } },
-            { $project: { name: 1 } },
-        ])
+        const users = await database
+            .raw<User, { name: string }>([{ $match: { name: 'eclair' } }, { $project: { name: 1 } }])
             .withOptions({ collation: { locale: 'en', strength: 1 } })
             .find();
         expect(users).toEqual([{ name: 'eclair' }, { name: 'éclair' }]);
     }
 
     {
-        const users = await database.raw<User, { name: string }>([
-            { $match: { name: 'eclair' } },
-            { $project: { name: 1 } },
-        ])
+        const users = await database
+            .raw<User, { name: string }>([{ $match: { name: 'eclair' } }, { $project: { name: 1 } }])
             .withOptions({ collation: { locale: 'en', strength: 1 } })
             .explain();
         expect(users.queryPlanner.winningPlan.stage).toBe('PROJECTION_SIMPLE');
     }
 
     {
-        const users = await database.query(User)
+        const users = await database
+            .query(User)
             .filter({ name: 'eclair' })
             .withOptions({ collation: { locale: 'en', strength: 1 } })
             .explain('find');
@@ -761,7 +786,8 @@ test('collation', async () => {
     }
 
     {
-        const users = await database.query(User)
+        const users = await database
+            .query(User)
             .filter({ name: 'eclair' })
             .withOptions({ collation: { locale: 'en', strength: 1 } })
             .explain('find', 'queryPlanner');
@@ -769,7 +795,8 @@ test('collation', async () => {
     }
 
     {
-        const users = await database.query(User)
+        const users = await database
+            .query(User)
             .filter({ name: 'eclair' })
             .withOptions({ collation: { locale: 'en', strength: 1 } })
             .explain('find', 'executionStats');
@@ -778,7 +805,8 @@ test('collation', async () => {
 
     {
         logger.clear();
-        const users = await database.query(User)
+        const users = await database
+            .query(User)
             .filter({ name: 'eclair' })
             .withOptions({ collation: { locale: 'en', strength: 1 } })
             .logExplain()
@@ -793,8 +821,7 @@ test('allowDiskUse', async () => {
     class User {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     const database = await createDatabase('allowDiskUse');
@@ -804,19 +831,14 @@ test('allowDiskUse', async () => {
     await database.persist(new User('eclair'), new User('éclair'), new User('Napoleon'));
 
     {
-        const users = await database.query(User)
-            .filter({ name: 'eclair' })
-            .withOptions({ allowDiskUse: true })
-            .find();
+        const users = await database.query(User).filter({ name: 'eclair' }).withOptions({ allowDiskUse: true }).find();
 
         expect(users[0]).toMatchObject({ name: 'eclair' });
     }
 
     {
-        const users = await database.raw<User, { name: string }>([
-            { $match: { name: 'eclair' } },
-            { $project: { name: 1 } },
-        ])
+        const users = await database
+            .raw<User, { name: string }>([{ $match: { name: 'eclair' } }, { $project: { name: 1 } }])
             .withOptions({ allowDiskUse: true })
             .find();
         expect(users).toEqual([{ name: 'eclair' }]);
@@ -828,9 +850,7 @@ test('non-optional MongoId', async () => {
     class Model {
         _id: MongoId & PrimaryKey = '';
 
-        constructor(public teamId: MongoId) {
-
-        }
+        constructor(public teamId: MongoId) {}
     }
 
     const database = await createDatabase('non-optional-mongo-id');
@@ -838,24 +858,66 @@ test('non-optional MongoId', async () => {
     const model1 = new Model(ObjectId.generate());
     await database.persist(model1);
 
-    const items1 = await database.query(Model)
-        .filter({ teamId: undefined })
-        .find();
+    const items1 = await database.query(Model).filter({ teamId: undefined }).find();
     expect(items1.length).toBe(0);
 
-    const items2 = await database.query(Model)
+    const items2 = await database
+        .query(Model)
         .filter({ teamId: null as any })
         .find();
     expect(items2.length).toBe(0);
 
-    const items3 = await database.query(Model)
-        .filter({ teamId: '' })
-        .find();
+    const items3 = await database.query(Model).filter({ teamId: '' }).find();
     expect(items3.length).toBe(0);
 
-    const items4 = await database.query(Model)
-        .filter({ teamId: model1.teamId })
-        .find();
+    const items4 = await database.query(Model).filter({ teamId: model1.teamId }).find();
     expect(items4.length).toBe(1);
     expect(items4[0]).toBeInstanceOf(Model);
+});
+
+test('count with pagination returns total count (#668)', async () => {
+    // GitHub issue #668: query.count() throws error if used with query pagination for page > 1
+    // count() should return the total number of matching rows, ignoring limit/skip
+    @entity.name('pagination-count-item')
+    class Item {
+        _id: MongoId & PrimaryKey = '';
+        id: number & AutoIncrement = 0;
+        constructor(public name: string = '') {}
+    }
+
+    const database = await createDatabase('count with pagination');
+    database.registerEntity(Item);
+    await database.migrate();
+
+    // Insert 25 items
+    for (let i = 0; i < 25; i++) {
+        await database.persist(new Item(`Item ${i + 1}`));
+    }
+
+    // Test 1: count without pagination returns total
+    expect(await database.query(Item).count()).toBe(25);
+
+    // Test 2: count with pagination still returns total (this was the bug)
+    const query = database.query(Item).itemsPerPage(10).page(1);
+    const [page1Items, total1] = await Promise.all([query.find(), query.count()]);
+    expect(page1Items.length).toBe(10);
+    expect(total1).toBe(25); // count should return total, not paginated count
+
+    // Test 3: page 2 - this is where the bug manifested (page > 1)
+    const query2 = database.query(Item).itemsPerPage(10).page(2);
+    const [page2Items, total2] = await Promise.all([query2.find(), query2.count()]);
+    expect(page2Items.length).toBe(10);
+    expect(total2).toBe(25); // count should still return total
+
+    // Test 4: page 3 (last page with only 5 items)
+    const query3 = database.query(Item).itemsPerPage(10).page(3);
+    const [page3Items, total3] = await Promise.all([query3.find(), query3.count()]);
+    expect(page3Items.length).toBe(5);
+    expect(total3).toBe(25); // count should still return total
+
+    // Test 5: page beyond data (page 4 should return 0 items but count should still be 25)
+    const query4 = database.query(Item).itemsPerPage(10).page(4);
+    const [page4Items, total4] = await Promise.all([query4.find(), query4.count()]);
+    expect(page4Items.length).toBe(0);
+    expect(total4).toBe(25); // count should return total even when page is empty
 });

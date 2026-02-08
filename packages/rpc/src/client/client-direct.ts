@@ -7,11 +7,11 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
+import { InjectorContext } from '@deepkit/injector';
 
 import { RpcKernel } from '../server/kernel.js';
-import { ClientTransportAdapter, RpcClient } from './client.js';
-import { InjectorContext } from '@deepkit/injector';
 import { TransportClientConnection } from '../transport.js';
+import { ClientTransportAdapter, RpcClient } from './client.js';
 
 export class DirectClient extends RpcClient {
     constructor(rpcKernel: RpcKernel, injector?: InjectorContext) {
@@ -20,21 +20,26 @@ export class DirectClient extends RpcClient {
 }
 
 export class RpcDirectClientAdapter implements ClientTransportAdapter {
-    constructor(public rpcKernel: RpcKernel, protected injector?: InjectorContext) {
-    }
+    constructor(
+        public rpcKernel: RpcKernel,
+        protected injector?: InjectorContext,
+    ) {}
 
     public async connect(connection: TransportClientConnection) {
         let closed = false;
-        const kernelConnection = this.rpcKernel.createConnection({
-            writeBinary: (buffer) => {
-                if (closed) return;
-                connection.readBinary(buffer);
+        const kernelConnection = this.rpcKernel.createConnection(
+            {
+                writeBinary: buffer => {
+                    if (closed) return;
+                    connection.readBinary(buffer);
+                },
+                close: () => {
+                    closed = true;
+                    connection.onClose('closed');
+                },
             },
-            close: () => {
-                closed = true;
-                connection.onClose('closed');
-            },
-        }, this.injector);
+            this.injector,
+        );
 
         connection.onConnected({
             clientAddress: () => {
@@ -65,20 +70,25 @@ export class AsyncDirectClient extends RpcClient {
 }
 
 export class RpcAsyncDirectClientAdapter implements ClientTransportAdapter {
-    constructor(public rpcKernel: RpcKernel, protected injector?: InjectorContext) {
-    }
+    constructor(
+        public rpcKernel: RpcKernel,
+        protected injector?: InjectorContext,
+    ) {}
 
     public async connect(connection: TransportClientConnection) {
-        const kernelConnection = this.rpcKernel.createConnection({
-            writeBinary: (buffer) => {
-                setTimeout(() => {
-                    connection.readBinary(buffer);
-                });
+        const kernelConnection = this.rpcKernel.createConnection(
+            {
+                writeBinary: buffer => {
+                    setTimeout(() => {
+                        connection.readBinary(buffer);
+                    });
+                },
+                close: () => {
+                    connection.onClose('closed');
+                },
             },
-            close: () => {
-                connection.onClose('closed');
-            },
-        }, this.injector);
+            this.injector,
+        );
 
         connection.onConnected({
             clientAddress: () => {

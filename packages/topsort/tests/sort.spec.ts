@@ -1,8 +1,9 @@
 import { expect, test } from '@jest/globals';
-import { ArraySort } from '../src/array-sort.js';
-import { bench } from './utils.js';
-import { CircularDependencyException, ElementNotFoundException } from '../src/base.js';
 import { fail } from 'assert';
+
+import { ArraySort } from '../src/array-sort.js';
+import { CircularDependencyException, ElementNotFoundException } from '../src/base.js';
+import { bench } from './utils.js';
 
 function getElementsFlat(count: number) {
     const elements = new Map<string, string[]>();
@@ -30,7 +31,6 @@ test('bench', () => {
     bench(1, `ArraySort ${count}`, () => {
         sorter.sort();
     });
-
 });
 
 test('circular disabled', () => {
@@ -79,7 +79,6 @@ test('not found', () => {
     }
 });
 
-
 test('blub', () => {
     const sorter = new ArraySort();
 
@@ -95,19 +94,7 @@ test('blub', () => {
     sorter.add('brandX2', ['brandX', 'brandX3']);
     sorter.add('brandX3');
     const result = sorter.sort();
-    const expected = [
-        'brand0',
-        'owner0',
-        'car0',
-        'brand1',
-        'owner1',
-        'car1',
-        'brandX3',
-        'sellerX',
-        'brandX',
-        'brandX2',
-        'brandY',
-    ];
+    const expected = ['brand0', 'owner0', 'car0', 'brand1', 'owner1', 'car1', 'brandX3', 'sellerX', 'brandX', 'brandX2', 'brandY'];
 
     expect(result).toEqual(expected);
 });

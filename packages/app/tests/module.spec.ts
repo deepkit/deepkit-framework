@@ -1,10 +1,12 @@
 import { expect, test } from '@jest/globals';
-import { Minimum, MinLength } from '@deepkit/type';
-import { provide } from '@deepkit/injector';
-import { ServiceContainer } from '../src/service-container.js';
+
 import { ClassType } from '@deepkit/core';
-import { AppModule, createModuleClass } from '../src/module.js';
+import { provide } from '@deepkit/injector';
+import { MinLength, Minimum } from '@deepkit/type';
+
 import { App } from '../src/app.js';
+import { AppModule, createModuleClass } from '../src/module.js';
+import { ServiceContainer } from '../src/service-container.js';
 
 class MyModuleConfig {
     param1!: string & MinLength<5>;
@@ -12,18 +14,14 @@ class MyModuleConfig {
 }
 
 class ModuleService {
-    constructor(public readonly config: MyModuleConfig) {
-    }
+    constructor(public readonly config: MyModuleConfig) {}
 }
 
 class MyModule extends createModuleClass({
     config: MyModuleConfig,
-    providers: [
-        ModuleService
-    ],
-    exports: [ModuleService]
-}) {
-}
+    providers: [ModuleService],
+    exports: [ModuleService],
+}) {}
 
 class AppModuleConfig {
     database: string = 'mongodb://localhost/my-app';
@@ -37,8 +35,7 @@ class AppModuleConfig {
 type MyServiceConfig = Pick<AppModuleConfig, 'debug'>;
 
 class MyService {
-    constructor(private config: MyServiceConfig) {
-    }
+    constructor(private config: MyServiceConfig) {}
 
     isDebug(): boolean {
         return this.config.debug;
@@ -46,15 +43,11 @@ class MyService {
 }
 
 class MyService2 {
-    constructor(public debug: AppModuleConfig['debug']) {
-    }
+    constructor(public debug: AppModuleConfig['debug']) {}
 }
 
 class MyAppModule extends createModuleClass({
-    providers: [
-        MyService,
-        MyService2,
-    ],
+    providers: [MyService, MyService2],
     config: AppModuleConfig,
 }) {
     imports = [new MyModule()];
@@ -83,38 +76,48 @@ test('basic configured', () => {
     }
 
     {
-        const myService = getServiceOnNewServiceContainer(createConfiguredApp().configure({
-            debug: false
-        }), MyService);
+        const myService = getServiceOnNewServiceContainer(
+            createConfiguredApp().configure({
+                debug: false,
+            }),
+            MyService,
+        );
         expect(myService.isDebug()).toBe(false);
     }
 
     {
-        const myService = getServiceOnNewServiceContainer(createConfiguredApp().configure({
-            debug: true
-        }), MyService);
+        const myService = getServiceOnNewServiceContainer(
+            createConfiguredApp().configure({
+                debug: true,
+            }),
+            MyService,
+        );
         expect(myService.isDebug()).toBe(true);
     }
 
     {
-        const myService2 = getServiceOnNewServiceContainer(createConfiguredApp().configure({
-            debug: false
-        }), MyService2);
+        const myService2 = getServiceOnNewServiceContainer(
+            createConfiguredApp().configure({
+                debug: false,
+            }),
+            MyService2,
+        );
         expect(myService2.debug).toBe(false);
     }
 
     {
-        const myService2 = getServiceOnNewServiceContainer(createConfiguredApp().configure({
-            debug: true
-        }), MyService2);
+        const myService2 = getServiceOnNewServiceContainer(
+            createConfiguredApp().configure({
+                debug: true,
+            }),
+            MyService2,
+        );
         expect(myService2.debug).toBe(true);
     }
 });
 
 test('configured provider', () => {
-    class Transporter {
-
-    }
+    class Transporter {}
 
     class Logger {
         transporter: any[] = [];
@@ -126,41 +129,54 @@ test('configured provider', () => {
     }
 
     const AppModule = createModuleClass({
-        providers: [
-            Transporter,
-            Logger,
-        ],
+        providers: [Transporter, Logger],
     });
 
     {
         const module = new AppModule();
-        const logger = new ServiceContainer(module.setup((module) => {
-            module.configureProvider<Logger>(v => v.addTransport('first').addTransport('second'));
-        })).getInjector(module).get(Logger);
+        const logger = new ServiceContainer(
+            module.setup(module => {
+                module.configureProvider<Logger>(v => v.addTransport('first').addTransport('second'));
+            }),
+        )
+            .getInjector(module)
+            .get(Logger);
         expect(logger.transporter).toEqual(['first', 'second']);
     }
 
     {
         const module = new AppModule();
-        const logger = new ServiceContainer(module.setup((module) => {
-            module.configureProvider<Logger>(v => v.transporter = ['first', 'second', 'third']);
-        })).getInjector(module).get(Logger);
+        const logger = new ServiceContainer(
+            module.setup(module => {
+                module.configureProvider<Logger>(v => (v.transporter = ['first', 'second', 'third']));
+            }),
+        )
+            .getInjector(module)
+            .get(Logger);
         expect(logger.transporter).toEqual(['first', 'second', 'third']);
     }
 
     {
         const module = new AppModule();
-        const logger = new ServiceContainer(module.setup((module) => {
-            module.configureProvider<Logger>(v => v.addTransport(new Transporter));
-        })).getInjector(module).get(Logger);
+        const logger = new ServiceContainer(
+            module.setup(module => {
+                module.configureProvider<Logger>(v => v.addTransport(new Transporter()));
+            }),
+        )
+            .getInjector(module)
+            .get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }
 
     {
         const module = new AppModule();
-        const logger = new ServiceContainer(module.setup((module) => {
-            module.configureProvider<Logger>((v, t: Transporter) => v.addTransport(t));
-        })).getInjector(module).get(Logger);
+        const logger = new ServiceContainer(
+            module.setup(module => {
+                module.configureProvider<Logger>((v, t: Transporter) => v.addTransport(t));
+            }),
+        )
+            .getInjector(module)
+            .get(Logger);
         expect(logger.transporter[0] instanceof Transporter).toBe(true);
     }
 
@@ -177,15 +193,13 @@ test('same module loaded twice', () => {
     }
 
     class Service {
-        constructor(public path: Config['path']) {
-        }
+        constructor(public path: Config['path']) {}
     }
 
     class ApiModule extends createModuleClass({
         config: Config,
-        providers: [Service]
-    }) {
-    }
+        providers: [Service],
+    }) {}
 
     {
         const app = new AppModule({}, { imports: [new ApiModule({ path: '/a' })] });
@@ -203,12 +217,12 @@ test('same module loaded twice', () => {
         const a = new ApiModule({ path: '/a' });
         const b = new ApiModule({ path: '/b' });
 
-        const app = new AppModule({}, {
-            imports: [
-                a,
-                b,
-            ]
-        });
+        const app = new AppModule(
+            {},
+            {
+                imports: [a, b],
+            },
+        );
         const serviceContainer = new ServiceContainer(app);
 
         expect((serviceContainer.getModule(ApiModule).getConfig() as any).path).toBe('/a');
@@ -220,35 +234,34 @@ test('same module loaded twice', () => {
 });
 
 test('interface provider can be exported', () => {
-   interface Test {}
+    interface Test {}
 
-   const TEST = {};
+    const TEST = {};
 
-   const Test = provide<Test>({ useValue: TEST });
+    const Test = provide<Test>({ useValue: TEST });
 
-   const test = new AppModule({}, { providers: [Test], exports: [Test] });
+    const test = new AppModule({}, { providers: [Test], exports: [Test] });
 
-   const app = new AppModule({}, { imports: [test] });
+    const app = new AppModule({}, { imports: [test] });
 
     const serviceContainer = new ServiceContainer(app);
 
-   expect(serviceContainer.getInjector(app).get<Test>()).toBe(TEST);
+    expect(serviceContainer.getInjector(app).get<Test>()).toBe(TEST);
 });
 
 test('non-exported providers can not be overwritten', () => {
-    class SubClass {
-    }
+    class SubClass {}
 
-    class Overwritten {
-    }
+    class Overwritten {}
 
     const sub = new AppModule({}, { providers: [SubClass] });
-    const app = new AppModule({}, {
-        providers: [Overwritten, { provide: SubClass, useClass: Overwritten }],
-        imports: [
-            sub
-        ]
-    });
+    const app = new AppModule(
+        {},
+        {
+            providers: [Overwritten, { provide: SubClass, useClass: Overwritten }],
+            imports: [sub],
+        },
+    );
 
     const serviceContainer = new ServiceContainer(app);
 
@@ -257,19 +270,18 @@ test('non-exported providers can not be overwritten', () => {
 });
 
 test('exported providers can not be overwritten', () => {
-    class SubClass {
-    }
+    class SubClass {}
 
-    class Overwritten {
-    }
+    class Overwritten {}
 
     const sub = new AppModule({}, { providers: [SubClass], exports: [SubClass] });
-    const app = new AppModule({}, {
-        providers: [Overwritten, { provide: SubClass, useClass: Overwritten }],
-        imports: [
-            sub
-        ]
-    });
+    const app = new AppModule(
+        {},
+        {
+            providers: [Overwritten, { provide: SubClass, useClass: Overwritten }],
+            imports: [sub],
+        },
+    );
 
     const serviceContainer = new ServiceContainer(app);
 
@@ -279,8 +291,7 @@ test('exported providers can not be overwritten', () => {
 
 test('instance is used as is', () => {
     class Service {
-        constructor(public label: string) {
-        }
+        constructor(public label: string) {}
     }
 
     class ApiModule extends createModuleClass({}) {
@@ -301,12 +312,10 @@ test('instance is used as is', () => {
 });
 
 test('change config of a imported module dynamically', () => {
-    class Logger {
-    }
+    class Logger {}
 
     class Query {
-        constructor(public logger?: Logger) {
-        }
+        constructor(public logger?: Logger) {}
     }
 
     class DatabaseConfig {
@@ -315,7 +324,7 @@ test('change config of a imported module dynamically', () => {
 
     class DatabaseModule extends createModuleClass({
         config: DatabaseConfig,
-        providers: [Query]
+        providers: [Query],
     }) {
         process() {
             if (this.config.logging) {
@@ -329,7 +338,7 @@ test('change config of a imported module dynamically', () => {
     }
 
     class ApiModule extends createModuleClass({
-        config: ApiConfig
+        config: ApiConfig,
     }) {
         imports = [new DatabaseModule({ logging: false })];
 
@@ -352,12 +361,10 @@ test('change config of a imported module dynamically', () => {
         expect(serviceContainer.getInjector(DatabaseModule).get(Query).logger).toBe(undefined);
     }
 
-
     {
         const serviceContainer = new ServiceContainer(new ApiModule({ debug: true }));
         expect(serviceContainer.getInjector(DatabaseModule).get(Query).logger).toBeInstanceOf(Logger);
     }
-
 
     {
         const serviceContainer = new ServiceContainer(new ApiModule());
@@ -374,9 +381,12 @@ test('scoped injector', () => {
         }
     }
 
-    const module = new AppModule({}, {
-        providers: [{ provide: Service, scope: 'http' }]
-    });
+    const module = new AppModule(
+        {},
+        {
+            providers: [{ provide: Service, scope: 'http' }],
+        },
+    );
 
     const serviceContainer = new ServiceContainer(new AppModule({}, { imports: [module] }));
 
@@ -406,9 +416,12 @@ test('functional modules factory', () => {
         };
     };
 
-    const module = new AppModule({}, {
-        imports: [myModule('Peter')],
-    });
+    const module = new AppModule(
+        {},
+        {
+            imports: [myModule('Peter')],
+        },
+    );
     const serviceContainer = new ServiceContainer(module);
 
     expect(serviceContainer.getInjectorContext().get('title')).toBe('Peter');
@@ -420,9 +433,12 @@ test('functional modules', () => {
         module.forRoot();
     };
 
-    const module = new AppModule({}, {
-        imports: [myModule],
-    });
+    const module = new AppModule(
+        {},
+        {
+            imports: [myModule],
+        },
+    );
     const serviceContainer = new ServiceContainer(module);
 
     expect(serviceContainer.getInjectorContext().get('title')).toBe('Peter');
@@ -434,8 +450,7 @@ test('module infer config from extend', async () => {
     }
 
     class Server {
-        constructor(public host: MyConfig['host']) {
-        }
+        constructor(public host: MyConfig['host']) {}
     }
 
     class MyModule extends AppModule<MyConfig> {
@@ -446,9 +461,7 @@ test('module infer config from extend', async () => {
     }
 
     const app = new App({
-        imports: [
-            new MyModule({ host: 'localhost' }),
-        ],
+        imports: [new MyModule({ host: 'localhost' })],
     });
 
     expect(app.getInjector(MyModule).module.config).toEqual({ host: 'localhost' });

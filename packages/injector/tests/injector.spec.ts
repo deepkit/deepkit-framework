@@ -1,23 +1,16 @@
 import { expect, test } from '@jest/globals';
-import {
-    CircularDependencyError,
-    DependenciesUnmetError,
-    injectedFunction,
-    Injector,
-    InjectorContext,
-    PartialFactory,
-    TransientInjectionTarget,
-} from '../src/injector.js';
-import { InjectorModule } from '../src/module.js';
+
 import { Inject } from '@deepkit/core';
 import { ReflectionClass, ReflectionKind, typeOf } from '@deepkit/type';
+
+import { CircularDependencyError, DependenciesUnmetError, Injector, InjectorContext, PartialFactory, TransientInjectionTarget, injectedFunction } from '../src/injector.js';
+import { InjectorModule } from '../src/module.js';
 import { provide } from '../src/provider.js';
 
 export const a = 'asd';
 
 test('injector basics', () => {
-    class Connection {
-    }
+    class Connection {}
 
     class MyServer {
         constructor(private connection: Connection) {
@@ -42,7 +35,7 @@ test('useExisting 1', () => {
 test('useExisting 2', () => {
     class Service {}
     class Service2 {}
-    const injector = Injector.from([Service, provide<Service2>({useExisting: Service})]);
+    const injector = Injector.from([Service, provide<Service2>({ useExisting: Service })]);
     expect(injector.get(Service)).toBeInstanceOf(Service);
     expect(injector.get<Service>()).toBeInstanceOf(Service);
 });
@@ -50,7 +43,7 @@ test('useExisting 2', () => {
 test('useExisting 3', () => {
     class Service {}
     class Service2 {}
-    const injector = Injector.from([provide<Service>(), provide<Service2>({useExisting: typeOf<Service>()})]);
+    const injector = Injector.from([provide<Service>(), provide<Service2>({ useExisting: typeOf<Service>() })]);
     expect(injector.get(Service)).toBeInstanceOf(Service);
     expect(injector.get(Service2)).toBeInstanceOf(Service);
     expect(injector.get<Service>()).toBeInstanceOf(Service);
@@ -58,14 +51,15 @@ test('useExisting 3', () => {
 });
 
 test('missing dep', () => {
-    class Connection {
-    }
+    class Connection {}
 
-    class Missing {
-    }
+    class Missing {}
 
     class MyServer {
-        constructor(private connection: Connection, private missing: Missing) {
+        constructor(
+            private connection: Connection,
+            private missing: Missing,
+        ) {
             expect(connection).toBeInstanceOf(Connection);
         }
     }
@@ -74,11 +68,13 @@ test('missing dep', () => {
 });
 
 test('wrong dep 1', () => {
-    class Connection {
-    }
+    class Connection {}
 
     class MyServer {
-        constructor(private connection: Connection, private missing: any) {
+        constructor(
+            private connection: Connection,
+            private missing: any,
+        ) {
             expect(connection).toBeInstanceOf(Connection);
         }
     }
@@ -88,8 +84,7 @@ test('wrong dep 1', () => {
 
 test('wrong dep 2', () => {
     class MyServer {
-        constructor(private missing: any) {
-        }
+        constructor(private missing: any) {}
     }
 
     expect(() => Injector.from([MyServer])).toThrow(`Undefined dependency "missing: any" of MyServer(?).`);
@@ -144,16 +139,13 @@ test('interface dependency provide implementation implementing interface shallow
     class MyConnection implements Connection {
         id: number = 0;
 
-        write(data: Uint16Array): void {
-        }
+        write(data: Uint16Array): void {}
 
-        additional(): void {
-        }
+        additional(): void {}
     }
 
     class MyServer {
-        constructor(public connection: Connection) {
-        }
+        constructor(public connection: Connection) {}
     }
 
     const injector = Injector.from([MyServer, MyConnection]);
@@ -173,20 +165,15 @@ test('interface dependency provide implementation implementing interface deep 1'
     class MyConnection implements Connection {
         id: number = 0;
 
-        write(data: Uint16Array): void {
-        }
+        write(data: Uint16Array): void {}
 
-        additional(): void {
-        }
+        additional(): void {}
     }
 
-    class SecondConnection extends MyConnection {
-
-    }
+    class SecondConnection extends MyConnection {}
 
     class MyServer {
-        constructor(public connection: Connection) {
-        }
+        constructor(public connection: Connection) {}
     }
 
     const injector = Injector.from([MyServer, SecondConnection]);
@@ -206,16 +193,13 @@ test('interface dependency provide interface', () => {
     class MyConnection implements Connection {
         id: number = 0;
 
-        write(data: Uint16Array): void {
-        }
+        write(data: Uint16Array): void {}
 
-        additional(): void {
-        }
+        additional(): void {}
     }
 
     class MyServer {
-        constructor(public connection: Connection) {
-        }
+        constructor(public connection: Connection) {}
     }
 
     const injector = Injector.from([MyServer, provide<Connection>(MyConnection)]);
@@ -235,17 +219,13 @@ test('interface dependency over specified', () => {
     class MyConnection implements Connection {
         id: number = 0;
 
-        write(data: Uint16Array): void {
-        }
+        write(data: Uint16Array): void {}
 
-        additional(): void {
-
-        }
+        additional(): void {}
     }
 
     class MyServer {
-        constructor(public connection: Connection) {
-        }
+        constructor(public connection: Connection) {}
     }
 
     const injector = Injector.from([MyServer, provide<MyConnection>(MyConnection)]);
@@ -261,18 +241,15 @@ test('interface dependency multiple matches', () => {
     }
 
     class MyConnection1 implements Connection {
-        write(data: Uint16Array): void {
-        }
+        write(data: Uint16Array): void {}
     }
 
     class MyConnection2 implements Connection {
-        write(data: Uint16Array): void {
-        }
+        write(data: Uint16Array): void {}
     }
 
     class MyServer {
-        constructor(public connection: Connection) {
-        }
+        constructor(public connection: Connection) {}
     }
 
     {
@@ -303,21 +280,18 @@ test('interface dependency under specified', () => {
     class MyConnection implements Connection {
         id: number = 0;
 
-        write(data: Uint16Array): void {
-        }
+        write(data: Uint16Array): void {}
     }
 
     class MyServer {
-        constructor(public connection: Connection) {
-        }
+        constructor(public connection: Connection) {}
     }
 
     expect(() => Injector.from([MyServer, provide<{ id: number }>(MyConnection)])).toThrow(`Undefined dependency "connection: `);
 });
 
 test('injector transient', () => {
-    class Connection {
-    }
+    class Connection {}
 
     class MyServer {
         constructor(public connection: Connection) {
@@ -347,14 +321,12 @@ test('injector transient', () => {
 });
 
 test('injector property injection', () => {
-    class Connection {
-    }
+    class Connection {}
 
     class MyServer {
         public connection!: Inject<Connection>;
 
-        constructor(public name: Inject<string, 'name'>) {
-        }
+        constructor(public name: Inject<string, 'name'>) {}
     }
 
     const injector = Injector.from([MyServer, Connection, { provide: 'name', useValue: 'peter' }]);
@@ -365,20 +337,23 @@ test('injector property injection', () => {
 
 test('factory with Inject<>', () => {
     const injector = Injector.from([
-        { provide: "stripe", useValue: true },
-        { provide: "test", useFactory(name: Inject<any, 'stripe'>) { return name } },
+        { provide: 'stripe', useValue: true },
+        {
+            provide: 'test',
+            useFactory(name: Inject<any, 'stripe'>) {
+                return name;
+            },
+        },
     ]);
 
-    const s = injector.get("test");
+    const s = injector.get('test');
     expect(s).toBe(true);
 });
 
 test('injector overwrite token', () => {
-    class Connection {
-    }
+    class Connection {}
 
-    class Connection2 extends Connection {
-    }
+    class Connection2 extends Connection {}
 
     class MyServer {
         constructor(private connection: Inject<Connection, Connection2>) {
@@ -394,8 +369,7 @@ test('injector overwrite token', () => {
 });
 
 test('injector unmet dependency', () => {
-    class Connection {
-    }
+    class Connection {}
 
     class MyServer {
         constructor(private connection: Connection) {
@@ -409,8 +383,7 @@ test('injector unmet dependency', () => {
 });
 
 test('injector optional unmet dependency', () => {
-    class Connection {
-    }
+    class Connection {}
 
     class MyServer {
         constructor(private connection?: Connection) {
@@ -425,8 +398,7 @@ test('injector optional unmet dependency', () => {
 });
 
 test('injector optional dependency', () => {
-    class Connection {
-    }
+    class Connection {}
 
     class MyServer {
         constructor(private connection?: Connection) {
@@ -442,15 +414,12 @@ test('injector optional dependency', () => {
 });
 
 test('injector Inject<, T>', () => {
-    interface ConnectionInterface {
-    }
+    interface ConnectionInterface {}
 
-    class Connection {
-    }
+    class Connection {}
 
     class MyServer {
-        constructor(public connection: Inject<ConnectionInterface, Connection>) {
-        }
+        constructor(public connection: Inject<ConnectionInterface, Connection>) {}
     }
 
     {
@@ -461,15 +430,12 @@ test('injector Inject<, T>', () => {
 });
 
 test('injector via Inject string', () => {
-    interface ConnectionInterface {
-    }
+    interface ConnectionInterface {}
 
-    class Connection {
-    }
+    class Connection {}
 
     class MyServer {
-        constructor(public connection: Inject<ConnectionInterface, 'connection'>) {
-        }
+        constructor(public connection: Inject<ConnectionInterface, 'connection'>) {}
     }
 
     {
@@ -480,11 +446,9 @@ test('injector via Inject string', () => {
 });
 
 test('injector overwrite provider', () => {
-    class Connection {
-    }
+    class Connection {}
 
-    class Connection2 extends Connection {
-    }
+    class Connection2 extends Connection {}
 
     class MyServer {
         constructor(private connection: Connection) {
@@ -493,9 +457,13 @@ test('injector overwrite provider', () => {
     }
 
     {
-        const injector = Injector.from([MyServer, {
-            provide: Connection, useClass: Connection2
-        }]);
+        const injector = Injector.from([
+            MyServer,
+            {
+                provide: Connection,
+                useClass: Connection2,
+            },
+        ]);
         expect(injector.get(Connection)).toBeInstanceOf(Connection2);
         expect(injector.get(MyServer)).toBeInstanceOf(MyServer);
     }
@@ -533,13 +501,20 @@ test('invalid constructor 2', () => {
 
 test('injector direct circular dependency', () => {
     class MyServer {
-        constructor(private myServer: MyServer) {
-        }
+        constructor(private myServer: MyServer) {}
     }
 
     {
         const injector = Injector.from([MyServer]);
         expect(() => injector.get(MyServer)).toThrow(CircularDependencyError as any);
+
+        // Verify error code for CircularDependencyError
+        try {
+            injector.get(MyServer);
+        } catch (error: any) {
+            expect(error).toBeInstanceOf(CircularDependencyError);
+            expect(error.code).toBe('DK-I010'); // CircularDependencyError error code
+        }
     }
 });
 
@@ -562,12 +537,19 @@ test('injector circular dependency', () => {
         const injector = Injector.from([MyServer, Connection]);
         expect(() => injector.get(MyServer)).toThrow(CircularDependencyError as any);
         expect(() => injector.get(MyServer)).toThrow('Circular dependency found MyServer -> Connection -> MyServer');
+
+        // Verify error code for CircularDependencyError
+        try {
+            injector.get(MyServer);
+        } catch (error: any) {
+            expect(error).toBeInstanceOf(CircularDependencyError);
+            expect(error.code).toBe('DK-I010'); // CircularDependencyError error code
+        }
     }
 });
 
 test('injector factory', () => {
-    class Service {
-    }
+    class Service {}
 
     {
         const injector = Injector.from([{ provide: Service, useFactory: () => new Service() }]);
@@ -583,12 +565,10 @@ test('injector factory', () => {
 
 test('injector factory deps', () => {
     class Service {
-        constructor(public config: Config) {
-        }
+        constructor(public config: Config) {}
     }
 
-    class Config {
-    }
+    class Config {}
 
     {
         const injector = Injector.from([Config, { provide: Service, useFactory: (config: Config) => new Service(config) }]);
@@ -611,32 +591,26 @@ test('injector config', () => {
     }
 
     class MyService {
-        constructor(public config: Pick<ModuleConfig, 'debug'>) {
-        }
+        constructor(public config: Pick<ModuleConfig, 'debug'>) {}
     }
 
     const reflection = ReflectionClass.from(MyService);
     const parameters = reflection.getMethodParameters('constructor');
     expect(parameters[0].getType()).toMatchObject({
         kind: ReflectionKind.objectLiteral,
-        types: [
-            { kind: ReflectionKind.propertySignature, name: 'debug', type: { kind: ReflectionKind.boolean } },
-        ]
+        types: [{ kind: ReflectionKind.propertySignature, name: 'debug', type: { kind: ReflectionKind.boolean } }],
     });
 
     class MyService2 {
-        constructor(public config: ModuleConfig) {
-        }
+        constructor(public config: ModuleConfig) {}
     }
 
     class MyService3 {
-        constructor(public title: ModuleConfig['title']) {
-        }
+        constructor(public title: ModuleConfig['title']) {}
     }
 
     class MyService4 {
-        constructor(public dbUrl: ModuleConfig['db']['url']) {
-        }
+        constructor(public dbUrl: ModuleConfig['db']['url']) {}
     }
 
     {
@@ -682,8 +656,8 @@ test('setup provider', () => {
 
     {
         const module = new InjectorModule([MyService]);
-        module.configureProvider<MyService>(v => v.transporter = ['a']);
-        module.configureProvider<MyService>(v => v.transporter = ['a', 'b', 'c']);
+        module.configureProvider<MyService>(v => (v.transporter = ['a']));
+        module.configureProvider<MyService>(v => (v.transporter = ['a', 'b', 'c']));
         expect(module.configurationProviderRegistry.get(MyService).length).toBe(2);
         const i1 = Injector.fromModule(module);
         expect(i1.get(MyService).transporter).toEqual(['a', 'b', 'c']);
@@ -726,12 +700,10 @@ test('loggerInterface', () => {
     }
 
     class MyServer {
-        constructor(public logger: LoggerInterface) {
-        }
+        constructor(public logger: LoggerInterface) {}
     }
 
-    class Logger {
-    }
+    class Logger {}
 
     const injector = Injector.from([MyServer, provide<LoggerInterface>(Logger)]);
     const server = injector.get(MyServer);
@@ -743,8 +715,7 @@ test('class inheritance', () => {
     class A {}
 
     class B {
-        constructor(public a: A) {
-        }
+        constructor(public a: A) {}
     }
 
     class C extends B {}
@@ -775,10 +746,9 @@ test('injectedFunction all', () => {
 test('injectedFunction scope', () => {
     class A {}
     class B {
-        constructor(public id: number) {
-        }
+        constructor(public id: number) {}
     }
-    const injector = InjectorContext.forProviders([A, {provide: B, scope: 'http', useValue: new B(0)}]);
+    const injector = InjectorContext.forProviders([A, { provide: B, scope: 'http', useValue: new B(0) }]);
 
     function render(a: A, b: B) {
         expect(a).toBeInstanceOf(A);
@@ -833,21 +803,17 @@ test('injectedFunction skip 2', () => {
 
     const wrapped = injectedFunction(render, injector, 2);
 
-    expect(wrapped(undefined, 'abc', new A)).toBe('abc');
+    expect(wrapped(undefined, 'abc', new A())).toBe('abc');
 });
 
 test('TransientInjectionTarget', () => {
     {
         class A {
-            constructor (public readonly b: B) {
-            }
+            constructor(public readonly b: B) {}
         }
 
         class B {
-            constructor (
-                public readonly target: TransientInjectionTarget
-            ) {
-            }
+            constructor(public readonly target: TransientInjectionTarget) {}
         }
 
         const injector = Injector.from([A, { provide: B, transient: true }]);
@@ -858,21 +824,14 @@ test('TransientInjectionTarget', () => {
 
     {
         class A {
-            constructor (public readonly b: B) {
-            }
+            constructor(public readonly b: B) {}
         }
 
         class B {
-            constructor (
-                public readonly target: TransientInjectionTarget
-            ) {
-            }
+            constructor(public readonly target: TransientInjectionTarget) {}
         }
 
-        const injector = Injector.from([
-            A,
-            { provide: B, useFactory: (target: TransientInjectionTarget) => new B(target), transient: true }
-        ]);
+        const injector = Injector.from([A, { provide: B, useFactory: (target: TransientInjectionTarget) => new B(target), transient: true }]);
         const a = injector.get(A);
         expect(a.b.target).toBeInstanceOf(TransientInjectionTarget);
         expect(a.b.target.token).toBe(A);
@@ -880,52 +839,53 @@ test('TransientInjectionTarget', () => {
 
     {
         class A {
-            constructor (public readonly b: B) {
-            }
+            constructor(public readonly b: B) {}
         }
 
         class B {
-            constructor (
-                public readonly target: TransientInjectionTarget
-            ) {
-            }
+            constructor(public readonly target: TransientInjectionTarget) {}
         }
 
-        expect(() =>  Injector.from([A, B])).toThrow();
+        expect(() => Injector.from([A, B])).toThrow();
     }
 
     {
         class A {
-            constructor (
-                public readonly target: TransientInjectionTarget
-            ) {
-            }
+            constructor(public readonly target: TransientInjectionTarget) {}
         }
 
         const injector = Injector.from([{ provide: A, transient: true }]);
         expect(() => injector.get(A)).toThrow(DependenciesUnmetError);
+
+        // Verify error code for DependenciesUnmetError
+        try {
+            injector.get(A);
+        } catch (error: any) {
+            expect(error).toBeInstanceOf(DependenciesUnmetError);
+            expect(error.code).toBe('DK-I030'); // DependenciesUnmetError error code
+        }
     }
 
     {
         class A {
-            constructor (
-                public readonly target: TransientInjectionTarget
-            ) {
-            }
+            constructor(public readonly target: TransientInjectionTarget) {}
         }
 
-        const injector = Injector.from([
-            { provide: A, transient: true, useFactory: (target: TransientInjectionTarget) => new A(target) }
-        ]);
+        const injector = Injector.from([{ provide: A, transient: true, useFactory: (target: TransientInjectionTarget) => new A(target) }]);
         expect(() => injector.get(A)).toThrow(DependenciesUnmetError);
+
+        // Verify error code for DependenciesUnmetError
+        try {
+            injector.get(A);
+        } catch (error: any) {
+            expect(error).toBeInstanceOf(DependenciesUnmetError);
+            expect(error.code).toBe('DK-I030'); // DependenciesUnmetError error code
+        }
     }
 
     {
         class A {
-            constructor (
-                public readonly target?: TransientInjectionTarget
-            ) {
-            }
+            constructor(public readonly target?: TransientInjectionTarget) {}
         }
 
         const injector = Injector.from([{ provide: A, transient: true }]);
@@ -934,25 +894,18 @@ test('TransientInjectionTarget', () => {
 
     {
         class A {
-            constructor (public b: C) {
-            }
+            constructor(public b: C) {}
         }
 
         class B {
-            constructor (public target: TransientInjectionTarget) {
-            }
+            constructor(public target: TransientInjectionTarget) {}
         }
 
         class C {
-            constructor (public target: TransientInjectionTarget) {
-            }
+            constructor(public target: TransientInjectionTarget) {}
         }
 
-        const injector = Injector.from([
-            A,
-            { provide: B, transient: true },
-            { provide: C, transient: true, useExisting: B },
-        ]);
+        const injector = Injector.from([A, { provide: B, transient: true }, { provide: C, transient: true, useExisting: B }]);
         const a = injector.get(A);
         expect(a.b).toBeInstanceOf(B);
         expect(a.b.target.token).toBe(A);
@@ -960,18 +913,14 @@ test('TransientInjectionTarget', () => {
 
     {
         class A {
-            constructor (public b: B) {
-            }
+            constructor(public b: B) {}
         }
 
         interface B {
             target: TransientInjectionTarget;
         }
 
-        const injector = Injector.from([
-            A,
-            provide<B>({ transient: true, useFactory: (target: TransientInjectionTarget): B => ({ target }) }),
-        ]);
+        const injector = Injector.from([A, provide<B>({ transient: true, useFactory: (target: TransientInjectionTarget): B => ({ target }) })]);
 
         const a = injector.get(A);
         expect(a.b).toBeDefined();
@@ -982,15 +931,16 @@ test('TransientInjectionTarget', () => {
 test('PartialFactory', () => {
     {
         class A {
-            constructor (public b: B, public num: number) {
-            }
+            constructor(
+                public b: B,
+                public num: number,
+            ) {}
         }
 
         class B {
             public b = 'b';
 
-            constructor() {
-            }
+            constructor() {}
         }
 
         const injector = Injector.from([B]);
@@ -1027,13 +977,14 @@ test('PartialFactory', () => {
 
     {
         class A {
-            constructor(public factory: PartialFactory<B>) {
-            }
+            constructor(public factory: PartialFactory<B>) {}
         }
 
         class B {
-            constructor(public num: number, public c: C) {
-            }
+            constructor(
+                public num: number,
+                public c: C,
+            ) {}
         }
 
         class C {
@@ -1081,14 +1032,14 @@ test('isProvided supports receive type', () => {
         b: string;
     }
     const providers = [provide<A>({ useValue: { b: 'a' } })];
-    const module = new InjectorModule(providers)
+    const module = new InjectorModule(providers);
     expect(module.isProvided<A>()).toBe(true);
 });
 
 test('isProvided supports token', () => {
     class A {}
     const providers = [A];
-    const module = new InjectorModule(providers)
+    const module = new InjectorModule(providers);
     expect(module.isProvided(A)).toBe(true);
 });
 
@@ -1107,4 +1058,4 @@ test('throw error when both forRoot and exports are used', () => {
 
     const injector = new InjectorContext(root);
     expect(() => injector.getRootInjector()).toThrowError();
-})
+});

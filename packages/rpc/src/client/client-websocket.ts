@@ -7,13 +7,13 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { ClassType } from '@deepkit/core';
-import { ClientTransportAdapter, RpcClient } from './client.js';
-import { TransportClientConnection } from '../transport.js';
-import { RpcError } from '../model.js';
 
-declare const location: { protocol: string, host: string, origin: string };
+import { RpcError } from '../model.js';
+import { TransportClientConnection } from '../transport.js';
+import { ClientTransportAdapter, RpcClient } from './client.js';
+
+declare const location: { protocol: string; host: string; origin: string };
 
 /**
  * A RpcClient that connects via WebSocket transport.
@@ -33,14 +33,16 @@ export class RpcWebSocketClient extends RpcClient {
 /**
  * @deprecated use RpcWebSocketClient instead
  */
-export class DeepkitClient extends RpcWebSocketClient {
-}
+export class DeepkitClient extends RpcWebSocketClient {}
 
 /**
  * Returns the WebSocket URL for the given base URL and allows port mapping.
  * Default port-mapping maps Angular server :4200 to :8080
  */
-export function webSocketFromBaseUrl(baseUrl: string, portMapping: { [name: number]: number } = { 4200: 8080 }): string {
+export function webSocketFromBaseUrl(
+    baseUrl: string,
+    portMapping: { [name: number]: number } = { 4200: 8080 },
+): string {
     let url = baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
     for (const [from, to] of Object.entries(portMapping)) {
         url = url.replace(':' + from, ':' + to);
@@ -66,8 +68,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
     constructor(
         public url: string,
         protected webSocketConstructor: typeof WebSocket = WebSocket,
-    ) {
-    }
+    ) {}
 
     async getWebSocketConstructor(): Promise<typeof WebSocket> {
         if (!this.webSocketConstructor) {
@@ -98,7 +99,7 @@ export class RpcWebSocketClientAdapter implements ClientTransportAdapter {
         let errored = false;
         let connected = false;
 
-        socket.onclose = (event) => {
+        socket.onclose = event => {
             const reason = `code ${event.code} reason ${event.reason || 'unknown'}`;
             const message = connected ? `abnormal error: ${reason}` : `Could not connect: ${reason}`;
             if (errored) {

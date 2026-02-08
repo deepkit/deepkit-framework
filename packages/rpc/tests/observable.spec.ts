@@ -1,9 +1,11 @@
+import { expect, test } from '@jest/globals';
+import { BehaviorSubject, Observable, Subject, Subscription, defer, switchMap, toArray } from 'rxjs';
+import { first, take } from 'rxjs/operators';
+
 import { sleep } from '@deepkit/core';
 import { entity } from '@deepkit/type';
-import { expect, test } from '@jest/globals';
-import { BehaviorSubject, defer, Observable, Subject, Subscription, switchMap, toArray } from 'rxjs';
-import { first, take } from 'rxjs/operators';
-import { DirectClient } from '../src/client/client-direct.js';
+
+import { AsyncDirectClient, DirectClient } from '../src/client/client-direct.js';
 import { rpc } from '../src/decorators.js';
 import { RpcKernel } from '../src/server/kernel.js';
 import { createSubject } from '../src/utils.js';
@@ -11,14 +13,13 @@ import { createSubject } from '../src/utils.js';
 test('observable basics', async () => {
     @entity.name('model')
     class MyModel {
-        constructor(public name: string) {
-        }
+        constructor(public name: string) {}
     }
 
     class Controller {
         @rpc.action()
         strings(): Observable<string> {
-            return new Observable<string>((observer) => {
+            return new Observable<string>(observer => {
                 observer.next('first');
                 observer.next('second');
                 observer.next('third');
@@ -28,14 +29,14 @@ test('observable basics', async () => {
 
         @rpc.action()
         errors(): Observable<string> {
-            return new Observable<string>((observer) => {
+            return new Observable<string>(observer => {
                 observer.error(new Error('Jupp'));
             });
         }
 
         @rpc.action()
         myModel(): Observable<MyModel> {
-            return new Observable<MyModel>((observer) => {
+            return new Observable<MyModel>(observer => {
                 observer.next(new MyModel('Peter'));
                 observer.complete();
             });
@@ -233,7 +234,7 @@ test('observable unsubscribes automatically when connection closes', async () =>
     class Controller {
         @rpc.action()
         strings(): Observable<string> {
-            return new Observable((observer) => {
+            return new Observable(observer => {
                 return {
                     unsubscribe() {
                         unsubscribed = true;
@@ -250,8 +251,7 @@ test('observable unsubscribes automatically when connection closes', async () =>
     const controller = client.controller<Controller>('myController');
 
     {
-        const o = (await controller.strings()).subscribe(() => {
-        });
+        const o = (await controller.strings()).subscribe(() => {});
         expect(o).toBeInstanceOf(Subscription);
         expect(unsubscribed).toBe(false);
         o.unsubscribe();
@@ -261,8 +261,7 @@ test('observable unsubscribes automatically when connection closes', async () =>
 
     {
         unsubscribed = false;
-        const o = (await controller.strings()).subscribe(() => {
-        });
+        const o = (await controller.strings()).subscribe(() => {});
         expect(o).toBeInstanceOf(Subscription);
         expect(unsubscribed).toBe(false);
         client.disconnect();
@@ -293,7 +292,7 @@ test('observable different next type', async () => {
 
         @rpc.action()
         triggerCorrect(): void {
-            this.subject.next(Object.assign(new MyModel, { id: 2 }));
+            this.subject.next(Object.assign(new MyModel(), { id: 2 }));
         }
 
         @rpc.action()
@@ -406,7 +405,7 @@ test('observable complete', async () => {
     class Controller {
         @rpc.action()
         numberGenerator(max: number): Observable<number> {
-            return new Observable<number>((observer) => {
+            return new Observable<number>(observer => {
                 let done = false;
                 let i = 0;
                 active = true;
@@ -438,7 +437,7 @@ test('observable complete', async () => {
     {
         //make sure the assumption that unsubscribe() is even called when the observer calls complete() himself.
         let unsubscribedCalled = false;
-        const o = new Observable<number>((observer) => {
+        const o = new Observable<number>(observer => {
             unsubscribedCalled = false;
             observer.next(1);
             observer.complete();
@@ -455,14 +454,17 @@ test('observable complete', async () => {
         }
 
         {
-            const lastValue = await new Promise((resolve) => {
+            const lastValue = await new Promise(resolve => {
                 let l: any = undefined;
-                o.subscribe((value) => {
-                    l = value;
-                }, () => {
-                }, () => {
-                    resolve(l);
-                });
+                o.subscribe(
+                    value => {
+                        l = value;
+                    },
+                    () => {},
+                    () => {
+                        resolve(l);
+                    },
+                );
             });
             expect(lastValue).toBe(1);
             expect(unsubscribedCalled).toBe(true);
@@ -501,16 +503,19 @@ test('garbage collection', async () => {
     class Controller {
         @rpc.action()
         async subscribeChats(name: string) {
-            return createSubject<string>((subject) => {
-                subject.next(name);
-                subject.next('hello');
-                subject.next('world');
-            }, () => teardowns++);
+            return createSubject<string>(
+                subject => {
+                    subject.next(name);
+                    subject.next('hello');
+                    subject.next('world');
+                },
+                () => teardowns++,
+            );
         }
 
         @rpc.action()
         async subscribeChats2(name: string) {
-            return new Observable<string>((subject) => {
+            return new Observable<string>(subject => {
                 subject.next(name);
                 subject.next('hello');
                 subject.next('world');
@@ -550,9 +555,7 @@ test('garbage collection', async () => {
 
     await test(async () => {
         const observable = await controller.subscribeChats2('asd');
-        const sub = observable.subscribe(() => {
-
-        });
+        const sub = observable.subscribe(() => {});
         sub.unsubscribe();
     });
 
@@ -568,7 +571,7 @@ test('instantObservable', async () => {
     class Controller {
         @rpc.action()
         subscribeChats(channel: string) {
-            return new Observable<string>((subject) => {
+            return new Observable<string>(subject => {
                 subject.next(channel);
                 subject.next('hello');
                 subject.next('world');
@@ -594,8 +597,442 @@ test('instantObservable', async () => {
 
     {
         expect(teardowns).toBe(1);
-        const values = await defer(() => controller.subscribeChats('b')).pipe(switchMap(v => v), take(3), toArray()).toPromise();
+        const values = await defer(() => controller.subscribeChats('b'))
+            .pipe(
+                switchMap(v => v),
+                take(3),
+                toArray(),
+            )
+            .toPromise();
         expect(values).toEqual(['b', 'hello', 'world']);
         expect(teardowns).toBe(2);
+    }
+});
+
+// Tests for Subject GC stability fix
+// These tests verify that Subjects are not prematurely garbage collected
+// while active subscriptions exist (e.g., during toPromise())
+
+test('Subject survives GC during toPromise - stress test', async () => {
+    // This test runs multiple iterations to catch intermittent GC timing issues
+    class Controller {
+        @rpc.action()
+        delayedSubject(): Subject<string> {
+            const subject = new Subject<string>();
+            (async () => {
+                await sleep(0.05); // Short delay to allow GC opportunity
+                subject.next('value');
+                subject.complete();
+            })();
+            return subject;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    // Run many iterations to stress test GC behavior
+    for (let i = 0; i < 20; i++) {
+        const subject = await controller.delayedSubject();
+        // Force GC between getting subject and calling toPromise
+        if (typeof gc !== 'undefined') (gc as any)();
+        const value = await subject.toPromise();
+        expect(value).toBe('value');
+    }
+
+    expect(kernel.stats.total.subjects).toBe(20);
+});
+
+test('Multiple subscriptions keep subject alive', async () => {
+    class Controller {
+        @rpc.action()
+        multiSubject(): Subject<number> {
+            const subject = new Subject<number>();
+            (async () => {
+                await sleep(0.05);
+                subject.next(1);
+                subject.next(2);
+                subject.next(3);
+                subject.complete();
+            })();
+            return subject;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    const subject = await controller.multiSubject();
+
+    // Create multiple subscriptions
+    const values1: number[] = [];
+    const values2: number[] = [];
+    const values3: number[] = [];
+
+    const sub1 = subject.subscribe(v => values1.push(v));
+    const sub2 = subject.subscribe(v => values2.push(v));
+    const sub3 = subject.subscribe(v => values3.push(v));
+
+    // Force GC while subscriptions are active
+    if (typeof gc !== 'undefined') (gc as any)();
+
+    await subject.toPromise();
+
+    expect(values1).toEqual([1, 2, 3]);
+    expect(values2).toEqual([1, 2, 3]);
+    expect(values3).toEqual([1, 2, 3]);
+});
+
+test('Partial unsubscribe still keeps subject alive', async () => {
+    class Controller {
+        @rpc.action()
+        partialSubject(): Subject<number> {
+            const subject = new Subject<number>();
+            (async () => {
+                await sleep(0.02); // First value after 20ms
+                subject.next(1);
+                await sleep(0.06); // Second value after another 60ms
+                subject.next(2);
+                subject.complete();
+            })();
+            return subject;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    const subject = await controller.partialSubject();
+
+    const values1: number[] = [];
+    const values2: number[] = [];
+
+    const sub1 = subject.subscribe(v => values1.push(v));
+    const sub2 = subject.subscribe(v => values2.push(v));
+
+    // Wait for first value, then unsubscribe sub1
+    await sleep(0.04); // After first value (20ms) but before second (80ms)
+    sub1.unsubscribe();
+
+    // Force GC - subject should survive because sub2 is still active
+    if (typeof gc !== 'undefined') (gc as any)();
+
+    await subject.toPromise();
+
+    expect(values1).toEqual([1]); // Only got first value before unsubscribe
+    expect(values2).toEqual([1, 2]); // Got all values
+});
+
+test('BehaviorSubject survives GC during toPromise', async () => {
+    class Controller {
+        @rpc.action()
+        delayedBehavior(): BehaviorSubject<string> {
+            const subject = new BehaviorSubject<string>('initial');
+            (async () => {
+                await sleep(0.05);
+                subject.next('updated');
+                subject.complete();
+            })();
+            return subject;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    for (let i = 0; i < 10; i++) {
+        const subject = await controller.delayedBehavior();
+        expect(subject.getValue()).toBe('initial');
+
+        // Force GC
+        if (typeof gc !== 'undefined') (gc as any)();
+
+        const finalValue = await subject.toPromise();
+        expect(finalValue).toBe('updated');
+    }
+});
+
+test('pipe operators work correctly with GC pressure', async () => {
+    class Controller {
+        @rpc.action()
+        pipeSubject(): Subject<number> {
+            const subject = new Subject<number>();
+            (async () => {
+                await sleep(0.02);
+                for (let i = 1; i <= 10; i++) {
+                    subject.next(i);
+                }
+                subject.complete();
+            })();
+            return subject;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    // Test with first()
+    {
+        const subject = await controller.pipeSubject();
+        if (typeof gc !== 'undefined') (gc as any)();
+        const value = await subject.pipe(first()).toPromise();
+        expect(value).toBe(1);
+    }
+
+    // Test with take()
+    {
+        const subject = await controller.pipeSubject();
+        if (typeof gc !== 'undefined') (gc as any)();
+        const values = await subject.pipe(take(5), toArray()).toPromise();
+        expect(values).toEqual([1, 2, 3, 4, 5]);
+    }
+
+    // Test with toArray()
+    {
+        const subject = await controller.pipeSubject();
+        if (typeof gc !== 'undefined') (gc as any)();
+        const values = await subject.pipe(toArray()).toPromise();
+        expect(values).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    }
+});
+
+test('Rapid subscribe/unsubscribe cycles', async () => {
+    class Controller {
+        @rpc.action()
+        rapidSubject(): Subject<number> {
+            const subject = new Subject<number>();
+            let count = 0;
+            const interval = setInterval(() => {
+                subject.next(++count);
+                if (count >= 100) {
+                    clearInterval(interval);
+                    subject.complete();
+                }
+            }, 1);
+            return subject;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    const subject = await controller.rapidSubject();
+    const allValues: number[] = [];
+
+    // Rapidly subscribe and unsubscribe
+    for (let i = 0; i < 10; i++) {
+        const sub = subject.subscribe(v => allValues.push(v));
+        await sleep(0.005);
+        sub.unsubscribe();
+        if (typeof gc !== 'undefined') (gc as any)();
+    }
+
+    // Final subscription to completion
+    const finalValues: number[] = [];
+    subject.subscribe(v => finalValues.push(v));
+    await subject.toPromise();
+
+    // Should have collected some values during rapid cycles
+    expect(allValues.length).toBeGreaterThan(0);
+    // Final subscription should have collected remaining values
+    expect(finalValues.length).toBeGreaterThan(0);
+});
+
+test('Mixed GC scenario: subscribed vs unsubscribed subjects', async () => {
+    class Controller {
+        @rpc.action()
+        mixedSubject(id: number): Subject<string> {
+            const subject = new Subject<string>();
+            (async () => {
+                await sleep(0.1);
+                subject.next(`value-${id}`);
+                subject.complete();
+            })();
+            return subject;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    // Create subjects - some will be subscribed, some won't
+    const subscribedPromises: Promise<string | undefined>[] = [];
+    const unsubscribedSubjects: Subject<string>[] = [];
+
+    for (let i = 0; i < 10; i++) {
+        const subject = await controller.mixedSubject(i);
+        if (i % 2 === 0) {
+            // Subscribe to even-numbered subjects
+            subscribedPromises.push(subject.toPromise());
+        } else {
+            // Don't subscribe to odd-numbered subjects (should be GC-able)
+            unsubscribedSubjects.push(subject);
+        }
+    }
+
+    // Clear references to unsubscribed subjects and force GC
+    unsubscribedSubjects.length = 0;
+    await sleep(0.05);
+    if (typeof gc !== 'undefined') {
+        (gc as any)();
+        await sleep(0.05);
+        (gc as any)();
+    }
+
+    // Subscribed subjects should still complete successfully
+    const results = await Promise.all(subscribedPromises);
+    expect(results).toEqual(['value-0', 'value-2', 'value-4', 'value-6', 'value-8']);
+});
+
+test('Error handling with active subscriptions', async () => {
+    class Controller {
+        @rpc.action()
+        errorSubject(): Subject<string> {
+            const subject = new Subject<string>();
+            (async () => {
+                await sleep(0.05);
+                subject.next('before-error');
+                subject.error(new Error('Test error'));
+            })();
+            return subject;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    const subject = await controller.errorSubject();
+
+    const values: string[] = [];
+    let caughtError: Error | undefined;
+
+    subject.subscribe({
+        next: v => values.push(v),
+        error: e => (caughtError = e),
+    });
+
+    // Force GC while waiting for error
+    if (typeof gc !== 'undefined') (gc as any)();
+
+    await sleep(0.1);
+
+    expect(values).toEqual(['before-error']);
+    expect(caughtError).toBeInstanceOf(Error);
+    expect(caughtError?.message).toContain('Test error');
+});
+
+test('Long-running subscription survives multiple GC cycles', async () => {
+    class Controller {
+        @rpc.action()
+        longRunningSubject(): Subject<number> {
+            const subject = new Subject<number>();
+            (async () => {
+                for (let i = 0; i < 10; i++) {
+                    await sleep(0.02);
+                    subject.next(i);
+                }
+                subject.complete();
+            })();
+            return subject;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    const subject = await controller.longRunningSubject();
+    const values: number[] = [];
+
+    subject.subscribe(v => {
+        values.push(v);
+        // Force GC on each value
+        if (typeof gc !== 'undefined') (gc as any)();
+    });
+
+    await subject.toPromise();
+
+    expect(values).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+});
+
+test('Concurrent toPromise calls on same subject type', async () => {
+    class Controller {
+        @rpc.action()
+        concurrentSubject(id: number): Subject<string> {
+            const subject = new Subject<string>();
+            (async () => {
+                await sleep(0.05);
+                subject.next(`result-${id}`);
+                subject.complete();
+            })();
+            return subject;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    // Launch many concurrent subject calls
+    const promises: Promise<string | undefined>[] = [];
+    for (let i = 0; i < 20; i++) {
+        promises.push(
+            (async () => {
+                const subject = await controller.concurrentSubject(i);
+                if (typeof gc !== 'undefined') (gc as any)();
+                return subject.toPromise();
+            })(),
+        );
+    }
+
+    const results = await Promise.all(promises);
+
+    for (let i = 0; i < 20; i++) {
+        expect(results[i]).toBe(`result-${i}`);
+    }
+});
+
+test('Subject with very fast completion survives GC', async () => {
+    class Controller {
+        @rpc.action()
+        fastComplete(): Subject<string> {
+            const subject = new Subject<string>();
+            // Complete very quickly (1ms delay simulates minimal network latency)
+            setTimeout(() => {
+                subject.next('fast');
+                subject.complete();
+            }, 1);
+            return subject;
+        }
+    }
+
+    const kernel = new RpcKernel();
+    kernel.registerController(Controller, 'myController');
+    const client = new DirectClient(kernel);
+    const controller = client.controller<Controller>('myController');
+
+    for (let i = 0; i < 10; i++) {
+        const subject = await controller.fastComplete();
+        if (typeof gc !== 'undefined') (gc as any)();
+        const value = await subject.toPromise();
+        expect(value).toBe('fast');
     }
 });

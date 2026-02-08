@@ -1,17 +1,19 @@
 import { expect, test } from '@jest/globals';
 import { createPool } from 'mariadb';
-import { MySQLConnectionPool } from '../src/mysql-adapter.js';
-import { AutoIncrement, cast, entity, PrimaryKey, Unique } from '@deepkit/type';
-import { databaseFactory } from './factory.js';
-import { UniqueConstraintFailure } from '@deepkit/orm';
+
 import { Logger } from '@deepkit/logger';
+import { UniqueConstraintFailure } from '@deepkit/orm';
+import { AutoIncrement, PrimaryKey, Unique, cast, entity } from '@deepkit/type';
+
+import { MySQLConnectionPool } from '../src/mysql-adapter.js';
+import { databaseFactory } from './factory.js';
 
 test('connection MySQLConnectionPool', async () => {
     const pool = createPool({
         host: '127.0.0.1',
         user: 'root',
         database: 'default',
-        password: process.env.MYSQL_PW
+        password: process.env.MYSQL_PW,
     });
     const connectionPool = new MySQLConnectionPool(pool, new Logger());
 
@@ -73,7 +75,7 @@ test('bool and json', async () => {
     const database = await databaseFactory([Model]);
 
     {
-        const m = new Model;
+        const m = new Model();
         m.flag = true;
         m.doc.flag = true;
         await database.persist(m);
@@ -90,8 +92,7 @@ test('change different fields of multiple entities', async () => {
         firstName: string = '';
         lastName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -129,8 +130,7 @@ test('change pk', async () => {
     class Model {
         firstName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -171,8 +171,7 @@ test('for update/share', async () => {
     class Model {
         firstName: string = '';
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -202,8 +201,7 @@ test('union', async () => {
         complexUnion: { foo: string } | 54 = 54;
         doc: { name: string } | null = null;
 
-        constructor(public id: number & PrimaryKey) {
-        }
+        constructor(public id: number & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Service]);
@@ -248,29 +246,25 @@ test('union', async () => {
     }
 
     {
-        await database.query(Service)
-            .filter({id: 2})
-            .patchOne({
-                restartPolicy: 'no',
-                ids: 42,
-                complexUnion: 54,
-                doc: null,
-            });
+        await database.query(Service).filter({ id: 2 }).patchOne({
+            restartPolicy: 'no',
+            ids: 42,
+            complexUnion: 54,
+            doc: null,
+        });
     }
-})
-
+});
 
 test('ensure bigints are handled correctly', async () => {
     @entity.name('model5')
     class Model {
-        constructor(public id: BigInt & PrimaryKey) {
-        }
+        constructor(public id: BigInt & PrimaryKey) {}
     }
 
     const database = await databaseFactory([Model]);
     await database.persist(
         new Model(9007199254740992n), // max safe integer
-        new Model(9007199254740999n) // overflow for regular Number type
+        new Model(9007199254740999n), // overflow for regular Number type
     );
 
     const items = await database.query(Model).orderBy('id').find();
@@ -300,27 +294,27 @@ test('unique constraint 1', async () => {
 
     {
         const m1 = new Model('peter');
-        await expect(database.persist(m1)).rejects.toThrow('Duplicate entry \'peter\' for key');
+        await expect(database.persist(m1)).rejects.toThrow("Duplicate entry 'peter' for key");
         await expect(database.persist(m1)).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
 
     {
         const m1 = new Model('marie');
         const m2 = new Model('marie');
-        await expect(database.persist(m1, m2)).rejects.toThrow('Duplicate entry \'marie\' for key');
+        await expect(database.persist(m1, m2)).rejects.toThrow("Duplicate entry 'marie' for key");
         await expect(database.persist(m1, m2)).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
 
     {
-        const m = await database.query(Model).filter({username: 'paul'}).findOne();
+        const m = await database.query(Model).filter({ username: 'paul' }).findOne();
         m.username = 'peter';
-        await expect(database.persist(m)).rejects.toThrow('Duplicate entry \'peter\' for key');
+        await expect(database.persist(m)).rejects.toThrow("Duplicate entry 'peter' for key");
         await expect(database.persist(m)).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
 
     {
-        const p = database.query(Model).filter({username: 'paul'}).patchOne({username: 'peter'});
-        await expect(p).rejects.toThrow('Duplicate entry \'peter\' for key');
+        const p = database.query(Model).filter({ username: 'paul' }).patchOne({ username: 'peter' });
+        await expect(p).rejects.toThrow("Duplicate entry 'peter' for key");
         await expect(p).rejects.toBeInstanceOf(UniqueConstraintFailure);
     }
 });
@@ -330,7 +324,11 @@ test('non-object null unions should not render as JSON', async () => {
     class Model {
         id: number & PrimaryKey & AutoIncrement = 0;
 
-        constructor(public name: string, public nickName: string | null = null, public birthdate: Date | null = null) {}
+        constructor(
+            public name: string,
+            public nickName: string | null = null,
+            public birthdate: Date | null = null,
+        ) {}
     }
 
     const database = await databaseFactory([Model]);
@@ -340,9 +338,9 @@ test('non-object null unions should not render as JSON', async () => {
 
     const result = await database.query(Model).orderBy('id', 'asc').find();
     expect(result).toMatchObject([
-        {name: 'Peter', nickName: null},
-        {name: 'Christopher', nickName: 'Chris'},
-        {name: 'Thomas', nickName: 'Tom', birthdate: new Date('1960-02-10T00:00:00Z')},
+        { name: 'Peter', nickName: null },
+        { name: 'Christopher', nickName: 'Chris' },
+        { name: 'Thomas', nickName: 'Tom', birthdate: new Date('1960-02-10T00:00:00Z') },
     ]);
 });
 
@@ -363,25 +361,68 @@ test('updates & deletes should ignore previous @_pk session variable if no rows 
     // between multiple queries. outside a transaction, this is luck of the draw based on connection pooling.
     await database.transaction(async txn => {
         {
-            const result = await txn.query(Model).filter({id: model.id}).patchMany({name: 'Paul'});
+            const result = await txn.query(Model).filter({ id: model.id }).patchMany({ name: 'Paul' });
             expect(result.primaryKeys[0]).toEqual({ id: model.id });
         }
 
         {
-            const result = await txn.query(Model).filter({id: model.id}).deleteMany();
+            const result = await txn.query(Model).filter({ id: model.id }).deleteMany();
             expect(result.primaryKeys[0]).toEqual({ id: model.id });
         }
 
         // there should be no ID returned if we try to update a non-existent record
         {
-            const result = await txn.query(Model).filter({id: model.id}).patchMany({name: 'Simon'});
+            const result = await txn.query(Model).filter({ id: model.id }).patchMany({ name: 'Simon' });
             expect(result.primaryKeys[0]).toBeUndefined();
         }
 
         // there should be no ID returned if we try to delete a non-existent record
         {
-            const result = await txn.query(Model).filter({id: model.id}).deleteMany();
+            const result = await txn.query(Model).filter({ id: model.id }).deleteMany();
             expect(result.primaryKeys[0]).toBeUndefined();
         }
     });
+});
+
+test('count with pagination returns total count (#668)', async () => {
+    // GitHub issue #668: query.count() throws error if used with query pagination for page > 1
+    // count() should return the total number of matching rows, ignoring limit/skip
+    class Item {
+        id: number & PrimaryKey & AutoIncrement = 0;
+        constructor(public name: string = '') {}
+    }
+
+    const database = await databaseFactory([Item]);
+
+    // Insert 25 items
+    for (let i = 0; i < 25; i++) {
+        await database.persist(new Item(`Item ${i + 1}`));
+    }
+
+    // Test 1: count without pagination returns total
+    expect(await database.query(Item).count()).toBe(25);
+
+    // Test 2: count with pagination still returns total (this was the bug)
+    const query = database.query(Item).itemsPerPage(10).page(1);
+    const [page1Items, total1] = await Promise.all([query.find(), query.count()]);
+    expect(page1Items.length).toBe(10);
+    expect(total1).toBe(25); // count should return total, not paginated count
+
+    // Test 3: page 2 - this is where the bug manifested (page > 1)
+    const query2 = database.query(Item).itemsPerPage(10).page(2);
+    const [page2Items, total2] = await Promise.all([query2.find(), query2.count()]);
+    expect(page2Items.length).toBe(10);
+    expect(total2).toBe(25); // count should still return total
+
+    // Test 4: page 3 (last page with only 5 items)
+    const query3 = database.query(Item).itemsPerPage(10).page(3);
+    const [page3Items, total3] = await Promise.all([query3.find(), query3.count()]);
+    expect(page3Items.length).toBe(5);
+    expect(total3).toBe(25); // count should still return total
+
+    // Test 5: page beyond data (page 4 should return 0 items but count should still be 25)
+    const query4 = database.query(Item).itemsPerPage(10).page(4);
+    const [page4Items, total4] = await Promise.all([query4.find(), query4.count()]);
+    expect(page4Items.length).toBe(0);
+    expect(total4).toBe(25); // count should return total even when page is empty
 });

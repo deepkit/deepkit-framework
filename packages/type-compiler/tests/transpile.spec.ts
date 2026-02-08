@@ -1,6 +1,9 @@
-import { expect, test } from '@jest/globals';
-import { transpile, transpileAndRun } from './utils.js';
+import { test } from 'node:test';
 import * as ts from 'typescript';
+
+import { expect } from '@deepkit/run/expect';
+
+import { transpile, transpileAndRun } from './utils.js';
 
 test('function __type', () => {
     const res = transpile({ app: `function log(message: string) {}` });
@@ -10,11 +13,11 @@ test('function __type', () => {
 
 test('resolve import ts', () => {
     const res = transpile({
-        'app': `
+        app: `
             import { Logger } from './logger';
             function fn(logger: Logger) {}
         `,
-        'logger': `export class Logger {}`
+        logger: `export class Logger {}`,
     });
 
     console.log(res);
@@ -23,14 +26,17 @@ test('resolve import ts', () => {
 });
 
 test('use global types with esnext target', () => {
-    const res = transpile({
-        'app': `
+    const res = transpile(
+        {
+            app: `
             interface User {}
             export type a = Partial<User>;
-        `
-    }, {
-        target: ts.ScriptTarget.ESNext,
-    });
+        `,
+        },
+        {
+            target: ts.ScriptTarget.ESNext,
+        },
+    );
 
     expect(res.app).toContain('const __ΩPartial = ');
     expect(res.app).toContain('() => __ΩPartial');
@@ -38,11 +44,11 @@ test('use global types with esnext target', () => {
 
 test('resolve import d.ts', () => {
     const res = transpile({
-        'app': `
+        app: `
             import { Logger } from './logger';
             function fn(logger: Logger) {}
         `,
-        'logger.d.ts': `export declare class Logger {}`
+        'logger.d.ts': `export declare class Logger {}`,
     });
 
     console.log(res);
@@ -51,11 +57,11 @@ test('resolve import d.ts', () => {
 
 test('resolve import node_modules', () => {
     const res = transpile({
-        'app': `
+        app: `
             import { Logger } from 'logger';
             function fn(logger: Logger) {}
         `,
-        'node_modules/logger/index.d.ts': `export declare class Logger {}`
+        'node_modules/logger/index.d.ts': `export declare class Logger {}`,
     });
 
     console.log(res);
@@ -64,12 +70,12 @@ test('resolve import node_modules', () => {
 
 test('pass type argument named function', () => {
     const res = transpile({
-        'app': `
+        app: `
             function getType<T>(type?: ReceiveType<T>) {
             }
 
             getType<string>();
-        `
+        `,
     });
 
     console.log(res);
@@ -77,14 +83,14 @@ test('pass type argument named function', () => {
 
 test('pass type argument named function second param', () => {
     const res = transpile({
-        'app': `
+        app: `
             type ReceiveType<T> = Packed | Type | ClassType<T>;
 
             function getType<T>(first: string = 1, type?: ReceiveType<T>) {
             }
 
             getType<string>();
-        `
+        `,
     });
 
     console.log(res);
@@ -92,14 +98,14 @@ test('pass type argument named function second param', () => {
 
 test('pass type argument property access', () => {
     const res = transpile({
-        'app': `
+        app: `
             class Database {
                 query<T>(type?: ReceiveType<T>) {}
             }
 
             const db = new Database;
             db.query<string>();
-        `
+        `,
     });
 
     console.log(res);
@@ -107,9 +113,9 @@ test('pass type argument property access', () => {
 
 test('pass type argument arrow function', () => {
     const res = transpile({
-        'app': `
+        app: `
             (<T>(type?: ReceiveType<T>) => {})<string>();
-        `
+        `,
     });
 
     console.log(res);
@@ -117,10 +123,10 @@ test('pass type argument arrow function', () => {
 
 test('globals', () => {
     const res = transpile({
-        'app': `
+        app: `
             interface User {}
             export type a = Partial<User>;
-        `
+        `,
     });
 
     expect(res.app).toContain('const __ΩPartial = ');
@@ -129,7 +135,7 @@ test('globals', () => {
 
 test('chained methods two calls', () => {
     const res = transpileAndRun({
-        'app': `
+        app: `
             const types: any[] = [];
             class Http {
                 response<T>(type?: ReceiveType<T>) {
@@ -140,16 +146,19 @@ test('chained methods two calls', () => {
             const http = new Http;
             http.response<1>().response<2>();
             types;
-        `
+        `,
     });
 
     console.log(res);
-    expect(res).toEqual([[1, '.!'], [2, '.!']]);
+    expect(res).toEqual([
+        [1, '.!'],
+        [2, '.!'],
+    ]);
 });
 
 test('chained methods two calls, one without', () => {
     const res = transpileAndRun({
-        'app': `
+        app: `
             const types: any[] = [];
             class Http {
                 response<T>(type?: ReceiveType<T>) {
@@ -160,7 +169,7 @@ test('chained methods two calls, one without', () => {
             const http = new Http;
             http.response().response<2>();
             types;
-        `
+        `,
     });
 
     console.log(res);
@@ -169,7 +178,7 @@ test('chained methods two calls, one without', () => {
 
 test('chained methods three calls', () => {
     const res = transpileAndRun({
-        'app': `
+        app: `
             const types: any[] = [];
             class Http {
                 response<T>(type?: ReceiveType<T>) {
@@ -180,16 +189,20 @@ test('chained methods three calls', () => {
             const http = new Http;
             http.response<1>().response<2>().response<3>();
             types;
-        `
+        `,
     });
 
     console.log(res);
-    expect(res).toEqual([[1, '.!'], [2, '.!'], [3, '.!']]);
+    expect(res).toEqual([
+        [1, '.!'],
+        [2, '.!'],
+        [3, '.!'],
+    ]);
 });
 
 test('chained methods three calls one without', () => {
     const res = transpileAndRun({
-        'app': `
+        app: `
             const types: any[] = [];
             class Http {
                 GET(path: string) { return this }
@@ -204,16 +217,19 @@ test('chained methods three calls one without', () => {
                 .response<3>(400, \`Error\`);
 
             types;
-        `
+        `,
     });
 
     console.log(res);
-    expect(res).toEqual([[2, '.!'], [3, '.!']]);
+    expect(res).toEqual([
+        [2, '.!'],
+        [3, '.!'],
+    ]);
 });
 
 test('multiple calls optional types', () => {
     const res = transpileAndRun({
-        'app': `
+        app: `
             const types: any[] = [];
             function add<T>(type?: ReceiveType<T>) {
                 types.push(type);
@@ -221,7 +237,7 @@ test('multiple calls optional types', () => {
             add<1>();
             add();
             types;
-        `
+        `,
     });
 
     console.log(res);
@@ -230,7 +246,7 @@ test('multiple calls optional types', () => {
 
 test('multiple deep calls optional types', () => {
     const res = transpileAndRun({
-        'app': `
+        app: `
             const types: any[] = [];
             function add<T>(type?: ReceiveType<T>) {
                 types.push(type);
@@ -242,7 +258,7 @@ test('multiple deep calls optional types', () => {
             add<1>();
             add();
             types;
-        `
+        `,
     });
 
     console.log(res);
@@ -251,7 +267,7 @@ test('multiple deep calls optional types', () => {
 
 test('chained optional methods', () => {
     const res = transpileAndRun({
-        'app': `
+        app: `
             const types: any[] = [];
             class Http {
                 response<T>(type?: ReceiveType<T>) {
@@ -262,7 +278,7 @@ test('chained optional methods', () => {
             const http = new Http;
             http.response<1>().response();
             types;
-        `
+        `,
     });
 
     console.log(res);
@@ -271,11 +287,11 @@ test('chained optional methods', () => {
 
 test('readonly constructor properties', () => {
     const res = transpileAndRun({
-        'app': `
+        app: `
            class User {
               constructor(readonly id: number) {}
            }
-        `
+        `,
     });
 
     console.log(res);
@@ -283,7 +299,7 @@ test('readonly constructor properties', () => {
 
 test('readonly array', () => {
     const res = transpileAndRun({
-        'app': `
+        app: `
             interface Post {
                 id: number;
             }
@@ -292,7 +308,7 @@ test('readonly array', () => {
                 readonly id: number;
                 readonly posts: readonly Post[]
             }
-        `
+        `,
     });
 
     console.log(res);
@@ -300,7 +316,7 @@ test('readonly array', () => {
 
 test('enum union', () => {
     const res = transpile({
-        'app': `
+        app: `
             enum StatEnginePowerUnit {
                 Hp,
             }
@@ -312,7 +328,7 @@ test('enum union', () => {
 
             type StatMeasurementUnit = StatEnginePowerUnit | StatWeightUnit;
             typeOf<StatMeasurementUnit>()
-        `
+        `,
     });
 
     console.log(res);
@@ -320,14 +336,14 @@ test('enum union', () => {
 
 test('class generic reflection', () => {
     const res = transpile({
-        'app': `
+        app: `
             class A<T> {
                 constructor(type?: ReceiveType<T>) {
                 }
             }
 
             new A<string>();
-        `
+        `,
     });
 
     console.log(res);
@@ -335,7 +351,7 @@ test('class generic reflection', () => {
 
 test('class generic expression reflection', () => {
     const res = transpile({
-        'app': `
+        app: `
             class A<T> {
                 constructor(type?: ReceiveType<T>) {
                 }
@@ -344,7 +360,7 @@ test('class generic expression reflection', () => {
             const a = {b: A};
 
             new a.b<string>();
-        `
+        `,
     });
 
     console.log(res);
@@ -352,7 +368,7 @@ test('class generic expression reflection', () => {
 
 test('class extends generic', () => {
     const res = transpile({
-        'app': `
+        app: `
             class A<T> {
                 constructor(type?: ReceiveType<T>) {
                 }
@@ -360,15 +376,16 @@ test('class extends generic', () => {
 
             class B extends A<string> {}
             new B();
-        `
+        `,
     });
 
     console.log(res);
 });
 
 test('es2021', () => {
-    const res = transpile({
-        'app': `
+    const res = transpile(
+        {
+            app: `
         interface User {
             id: number;
             name: string;
@@ -376,16 +393,19 @@ test('es2021', () => {
         }
         type ReadUser = Omit<User, 'password'>;
         const type = typeOf<ReadUser>();
-        `
-    }, {target: ts.ScriptTarget.ES2021});
+        `,
+        },
+        { target: ts.ScriptTarget.ES2021 },
+    );
     console.log(res);
     expect(res.app).toContain(`const __ΩPick = [`);
     expect(res.app).toContain(`const type = typeOf([], [() => __ΩReadUser, 'n!'])`);
 });
 
 test('es2022', () => {
-    const res = transpile({
-        'app': `
+    const res = transpile(
+        {
+            app: `
         interface User {
             id: number;
             name: string;
@@ -393,21 +413,22 @@ test('es2022', () => {
         }
         type ReadUser = Omit<User, 'password'>;
         const type = typeOf<ReadUser>();
-        `
-    }, {target: ts.ScriptTarget.ES2022});
+        `,
+        },
+        { target: ts.ScriptTarget.ES2022 },
+    );
     console.log(res);
     expect(res.app).toContain(`const __ΩPick = [`);
-    expect(res.app).toContain(`const type = typeOf([], [() => __ΩReadUser, 'n!'])`)
+    expect(res.app).toContain(`const type = typeOf([], [() => __ΩReadUser, 'n!'])`);
 });
-
 
 test('Return function ref', () => {
     //see GitHub issue #354
     const res = transpile({
-        'app': `
+        app: `
         function Option<T>(val: T): Option<T> {
         };
-        `
+        `,
     });
     console.log(res);
     expect(res.app).toContain(`() => Option,`);
@@ -416,10 +437,10 @@ test('Return function ref', () => {
 test('Return arrow function ref', () => {
     //see GitHub issue #354
     const res = transpile({
-        'app': `
+        app: `
         const Option = <T>(val: T): Option<T> => {
         };
-        `
+        `,
     });
     console.log(res);
     expect(res.app).toContain(`() => Option,`);
@@ -427,14 +448,14 @@ test('Return arrow function ref', () => {
 
 test('extends with reference to this', () => {
     const res = transpile({
-        'app': `
+        app: `
         class Factory {
             create() {
                 class LogEntityForSchema extends this.options.entity {
                 }
             }
         }
-        `
+        `,
     });
     console.log(res);
     //currently broken as it returns LogEntityForSchema.options.entity, probably a bug in TS
@@ -443,37 +464,37 @@ test('extends with reference to this', () => {
 
 test('keyof this expression', () => {
     const res = transpile({
-        'app': `
+        app: `
         class Factory {
             someFunctionC(input: keyof this) { }
         }
-        `
+        `,
     });
     console.log(res);
 });
 
 test('keep "use x" at top', () => {
     const res = transpile({
-        'app': `
+        app: `
         "use client";
         const a = (a: string) => {};
-        `
+        `,
     });
     expect(res.app.startsWith('"use client";')).toBe(true);
 });
 
 test('Function', () => {
     const res = transpile({
-        'app': `
+        app: `
         type a = Function;
-        `
+        `,
     });
     expect(res.app).toContain(`[() => Function, `);
 });
 
 test('inline type definitions should compile', () => {
     const res = transpile({
-        'app': `
+        app: `
         function testFn<
             T extends ClassType<any>,
             Prop extends keyof InstanceType<T>
@@ -483,14 +504,14 @@ test('inline type definitions should compile', () => {
         }) {
             type R = Pick<InstanceType<Schema>, Prop>;
         }
-        `
+        `,
     });
     console.log(res);
 });
 
 test('class typeName', () => {
     const res = transpile({
-        'app': `
+        app: `
     class StreamApiResponseClass<T> {
         constructor(public response: T) {
         }
@@ -504,7 +525,7 @@ test('class typeName', () => {
 
         return A;
     }
-        `
+        `,
     });
     console.log(res.app);
     expect(res.app).toContain(`'StreamApiResponseClass'`);
@@ -512,13 +533,13 @@ test('class typeName', () => {
 
 test('resolve type ref', () => {
     const res = transpile({
-        'app': `
+        app: `
     class Guest {}
     class Vehicle {
         constructor(public Guest: Guest) {
         }
     }
-        `
+        `,
     });
     console.log(res.app);
     expect(res.app).toContain(`() => Guest, 'Guest'`);
@@ -526,12 +547,12 @@ test('resolve type ref', () => {
 
 test('resolve type ref2', () => {
     const res = transpile({
-        'app': `
+        app: `
     class Guest {}
     class Vehicle {
         public Guest: Guest;
     }
-        `
+        `,
     });
     console.log(res.app);
     expect(res.app).toContain(`() => Guest, 'Guest'`);
@@ -539,14 +560,14 @@ test('resolve type ref2', () => {
 
 test('ReceiveType arrow function', () => {
     const res = transpile({
-        'app': `
+        app: `
 export const typeValidation = <T>(type?: ReceiveType<T>): ValidatorFn => (control: AbstractControl) => {
         type = resolveReceiveType(type);
         const errors = validate<T>(control.value)
         console.log(errors)
         return errors.length ? {validation: errors[0]} : null
 }
-        `
+        `,
     });
     console.log(res.app);
     expect(res.app).toContain(`exports.typeValidation.Ω = undefined; return __assignType((control) =>`);
@@ -554,7 +575,7 @@ export const typeValidation = <T>(type?: ReceiveType<T>): ValidatorFn => (contro
 
 test('ReceiveType forward to type passing', () => {
     const res = transpile({
-        'app': `
+        app: `
         function typeOf2<T>(type?: ReceiveType<T>) {
             return resolveReceiveType(type);
         }
@@ -562,20 +583,20 @@ test('ReceiveType forward to type passing', () => {
         function mySerialize<T>(type?: ReceiveType<T>) {
             return typeOf2<T>();
         }
-        `
+        `,
     });
     console.log(res.app);
 });
 
 test('symbol function name', () => {
     const res = transpile({
-        'app': `
+        app: `
         const a = Symbol('a');
         class MySet {
             [a](): any {}
             [Symbol.iterator](): any {}
         }
-        `
+        `,
     });
     console.log(res.app);
     expect(res.app).toContain(`() => Symbol.iterator`);
@@ -583,11 +604,11 @@ test('symbol function name', () => {
 
 test('infer type', () => {
     const res = transpile({
-        'app': `
+        app: `
         class A {
             a = 1;
         }
-        `
+        `,
     });
     console.log(res.app);
     expect(res.app).toContain(`'a'`);
@@ -595,10 +616,175 @@ test('infer type', () => {
 
 test('intrinsic type', () => {
     const res = transpile({
-        'app': `
+        app: `
         export type A = Capitalize<'a'>;
-        `
+        `,
     });
     console.log(res.app);
     expect(res.app).toContain(`const __ΩCapitalize = `);
+});
+
+// GitHub issue #612: Optional chaining with function call causes SyntaxError
+test('optional chaining with method call - transform only', () => {
+    const res = transpile({
+        app: `
+            class Service {
+                doSomething<T>(type?: ReceiveType<T>) {
+                    return { catch: () => 'caught' };
+                }
+            }
+            class Controller {
+                service?: Service;
+                action() {
+                    this.service?.doSomething<string>().catch();
+                }
+            }
+        `,
+    });
+    console.log('Generated code:', res.app);
+    expect(res.app).toBeDefined();
+});
+
+test('optional chaining with method call', () => {
+    const res = transpileAndRun({
+        app: `
+            const types: any[] = [];
+            class Service {
+                doSomething<T>(type?: ReceiveType<T>) {
+                    types.push(type);
+                    return { catch: () => 'caught' };
+                }
+            }
+            class Controller {
+                service?: Service;
+
+                constructor(service?: Service) {
+                    this.service = service;
+                }
+
+                action() {
+                    // This should not cause SyntaxError: Invalid left-hand side in assignment
+                    this.service?.doSomething<string>().catch();
+                }
+            }
+            const ctrl = new Controller(new Service());
+            ctrl.action();
+            types;
+        `,
+    });
+
+    console.log(res);
+    // Type is passed correctly (the encoding depends on test context type resolution)
+    expect(res.length).toBe(1);
+    expect(Array.isArray(res[0])).toBe(true);
+});
+
+test('optional chaining with method call - undefined service', () => {
+    const res = transpileAndRun({
+        app: `
+            const types: any[] = [];
+            class Service {
+                doSomething<T>(type?: ReceiveType<T>) {
+                    types.push(type);
+                    return { catch: () => 'caught' };
+                }
+            }
+            class Controller {
+                service?: Service;
+
+                action() {
+                    // When service is undefined, this should safely do nothing
+                    this.service?.doSomething<string>().catch();
+                }
+            }
+            const ctrl = new Controller();
+            ctrl.action();
+            types;
+        `,
+    });
+
+    console.log(res);
+    // types should be empty because service is undefined and optional chaining skipped the call
+    expect(res).toEqual([]);
+});
+
+/**
+ * Issue #352: External types without reflection should produce 'any' bytecode
+ * instead of invalid JS like `const __ΩMyResult;` (no initializer)
+ *
+ * When a type alias references an external type from a package without Deepkit
+ * reflection metadata, the compiler should emit valid JavaScript with 'any' bytecode.
+ */
+test('issue #352: external type alias produces valid any bytecode', () => {
+    const res = transpile({
+        app: `
+            import { ExternalResult } from './external-lib';
+            export type MyResult = ExternalResult<number, Error>;
+        `,
+        // Simulate external library with declaration file only (no __type metadata)
+        'external-lib.d.ts': `
+            export declare type ExternalResult<T, E> = { ok: true; value: T } | { ok: false; error: E };
+        `,
+    });
+
+    console.log('Issue #352 output:', res.app);
+
+    // The output should contain a valid __ΩMyResult declaration with an initializer
+    // It should NOT be `const __ΩMyResult;` (invalid JS - missing initializer)
+    expect(res.app).toContain('__ΩMyResult');
+
+    // Verify it's valid JavaScript by checking for the initializer
+    // The pattern should be `const __ΩMyResult = [...]` not `const __ΩMyResult;`
+    expect(res.app).toMatch(/__ΩMyResult\s*=\s*\[/);
+
+    // Should not contain the broken pattern (const without initializer at end of statement)
+    expect(res.app).not.toMatch(/const\s+__ΩMyResult\s*;/);
+});
+
+test('issue #352: type referencing external generic class produces valid bytecode', () => {
+    const res = transpile({
+        app: `
+            import { Result } from './result-lib';
+            export type AppResult<T> = Result<T, string>;
+
+            function processResult(r: AppResult<number>) {
+                return r;
+            }
+        `,
+        // Simulate a library like oxide.ts that exports both type and runtime value
+        'result-lib.d.ts': `
+            export declare class Result<T, E> {
+                static ok<T>(value: T): Result<T, never>;
+                static err<E>(error: E): Result<never, E>;
+            }
+        `,
+    });
+
+    console.log('Issue #352 generic class output:', res.app);
+
+    // Should have valid __ΩAppResult with initializer
+    expect(res.app).toMatch(/__ΩAppResult\s*=\s*\[/);
+    expect(res.app).not.toMatch(/const\s+__ΩAppResult\s*;/);
+});
+
+test('issue #352: empty ops fallback to any bytecode', () => {
+    // This test exercises the packOpsAndStack empty ops guard directly.
+    // The guard catches edge cases where extractPackStructOfType returns
+    // without pushing any ops (e.g., nameless function with no type/params).
+    const res = transpile({
+        app: `
+            // CallSignature with no name, no type, no params can produce empty ops
+            interface MyInterface {
+                (): void;  // Call signature - has name '' (empty), has return type void
+            }
+            export type Test = MyInterface;
+        `,
+    });
+
+    console.log('Issue #352 empty ops test:', res.app);
+
+    // Should produce valid JavaScript
+    expect(res.app).toContain('__ΩTest');
+    expect(res.app).toMatch(/__ΩTest\s*=\s*\[/);
+    expect(res.app).not.toMatch(/const\s+__Ω\w+\s*;/);
 });

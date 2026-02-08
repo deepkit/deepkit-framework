@@ -1,21 +1,22 @@
 import { expect, test } from '@jest/globals';
-import { DatabaseField, entity, PrimaryKey, ReflectionClass, ReflectionKind, serializer } from '@deepkit/type';
-import { SQLFilterBuilder } from '../src/sql-filter-builder.js';
 import { escape } from 'sqlstring';
-import { splitDotPath, sql, SQLQueryModel } from '../src/sql-adapter.js';
+
+import { DatabaseField, PrimaryKey, ReflectionClass, ReflectionKind, entity, serializer } from '@deepkit/type';
+
 import { DefaultPlatform, SqlPlaceholderStrategy } from '../src/platform/default-platform.js';
+import { PreparedAdapter } from '../src/prepare.js';
 import { SchemaParser } from '../src/reverse/schema-parser.js';
 import { DatabaseModel } from '../src/schema/table.js';
+import { SQLQueryModel, splitDotPath, sql } from '../src/sql-adapter.js';
 import { SqlBuilder, SqlReference } from '../src/sql-builder.js';
-import { PreparedAdapter } from '../src/prepare.js';
+import { SQLFilterBuilder } from '../src/sql-filter-builder.js';
 
 function quoteId(value: string): string {
     return value;
 }
 
 class MySchemaParser extends SchemaParser {
-    async parse(database: DatabaseModel, limitTableNames?: string[]) {
-    }
+    async parse(database: DatabaseModel, limitTableNames?: string[]) {}
 }
 
 class MyPlatform extends DefaultPlatform {
@@ -31,7 +32,7 @@ const adapter: PreparedAdapter = {
     getName: () => 'adapter',
     platform: new MyPlatform(),
     preparedEntities: new Map<ReflectionClass<any>, any>(),
-}
+};
 
 test('splitDotPath', () => {
     expect(splitDotPath('addresses.zip')).toEqual(['addresses', 'zip']);
@@ -40,8 +41,7 @@ test('splitDotPath', () => {
 
 test('sql query', () => {
     @entity.name('user')
-    class User {
-    }
+    class User {}
 
     const id = 0;
     const query = sql`SELECT * FROM ${User} WHERE id > ${id}`;
@@ -50,7 +50,6 @@ test('sql query', () => {
     expect(generated.sql).toBe('SELECT * FROM "user" WHERE id > ?');
     expect(generated.params).toEqual([0]);
 });
-
 
 test('select', () => {
     @entity.name('user-select')
@@ -102,9 +101,9 @@ test('QueryToSql', () => {
 
     const localAdapter: PreparedAdapter = {
         ...adapter,
-        platform: new class extends MyPlatform {
+        platform: new (class extends MyPlatform {
             quoteIdentifier = quoteId;
-        }
+        })(),
     };
 
     const queryToSql = new SQLFilterBuilder(localAdapter, ReflectionClass.from(User), quoteId('user'), serializer, new SqlPlaceholderStrategy());

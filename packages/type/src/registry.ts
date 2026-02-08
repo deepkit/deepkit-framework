@@ -1,9 +1,10 @@
 import { ClassType, isArray, isFunction } from '@deepkit/core';
-import { binaryTypes, ReflectionKind, Type } from './reflection/type.js';
+
+import { ReflectionKind, Type, binaryTypes } from './reflection/type.js';
 
 interface RegistryDecorator<T> {
-    predicate: (type: Type) => boolean,
-    v: T
+    predicate: (type: Type) => boolean;
+    v: T;
 }
 
 export class TypeRegistry<T> {
@@ -24,7 +25,8 @@ export class TypeRegistry<T> {
         if (type.kind === ReflectionKind.class) {
             const classResult = this.classes.get(type.classType);
             if (classResult) return classResult;
-            if (type.classType === Set || type.classType === Map || binaryTypes.includes(type.classType)) return undefined;
+            if (type.classType === Set || type.classType === Map || binaryTypes.includes(type.classType))
+                return undefined;
         }
         return this.results[type.kind];
     }
@@ -40,7 +42,7 @@ export class TypeRegistry<T> {
         for (const classType of binaryTypes) this.setClass(classType, v);
     }
 
-    setNumeric(v: T): void{
+    setNumeric(v: T): void {
         this.set([ReflectionKind.number, ReflectionKind.bigint], v);
     }
 

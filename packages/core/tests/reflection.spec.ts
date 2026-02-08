@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { extractMethodBody, extractParameters, removeStrings } from '../src/reflection.js';
 
+import { extractMethodBody, extractParameters, removeStrings } from '../src/reflection.js';
 
 test('removeStrings', () => {
     expect(removeStrings(`'test'`)).toBe(``);
@@ -29,8 +29,7 @@ test('simple', () => {
 
         static test = uuid();
 
-        constructor(nothing: string = '{') {
-        }
+        constructor(nothing: string = '{') {}
 
         doSomething(): void {
             this.username = 'asd';
@@ -41,10 +40,12 @@ test('simple', () => {
     expect(code.trim()).toBe('this.id=uuid();this.bla=;');
 });
 
-
 test('class signature', function () {
     class Clazz {
-        constructor(protected foo: string, protected bar: string) {}
+        constructor(
+            protected foo: string,
+            protected bar: string,
+        ) {}
     }
 
     expect(extractParameters(Clazz)).toEqual(['foo', 'bar']);
@@ -57,7 +58,7 @@ test('class es5', function () {
             this.bar = bar;
         }
         return Clazz;
-    }());
+    })();
 
     expect(extractParameters(Clazz)).toEqual(['foo', 'bar']);
 });
@@ -69,15 +70,17 @@ test('function signature', function () {
 });
 
 test('class mixing', function () {
-
     function mixin(...a: any) {
-        return class {}
+        return class {};
     }
 
     class Clazz2 {}
 
     class Clazz extends mixin(Clazz2) {
-        constructor(protected foo: string, protected bar: string) {
+        constructor(
+            protected foo: string,
+            protected bar: string,
+        ) {
             super();
         }
     }
@@ -87,7 +90,7 @@ test('class mixing', function () {
 
 test('test1', function () {
     function /* (no parenthesis like this) */ test1(a: any, b: any, c: any) {
-        return true
+        return true;
     }
 
     expect(extractParameters(test1)).toEqual(['a', 'b', 'c']);
@@ -95,7 +98,7 @@ test('test1', function () {
 
 test('test2', function () {
     function test2(a: any, b: any, c: any) /*(why do people do this??)*/ {
-        return true
+        return true;
     }
 
     expect(extractParameters(test2)).toEqual(['a', 'b', 'c']);
@@ -103,27 +106,22 @@ test('test2', function () {
 
 test('test3', function () {
     function test3(a: any, /* (jewiofewjf,wo, ewoi, werp)*/ b: any, c: any) {
-        return true
+        return true;
     }
 
     expect(extractParameters(test3)).toEqual(['a', 'b', 'c']);
 });
 
 test('test4', function () {
-    function test4(a: any/* a*/, /* b */b: any, /*c*/c: any, d: any/*d*/) {
-        return function (one: any, two: any, three: any) {
-        }
+    function test4(a: any /* a*/, /* b */ b: any, /*c*/ c: any, d: any /*d*/) {
+        return function (one: any, two: any, three: any) {};
     }
 
     expect(extractParameters(test4)).toEqual(['a', 'b', 'c', 'd']);
 });
 
 test('test5', function () {
-    function test5(
-        a: any,
-        b: any,
-        c: any
-    ) {
+    function test5(a: any, b: any, c: any) {
         return false;
     }
 
@@ -131,7 +129,9 @@ test('test5', function () {
 });
 
 test('test6', function () {
-    function test6(a: any) { return function f6(a: any, b: any) { } }
+    function test6(a: any) {
+        return function f6(a: any, b: any) {};
+    }
 
     expect(extractParameters(test6)).toEqual(['a']);
 });
@@ -161,14 +161,18 @@ test('test7', function () {
            return false;
          }
          */
-        a: any, b: any, c: any) { return true }
+        a: any,
+        b: any,
+        c: any,
+    ) {
+        return true;
+    }
 
     expect(extractParameters(test7)).toEqual(['a', 'b', 'c']);
 });
 
 test('test8', function () {
-    function test8
-        (a: any, b: any, c: any) { }
+    function test8(a: any, b: any, c: any) {}
 
     expect(extractParameters(test8)).toEqual(['a', 'b', 'c']);
 });
@@ -176,31 +180,33 @@ test('test8', function () {
 test('test9', function () {
     var a: any, b: any, c: any;
 
-    function π9(ƒ: any, µ: any) { (a + 2 + b + 2 + c) }
+    function π9(ƒ: any, µ: any) {
+        a + 2 + b + 2 + c;
+    }
 
     expect(extractParameters(π9)).toEqual(['ƒ', 'µ']);
 });
 
 test('supports ES2015 fat arrow functions with parens', function () {
-    var f = '(a,b) => a + b'
+    var f = '(a,b) => a + b';
 
     expect(extractParameters(f)).toEqual(['a', 'b']);
-})
+});
 
 test('supports ES2015 fat arrow functions without parens', function () {
-    var f = 'a => a + 2'
+    var f = 'a => a + 2';
     expect(extractParameters(f)).toEqual(['a']);
-})
+});
 
 test('ignores ES2015 default params', function () {
     // default params supported in node.js ES6
-    var f11 = '(a, b = 20) => a + b'
+    var f11 = '(a, b = 20) => a + b';
 
     expect(extractParameters(f11)).toEqual(['a', 'b']);
-})
+});
 
 test('supports function created using the Function constructor', function () {
     var f = new Function('a', 'b', 'return a + b');
 
     expect(extractParameters(f)).toEqual(['a', 'b']);
-})
+});

@@ -1,13 +1,15 @@
-import { test, expect } from '@jest/globals';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
+
 import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
-import { assertType, Group, ReflectionKind, stringifyType } from '../src/reflection/type.js';
+import { ReflectionKind, assertType, stringifyType } from '../src/reflection/type.js';
+import { Group } from '../src/type-annotations.js';
 
 test('union empty interfaces', () => {
-    interface Dog {
-    }
+    interface Dog {}
 
-    interface Cat {
-    }
+    interface Cat {}
 
     //If two objectLiterals have the same shape, they are filtered out by flattenUnionTypes + isTypeIncluded.
     //we se type.typeName additional now, so they are not filtered out. If this breaks in the future,

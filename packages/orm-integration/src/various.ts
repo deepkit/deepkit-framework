@@ -1,21 +1,23 @@
 import { expect } from '@jest/globals';
+import { randomBytes } from 'crypto';
+
+import { UniqueConstraintFailure, hydrateEntity, isDatabaseOf } from '@deepkit/orm';
+import { SQLDatabaseAdapter, identifier, sql } from '@deepkit/sql';
 import {
     AutoIncrement,
     BackReference,
-    cast,
     DatabaseField,
-    entity,
-    isReferenceInstance,
     PrimaryKey,
     Reference,
-    Unique,
-    uuid,
     UUID,
+    Unique,
+    cast,
+    entity,
+    isReferenceInstance,
+    uuid,
 } from '@deepkit/type';
-import { identifier, sql, SQLDatabaseAdapter } from '@deepkit/sql';
+
 import { DatabaseFactory } from './test.js';
-import { hydrateEntity, isDatabaseOf, UniqueConstraintFailure } from '@deepkit/orm';
-import { randomBytes } from 'crypto';
 
 Error.stackTraceLimit = 20;
 
@@ -43,7 +45,7 @@ export const variousTests = {
         @entity.name('test_skip_database_field_insert')
         class User {
             id: number & PrimaryKey & AutoIncrement = 0;
-            username?: string & DatabaseField<{ skip: true }>
+            username?: string & DatabaseField<{ skip: true }>;
         }
 
         const database = await databaseFactory([User]);
@@ -54,7 +56,7 @@ export const variousTests = {
 
         {
             const result = await database.query(User).findOne();
-            expect(result.id).toBe(1)
+            expect(result.id).toBe(1);
             expect(result).not.toHaveProperty('username');
         }
     },
@@ -72,25 +74,39 @@ export const variousTests = {
         await database.persist(cast<user>({ username: 'peter' }));
         await database.persist(cast<user>({ username: 'marie' }));
 
-        type Count = {count: number};
+        type Count = { count: number };
 
         {
-            const result = await database.raw<Count>(sql`SELECT count(*) as count
-                                                  FROM ${user}`).findOne();
+            const result = await database
+                .raw<Count>(
+                    sql`SELECT count(*) as count
+                                                  FROM ${user}`,
+                )
+                .findOne();
             expect(result.count).toBe(2);
         }
 
         {
-            const result = await database.createSession().raw<Count>(sql`SELECT count(*) as count
-                                                                  FROM ${user}`).findOne();
+            const result = await database
+                .createSession()
+                .raw<Count>(
+                    sql`SELECT count(*) as count
+                                                                  FROM ${user}`,
+                )
+                .findOne();
             expect(result.count).toBe(2);
         }
 
         {
             const id = 1;
-            const result = await database.createSession().raw<Count>(sql`SELECT count(*) as count
+            const result = await database
+                .createSession()
+                .raw<Count>(
+                    sql`SELECT count(*) as count
                                                                   FROM ${user}
-                                                                  WHERE id > ${id}`).findOne();
+                                                                  WHERE id > ${id}`,
+                )
+                .findOne();
             expect(result.count).toBe(1);
         }
 
@@ -103,7 +119,10 @@ export const variousTests = {
         }
 
         {
-            const result = await database.createSession().raw<user>(sql`SELECT * FROM ${user}`).find();
+            const result = await database
+                .createSession()
+                .raw<user>(sql`SELECT * FROM ${user}`)
+                .find();
             expect(result).toEqual([
                 { id: 1, username: 'peter' },
                 { id: 2, username: 'marie' },
@@ -129,35 +148,56 @@ export const variousTests = {
         if (!isDatabaseOf(database, SQLDatabaseAdapter)) return;
 
         if (isDatabaseOf(database, SQLDatabaseAdapter)) {
-            await database.persist(cast<user>({ username: 'peter' }), cast<user>({ username: 'marie' }), cast<user>({ username: 'mueller' }));
+            await database.persist(
+                cast<user>({ username: 'peter' }),
+                cast<user>({ username: 'marie' }),
+                cast<user>({ username: 'mueller' }),
+            );
 
             {
-                const result = await database.query(user).where(sql`id > 1`).findOne();
+                const result = await database
+                    .query(user)
+                    .where(sql`id > 1`)
+                    .findOne();
                 expect(result).toMatchObject({ id: 2, username: 'marie' });
             }
 
             {
                 const id = 1;
-                const result = await database.query(user).where(sql`id = ${id}`).findOne();
+                const result = await database
+                    .query(user)
+                    .where(sql`id = ${id}`)
+                    .findOne();
                 expect(result).toMatchObject({ id: 1, username: 'peter' });
             }
 
             {
                 const id = 3;
-                const result = await database.query(user).filter({ id: { $gt: 1 } })
-                    .where(sql`${identifier('id')} < ${id}`).find();
+                const result = await database
+                    .query(user)
+                    .filter({ id: { $gt: 1 } })
+                    .where(sql`${identifier('id')} < ${id}`)
+                    .find();
                 expect(result).toMatchObject([{ id: 2, username: 'marie' }]);
             }
 
             {
-                const result = await database.query(user).withSum('id', 'countUsers').withMax('id', 'maxId').withMin('id').findOne();
+                const result = await database
+                    .query(user)
+                    .withSum('id', 'countUsers')
+                    .withMax('id', 'maxId')
+                    .withMin('id')
+                    .findOne();
                 expect(result.countUsers).toBe(1 + 2 + 3);
                 expect(result.maxId).toBe(3);
                 expect(result.id).toBe(1);
             }
 
             {
-                const result = await database.query(user).sqlSelect(sql`count(*) as count`).findOne();
+                const result = await database
+                    .query(user)
+                    .sqlSelect(sql`count(*) as count`)
+                    .findOne();
                 expect(result.count).toBe(3);
             }
         }
@@ -174,9 +214,8 @@ export const variousTests = {
             constructor(
                 public hash: Uint8Array,
                 public created: Date,
-                public previous?: ExplorerBlock & Reference
-            ) {
-            }
+                public previous?: ExplorerBlock & Reference,
+            ) {}
         }
 
         const database = await databaseFactory([ExplorerBlock]);
@@ -185,7 +224,7 @@ export const variousTests = {
         let previous: ExplorerBlock | undefined = undefined;
 
         for (let i = 0; i < 10; i++) {
-            previous = new ExplorerBlock(randomBytes(16), new Date, previous);
+            previous = new ExplorerBlock(randomBytes(16), new Date(), previous);
 
             previous.level = Math.ceil(Math.random() * 1000);
             previous.transactions = Math.ceil(Math.random() * 1000);
@@ -202,7 +241,9 @@ export const variousTests = {
             expect(isReferenceInstance(block)).toBe(false);
             if (block.previous) {
                 expect(block.previous).toBeInstanceOf(ExplorerBlock);
-                expect(isReferenceInstance(block.previous)).toBe(true);
+                // FK reference is upgraded because the referenced block is also in the query results.
+                // Object identity is preserved: block.previous === the actual block object.
+                expect(isReferenceInstance(block.previous)).toBe(false);
             }
             expect(block.level).toBeGreaterThan(0);
         }
@@ -213,8 +254,7 @@ export const variousTests = {
         class User {
             public id: number & AutoIncrement & PrimaryKey = 0;
 
-            constructor(public username: string) {
-            }
+            constructor(public username: string) {}
         }
 
         const database = await databaseFactory([User]);
@@ -273,7 +313,7 @@ export const variousTests = {
 
         {
             await database.query(User).deleteMany();
-            await database.createSession().transaction(async (session) => {
+            await database.createSession().transaction(async session => {
                 session.add(new User('user 1'), new User('user 2'), new User('user 3'));
             });
             expect(await database.query(User).count()).toBe(3);
@@ -282,7 +322,7 @@ export const variousTests = {
         {
             await database.query(User).deleteMany();
             expect(await database.query(User).count()).toBe(0);
-            await database.createSession().transaction(async (session) => {
+            await database.createSession().transaction(async session => {
                 session.add(new User('user 1'), new User('user 2'), new User('user 3'));
                 await session.flush();
 
@@ -297,7 +337,7 @@ export const variousTests = {
         {
             await database.query(User).deleteMany();
             expect(await database.query(User).count()).toBe(0);
-            await database.transaction(async (session) => {
+            await database.transaction(async session => {
                 session.add(new User('user 1'), new User('user 2'), new User('user 3'));
                 await session.flush();
 
@@ -326,9 +366,7 @@ export const variousTests = {
         {
             //empty transaction
             const session = database.createSession();
-            await database.createSession().transaction(async (session) => {
-
-            });
+            await database.createSession().transaction(async session => {});
         }
         database.disconnect();
     },
@@ -337,8 +375,7 @@ export const variousTests = {
         class User {
             public id: number & PrimaryKey & AutoIncrement = 0;
 
-            constructor(public username: string & Unique) {
-            }
+            constructor(public username: string & Unique) {}
         }
 
         const database = await databaseFactory([User]);
@@ -382,8 +419,7 @@ export const variousTests = {
         class Book {
             id: number & PrimaryKey & AutoIncrement = 0;
 
-            constructor(public bookShelf?: BookShelf & Reference) {
-            }
+            constructor(public bookShelf?: BookShelf & Reference) {}
         }
 
         const database = await databaseFactory([Book, BookShelf]);
@@ -398,8 +434,7 @@ export const variousTests = {
         class Model {
             id: number & PrimaryKey & AutoIncrement = 0;
 
-            constructor(public username: string) {
-            }
+            constructor(public username: string) {}
         }
 
         const database = await databaseFactory([Model]);
@@ -408,37 +443,52 @@ export const variousTests = {
         await database.persist(new Model('Peter2'), new Model('Peter3'), new Model('Marie'));
 
         {
-            const items = await database.query(Model)
-                .filter({ username: { $like: 'Peter%' } }).orderBy('username').find();
+            const items = await database
+                .query(Model)
+                .filter({ username: { $like: 'Peter%' } })
+                .orderBy('username')
+                .find();
             expect(items).toHaveLength(2);
             expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }]);
         }
 
         {
-            const items = await database.query(Model)
-                .filter({ username: { $like: 'Pet%' } }).orderBy('username').find();
+            const items = await database
+                .query(Model)
+                .filter({ username: { $like: 'Pet%' } })
+                .orderBy('username')
+                .find();
             expect(items).toHaveLength(2);
             expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }]);
         }
 
         {
-            const items = await database.query(Model)
-                .filter({ username: { $like: 'Peter_' } }).orderBy('username').find();
+            const items = await database
+                .query(Model)
+                .filter({ username: { $like: 'Peter_' } })
+                .orderBy('username')
+                .find();
             expect(items).toHaveLength(2);
             expect(items).toMatchObject([{ username: 'Peter2' }, { username: 'Peter3' }]);
         }
 
         {
-            const items = await database.query(Model)
-                .filter({ username: { $like: '%r%' } }).orderBy('username').find();
+            const items = await database
+                .query(Model)
+                .filter({ username: { $like: '%r%' } })
+                .orderBy('username')
+                .find();
             expect(items).toHaveLength(3);
-            expect(items).toMatchObject([ { username: 'Marie' }, { username: 'Peter2' }, { username: 'Peter3' }]);
+            expect(items).toMatchObject([{ username: 'Marie' }, { username: 'Peter2' }, { username: 'Peter3' }]);
         }
 
         {
-            await database.query(Model).filter({ username: { $like: 'Mar%' } }).patchOne({ username: 'Marie2' });
+            await database
+                .query(Model)
+                .filter({ username: { $like: 'Mar%' } })
+                .patchOne({ username: 'Marie2' });
             const items = await database.query(Model).orderBy('username').find();
-            expect(items).toMatchObject([ { username: 'Marie2' }, { username: 'Peter2' }, { username: 'Peter3' } ]);
+            expect(items).toMatchObject([{ username: 'Marie2' }, { username: 'Peter2' }, { username: 'Peter3' }]);
         }
     },
     async deepObjectPatch(databaseFactory: DatabaseFactory) {
@@ -465,11 +515,10 @@ export const variousTests = {
 
         await db.persist(person1, person2);
 
-        await db.query(Person)
-            .filter({ 'name.surname': 'Meier' })
-            .patchOne({ 'name.forename': 'Klaus' });
+        await db.query(Person).filter({ 'name.surname': 'Meier' }).patchOne({ 'name.forename': 'Klaus' });
 
-        await db.query(Person)
+        await db
+            .query(Person)
             .filter({ 'name.surname': 'Meier' })
             .patchOne({ $inc: { 'name.changes': 1 } });
 
@@ -501,9 +550,7 @@ export const variousTests = {
 
         await db.persist(person1, person2);
 
-        await db.query(Person)
-            .filter(person1)
-            .patchOne({ 'addresses.0.zip': '5678' });
+        await db.query(Person).filter(person1).patchOne({ 'addresses.0.zip': '5678' });
 
         const person = await db.query(Person).filter(person1).findOne();
         expect(person.addresses).toEqual([{ name: 'home', street: 'street1', zip: '5678' }]);
@@ -513,8 +560,7 @@ export const variousTests = {
         class Page {
             id: number & PrimaryKey & AutoIncrement = 0;
 
-            constructor(public content: any) {
-            };
+            constructor(public content: any) {}
         }
 
         const db = await databaseFactory([Page]);
@@ -529,8 +575,7 @@ export const variousTests = {
         class Page {
             id: number & PrimaryKey & AutoIncrement = 0;
 
-            constructor(public content: { id: UUID, insert: string, attributes?: { [name: string]: any } }[]) {
-            };
+            constructor(public content: { id: UUID; insert: string; attributes?: { [name: string]: any } }[]) {}
         }
 
         const db = await databaseFactory([Page]);
@@ -562,7 +607,9 @@ export const variousTests = {
 
         const page = await db.query(Page).lazyLoad('content').findOne();
         expect(page.title).toBe('test');
-        expect(() => page.content).toThrowError('Property Page.content was not populated. Remove lazyLoad(\'content\') or call \'await hydrateEntity(item)\'');
+        expect(() => page.content).toThrowError(
+            "Property Page.content was not populated. Remove lazyLoad('content') or call 'await hydrateEntity(item)'",
+        );
 
         await hydrateEntity(page);
         expect(page.content).toEqual(new Uint8Array([1, 2, 3]));
@@ -575,8 +622,7 @@ export const variousTests = {
         class Model {
             firstName: string = '';
 
-            constructor(public id: number & PrimaryKey) {
-            }
+            constructor(public id: number & PrimaryKey) {}
         }
 
         const database = await databaseFactory([Model]);
@@ -633,9 +679,7 @@ export const variousTests = {
         class Product extends BaseModel {
             brand?: Brand & Reference;
 
-            constructor(
-                public sku: string,
-            ) {
+            constructor(public sku: string) {
                 super();
             }
 
@@ -644,7 +688,10 @@ export const variousTests = {
 
         @entity.name('productInCategory')
         class ProductInCategory extends BaseModel {
-            constructor(public product: Product & Reference, public category: ProductCategory & Reference) {
+            constructor(
+                public product: Product & Reference,
+                public category: ProductCategory & Reference,
+            ) {
                 super();
             }
         }
@@ -668,7 +715,16 @@ export const variousTests = {
             const productInCategory1 = new ProductInCategory(product1, category1);
             const productInCategory2 = new ProductInCategory(product1, category2);
 
-            await database.persist(product1, product2, category1, productInCategory1, productInCategory2, image1, image2, brand);
+            await database.persist(
+                product1,
+                product2,
+                category1,
+                productInCategory1,
+                productInCategory2,
+                image1,
+                image2,
+                brand,
+            );
         }
 
         {
@@ -677,7 +733,13 @@ export const variousTests = {
         }
 
         {
-            const products = await database.query(ProductInCategory).useInnerJoinWith('product').joinWith('images').joinWith('brand').end().find();
+            const products = await database
+                .query(ProductInCategory)
+                .useInnerJoinWith('product')
+                .joinWith('images')
+                .joinWith('brand')
+                .end()
+                .find();
             expect(products[0].product === products[1].product).toBe(true);
             expect(products[0].product.images!.length).toBe(2);
             expect(products[1].product.images!.length).toBe(2);
@@ -710,7 +772,7 @@ export const variousTests = {
             book.author.country.name = 'Country1';
             book.author.country.id = '1';
             book.anyType.test1 = '1';
-            book.anyType.test2 = {deep1: '1'};
+            book.anyType.test2 = { deep1: '1' };
             await database.persist(book);
         }
 
@@ -739,8 +801,7 @@ export const variousTests = {
             complexUnion: { foo: string } | 54 = 54;
             doc: { name: string } | null = null;
 
-            constructor(public id: number & PrimaryKey) {
-            }
+            constructor(public id: number & PrimaryKey) {}
         }
 
         const database = await databaseFactory([Service]);
@@ -785,22 +846,19 @@ export const variousTests = {
         }
 
         {
-            await database.query(Service)
-                .filter({id: 2})
-                .patchOne({
-                    restartPolicy: 'no',
-                    ids: 42,
-                    complexUnion: 54,
-                    doc: null,
-                });
+            await database.query(Service).filter({ id: 2 }).patchOne({
+                restartPolicy: 'no',
+                ids: 42,
+                complexUnion: 54,
+                doc: null,
+            });
         }
     },
     async jsonNull(databaseFactory: DatabaseFactory) {
         @entity.name('jsonNull')
         class Model {
             doc: { name: string } | null = null;
-            constructor(public id: number & PrimaryKey) {
-            }
+            constructor(public id: number & PrimaryKey) {}
         }
 
         const database = await databaseFactory([Model]);
@@ -817,7 +875,7 @@ export const variousTests = {
         }
 
         {
-            const m = await database.query(Model).filter({id: 1}).findOne();
+            const m = await database.query(Model).filter({ id: 1 }).findOne();
             expect(m).toMatchObject({ doc: { name: 'Peter' } });
             m.doc = null;
             await database.persist(m);
@@ -839,16 +897,18 @@ export const variousTests = {
         }
 
         {
-            const items = await database.query(Model)
-                .filter({doc: null}).orderBy('id').find();
+            const items = await database.query(Model).filter({ doc: null }).orderBy('id').find();
             expect(items.length).toBe(2);
             expect(items[0]).toMatchObject({ id: 1, doc: null });
             expect(items[1]).toMatchObject({ id: 3, doc: null });
         }
 
         {
-            const items = await database.query(Model)
-                .filter({doc: {$ne: null}}).orderBy('id').find();
+            const items = await database
+                .query(Model)
+                .filter({ doc: { $ne: null } })
+                .orderBy('id')
+                .find();
             expect(items.length).toBe(1);
             expect(items[0]).toMatchObject({ id: 2, doc: { name: 'Peter2' } });
         }
@@ -857,8 +917,7 @@ export const variousTests = {
         @entity.name('model5')
         class Model {
             doc?: { name: string };
-            constructor(public id: number & PrimaryKey) {
-            }
+            constructor(public id: number & PrimaryKey) {}
         }
 
         const database = await databaseFactory([Model]);
@@ -875,7 +934,7 @@ export const variousTests = {
         }
 
         {
-            const m = await database.query(Model).filter({id: 1}).findOne();
+            const m = await database.query(Model).filter({ id: 1 }).findOne();
             expect(m).toMatchObject({ doc: { name: 'Peter' } });
             m.doc = undefined;
             await database.persist(m);
@@ -899,8 +958,7 @@ export const variousTests = {
         }
 
         {
-            const items = await database.query(Model)
-                .filter({doc: undefined}).orderBy('id').find();
+            const items = await database.query(Model).filter({ doc: undefined }).orderBy('id').find();
             expect(items.length).toBe(2);
             expect(items[0]).toMatchObject({ id: 1 });
             expect(items[1]).toMatchObject({ id: 3 });
@@ -909,8 +967,11 @@ export const variousTests = {
         }
 
         {
-            const items = await database.query(Model)
-                .filter({doc: {$ne: undefined}}).orderBy('id').find();
+            const items = await database
+                .query(Model)
+                .filter({ doc: { $ne: undefined } })
+                .orderBy('id')
+                .find();
             expect(items.length).toBe(1);
             expect(items[0]).toMatchObject({ id: 2, doc: { name: 'Peter2' } });
         }
@@ -919,7 +980,7 @@ export const variousTests = {
         @entity.name('map_name_user')
         class User {
             id: number & PrimaryKey & AutoIncrement = 0;
-            group?: Group & Reference & DatabaseField<{name: 'group_id'}>;
+            group?: Group & Reference & DatabaseField<{ name: 'group_id' }>;
 
             constructor(public username: string) {}
         }
@@ -940,23 +1001,23 @@ export const variousTests = {
         }
 
         {
-            const user = await database.query(User).joinWith('group').filter({username: 'peter'}).findOne();
-            expect(user.group).toMatchObject({name: 'admin'});
-            const userGroup = await database.query(Group).filter({name: 'users'}).findOne();
+            const user = await database.query(User).joinWith('group').filter({ username: 'peter' }).findOne();
+            expect(user.group).toMatchObject({ name: 'admin' });
+            const userGroup = await database.query(Group).filter({ name: 'users' }).findOne();
             user.group = userGroup;
             await database.persist(user);
         }
 
         {
-            const user = await database.query(User).joinWith('group').filter({username: 'peter'}).findOne();
-            expect(user.group).toMatchObject({name: 'users'});
+            const user = await database.query(User).joinWith('group').filter({ username: 'peter' }).findOne();
+            expect(user.group).toMatchObject({ name: 'users' });
         }
 
         {
-            const userGroup = await database.query(Group).filter({name: 'users'}).findOne();
-            const user = await database.query(User).joinWith('group').filter({group: userGroup}).findOne();
-            expect(user).toMatchObject({username: 'peter'});
-            expect(user.group).toMatchObject({name: 'users'});
+            const userGroup = await database.query(Group).filter({ name: 'users' }).findOne();
+            const user = await database.query(User).joinWith('group').filter({ group: userGroup }).findOne();
+            expect(user).toMatchObject({ username: 'peter' });
+            expect(user.group).toMatchObject({ name: 'users' });
         }
-    }
+    },
 };

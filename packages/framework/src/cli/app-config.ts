@@ -7,23 +7,21 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { cli, Command } from '@deepkit/app';
-import { DebugController } from '../debug/debug.controller.js';
-import { ConfigOption } from "@deepkit/framework-debug-api";
-import { ReflectionClass } from "@deepkit/type";
 import { createTable } from 'nice-table';
 import { inspect } from 'util';
+
+import { Command, cli } from '@deepkit/app';
+import { ConfigOption } from '@deepkit/framework-debug-api';
+import { ReflectionClass } from '@deepkit/type';
+
+import { DebugController } from '../debug/debug.controller.js';
 
 /**
  * @description Prints the current configuration, they type and default value.
  */
 @cli.controller('debug:config')
 export class DebugConfigController implements Command {
-    constructor(
-        protected debug: DebugController
-    ) {
-    }
+    constructor(protected debug: DebugController) {}
 
     async execute(): Promise<void> {
         const configs = this.debug.configuration();
@@ -43,8 +41,8 @@ export class DebugConfigController implements Command {
                 fullWidth: true,
                 throwIfTooSmall: false,
                 indexColumn: false,
-                stringify: (value) => inspect(value, { colors: true })
-            })
+                stringify: value => inspect(value, { colors: true }),
+            }),
         );
     }
 }

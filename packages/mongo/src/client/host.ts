@@ -7,18 +7,9 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import type { MongoConnection } from './connection.js';
 
-export type HostType =
-    'unknown' |
-    'standalone' |
-    'primary' |
-    'secondary' |
-    'mongos' |
-    'arbiter' |
-    'other' |
-    'ghost';
+export type HostType = 'unknown' | 'standalone' | 'primary' | 'secondary' | 'mongos' | 'arbiter' | 'other' | 'ghost';
 
 export class HostStats {
     /**
@@ -109,7 +100,7 @@ export class Host {
     staleness: number = 0;
     stale: boolean = false;
 
-    stats: HostStats = new HostStats;
+    stats: HostStats = new HostStats();
 
     constructor(
         /**
@@ -159,7 +150,7 @@ export class Host {
             //type changed. Should we do anything special?
         }
         this.type = type;
-        this.typeSetAt = new Date;
+        this.typeSetAt = new Date();
     }
 
     getType() {

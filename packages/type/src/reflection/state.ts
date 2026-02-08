@@ -1,3 +1,3 @@
-export const state: {nominalId: number} = {
+export const state: { nominalId: number } = {
     nominalId: 1,
 };

@@ -1,5 +1,7 @@
 import { expect, test } from '@jest/globals';
-import { AutoIncrement, deserialize, PrimaryKey, serialize } from '@deepkit/type';
+
+import { AutoIncrement, PrimaryKey, deserialize, serialize } from '@deepkit/type';
+
 import { sqlSerializer } from '../src/serializer/sql-serializer.js';
 
 test('array', () => {
@@ -16,10 +18,7 @@ test('array', () => {
     }
 
     const runtime = { id: 1, tags: ['a', 'b'], addresses: [{ name: 'a', street: 'b', zip: 'c' }] };
-    const res = serialize<Person>(
-        runtime,
-        undefined, sqlSerializer,
-    );
+    const res = serialize<Person>(runtime, undefined, sqlSerializer);
     const record = {
         id: 1,
         tags: JSON.stringify(['a', 'b']),
@@ -30,5 +29,3 @@ test('array', () => {
     const back = deserialize<Person>(res, undefined, sqlSerializer);
     expect(back).toEqual(runtime);
 });
-
-

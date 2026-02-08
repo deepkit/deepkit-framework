@@ -1,21 +1,22 @@
-import { expect, test } from '@jest/globals';
-import { isCustomTypeClass, isGlobalTypeClass, isTypeClassOf, stringifyResolvedType, stringifyType } from '../src/reflection/type.js';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
+
 import { ReflectionClass, typeOf } from '../src/reflection/reflection.js';
+import { isCustomTypeClass, isGlobalTypeClass, isTypeClassOf, stringifyResolvedType, stringifyType } from '../src/reflection/type.js';
 
 test('index access inheritance', () => {
     interface SuperInterface {
         id: number;
     }
 
-    interface DerivedInterface extends SuperInterface {
-    }
+    interface DerivedInterface extends SuperInterface {}
 
     class SuperClass {
         id!: number;
     }
 
-    class DerivedClass extends SuperClass {
-    }
+    class DerivedClass extends SuperClass {}
 
     expect(stringifyType(typeOf<SuperInterface['id']>())).toBe('number');
     expect(stringifyType(typeOf<DerivedInterface['id']>())).toBe('number');
@@ -24,17 +25,15 @@ test('index access inheritance', () => {
 });
 
 test('extends override constructor', () => {
-    class Adapter {
-    }
+    class Adapter {}
 
     class Database {
-        constructor(protected adapter: Adapter) {
-        }
+        constructor(protected adapter: Adapter) {}
     }
 
     class MyDatabase extends Database {
         constructor() {
-            super(new Adapter);
+            super(new Adapter());
         }
     }
     expect(stringifyResolvedType(typeOf<MyDatabase>())).toBe(`MyDatabase {
@@ -44,32 +43,28 @@ test('extends override constructor', () => {
 });
 
 test('extends override constructor no reflection', () => {
-    class Adapter {
-    }
+    class Adapter {}
 
     /**
      * @reflection never
      */
     class Database {
-        constructor(protected adapter: Adapter) {
-        }
+        constructor(protected adapter: Adapter) {}
     }
 
     class MyDatabase extends Database {
         constructor() {
-            super(new Adapter);
+            super(new Adapter());
         }
     }
     expect(stringifyResolvedType(typeOf<MyDatabase>())).toBe(`MyDatabase {constructor()}`);
 });
 
 test('isGlobalTypeClass', () => {
-    class MyDate {
-
-    }
+    class MyDate {}
     class User {
         myDate?: MyDate;
-        created: Date = new Date;
+        created: Date = new Date();
     }
 
     const reflection = ReflectionClass.from(User);
@@ -81,19 +76,11 @@ test('isGlobalTypeClass', () => {
 });
 
 test('isTypeClassOf', () => {
-    class Base {
+    class Base {}
+    class Base2 extends Base {}
 
-    }
-    class Base2 extends Base {
-
-    }
-
-    class Derived extends Base {
-
-    }
-    class Derived2 extends Base2 {
-
-    }
+    class Derived extends Base {}
+    class Derived2 extends Base2 {}
 
     expect(isTypeClassOf(Base)(typeOf<Base>())).toBe(true);
     expect(isTypeClassOf(Base)(typeOf<Base2>())).toBe(true);

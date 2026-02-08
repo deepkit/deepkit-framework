@@ -1,6 +1,9 @@
-import { expect, test } from '@jest/globals';
-import { stringifyResolvedType, stringifyShortResolvedType, stringifyType, Type } from '../src/reflection/type.js';
+import { test } from 'node:test';
+
+import { expect } from '@deepkit/run/expect';
+
 import { reflect, typeOf } from '../src/reflection/reflection.js';
+import { Type, stringifyResolvedType, stringifyShortResolvedType, stringifyType } from '../src/reflection/type.js';
 import { deserializeType, serializeType } from '../src/type-serialization.js';
 
 test('stringifyType basic', () => {
@@ -15,11 +18,11 @@ test('stringifyType union', () => {
 
 test('stringifyType object', () => {
     expect(stringifyResolvedType(typeOf<{ a: string }>())).toBe('{a: string}');
-    expect(stringifyResolvedType(typeOf<{ a: string, b: number }>())).toBe('{\n  a: string;\n  b: number;\n}');
-    expect(stringifyResolvedType(typeOf<{ a: string, b: number, c: boolean }>())).toBe('{\n  a: string;\n  b: number;\n  c: boolean;\n}');
-    expect(stringifyResolvedType(typeOf<{ a: string, b: number, c: { d: string } }>())).toBe('{\n  a: string;\n  b: number;\n  c: {d: string};\n}');
-    expect(stringifyResolvedType(typeOf<{ a: string, b: number, c: { d: string, e: number } }>())).toBe('{\n  a: string;\n  b: number;\n  c: {\n    d: string;\n    e: number;\n  };\n}');
-    expect(stringifyResolvedType(typeOf<{ a: string, b: number, c: { d: string, e: number, f: boolean } }>())).toBe(`{
+    expect(stringifyResolvedType(typeOf<{ a: string; b: number }>())).toBe('{\n  a: string;\n  b: number;\n}');
+    expect(stringifyResolvedType(typeOf<{ a: string; b: number; c: boolean }>())).toBe('{\n  a: string;\n  b: number;\n  c: boolean;\n}');
+    expect(stringifyResolvedType(typeOf<{ a: string; b: number; c: { d: string } }>())).toBe('{\n  a: string;\n  b: number;\n  c: {d: string};\n}');
+    expect(stringifyResolvedType(typeOf<{ a: string; b: number; c: { d: string; e: number } }>())).toBe('{\n  a: string;\n  b: number;\n  c: {\n    d: string;\n    e: number;\n  };\n}');
+    expect(stringifyResolvedType(typeOf<{ a: string; b: number; c: { d: string; e: number; f: boolean } }>())).toBe(`{
   a: string;
   b: number;
   c: {
@@ -57,7 +60,7 @@ test('stringifyType function', () => {
 
 test('stringifyType index signature', () => {
     expect(stringifyResolvedType(typeOf<{ [name: string]: boolean }>())).toBe('{[index: string]: boolean}');
-    expect(stringifyResolvedType(typeOf<{ a: boolean, [name: string]: boolean }>())).toBe(`{
+    expect(stringifyResolvedType(typeOf<{ a: boolean; [name: string]: boolean }>())).toBe(`{
   a: boolean;
   [index: string]: boolean;
 }`);
@@ -66,7 +69,7 @@ test('stringifyType index signature', () => {
 test('stringifyType method signature', () => {
     expect(stringifyResolvedType(typeOf<{ a(): void }>())).toBe('{a(): void}');
     expect(stringifyResolvedType(typeOf<{ a(b: string): void }>())).toBe('{a(b: string): void}');
-    expect(stringifyResolvedType(typeOf<{ a(b: string): void, b: string }>())).toBe(`{
+    expect(stringifyResolvedType(typeOf<{ a(b: string): void; b: string }>())).toBe(`{
   a(b: string): void;
   b: string;
 }`);
@@ -74,18 +77,15 @@ test('stringifyType method signature', () => {
 
 test('stringifyType methods', () => {
     class A {
-        a(): void {
-        }
+        a(): void {}
     }
 
     class B {
-        a(b: string): void {
-        }
+        a(b: string): void {}
     }
 
     class C {
-        a(b: string): void {
-        }
+        a(b: string): void {}
 
         b: string = '';
     }
@@ -158,8 +158,6 @@ test('description interface', () => {
    * another line? */
   username: string;
 }`);
-    ;
-
     const json = serializeType(typeOf<User>());
     const back = deserializeType(json);
     expect(stringifyType(back, { showNames: false, showFullDefinition: true, showDescription: true })).toBe(`User {
@@ -193,7 +191,6 @@ test('description class', () => {
    * another line? */
   username?: string;
 }`);
-
 });
 
 test('stringifyType heritage', () => {
@@ -220,7 +217,9 @@ test('stringifyType heritage', () => {
 
 test('enum', () => {
     enum MyEnum {
-        a, b, c = 4
+        a,
+        b,
+        c = 4,
     }
 
     interface User {
@@ -309,7 +308,7 @@ test('stringifyType object literal inline', () => {
 
 test('stringifyType type', () => {
     const type = typeOf<Type>();
-    const s = stringifyType(type, {showFullDefinition: true});
+    const s = stringifyType(type, { showFullDefinition: true });
 });
 
 test('generic', () => {
@@ -319,4 +318,4 @@ test('generic', () => {
 
     expect(stringifyResolvedType(reflect(Gen))).toBe('Gen {id: T}');
     expect(stringifyResolvedType(reflect(Gen, typeOf<number>()))).toBe('Gen {id: number}');
-})
+});

@@ -7,7 +7,6 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
 import { BehaviorSubject, Subject, Subscriber, Subscription, SubscriptionLike } from 'rxjs';
 
 export class SingleProgress extends Subject<SingleProgress> {
@@ -19,7 +18,7 @@ export class SingleProgress extends Subject<SingleProgress> {
 
     protected lastTime = 0;
     protected triggerFinished?: Function;
-    finished = new Promise((resolve) => {
+    finished = new Promise(resolve => {
         this.triggerFinished = resolve;
     });
 
@@ -56,7 +55,6 @@ export class SingleProgress extends Subject<SingleProgress> {
         this.lastTime = Date.now();
     }
 
-
     setBatch(size: number) {
         this.current += size;
         this.lastTime = Date.now();
@@ -83,8 +81,8 @@ export class SingleProgress extends Subject<SingleProgress> {
 }
 
 export class Progress extends BehaviorSubject<number> {
-    readonly upload = new SingleProgress;
-    readonly download = new SingleProgress;
+    readonly upload = new SingleProgress();
+    readonly download = new SingleProgress();
 
     /**
      * Aborts both upload and download progress.
@@ -127,7 +125,7 @@ export class ClientProgress {
      * ```
      */
     static track(): Progress {
-        const progress = new Progress;
+        const progress = new Progress();
         ClientProgress.nextProgress = progress;
         return progress;
     }

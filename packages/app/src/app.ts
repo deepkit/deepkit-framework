@@ -7,23 +7,50 @@
  *
  * You should have received a copy of the MIT License along with this program.
  */
-
-import { ClassType, ExtractClassType, isFunction, isObject, pathBasename, setPathValue } from '@deepkit/core';
-import { ConfigLoader, ServiceContainer } from './service-container.js';
-import { ConfigureProviderOptions, injectedFunction, InjectorContext, ResolveToken, Scope, Token } from '@deepkit/injector';
-import { AppModule, RootModuleDefinition } from './module.js';
-import { EnvConfiguration } from './configuration.js';
-import { DataEventToken, DispatchArguments, EventDispatcher, EventDispatcherDispatchType, EventListener, EventListenerCallback, EventToken } from '@deepkit/event';
-import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
+import {
+    ClassType,
+    DeepkitError,
+    ExtractClassType,
+    isFunction,
+    isObject,
+    pathBasename,
+    setPathValue,
+} from '@deepkit/core';
+import {
+    DataEventToken,
+    DispatchArguments,
+    EventDispatcher,
+    EventDispatcherDispatchType,
+    EventListener,
+    EventListenerCallback,
+    EventToken,
+} from '@deepkit/event';
+import {
+    ConfigureProviderOptions,
+    InjectorContext,
+    ResolveToken,
+    Scope,
+    Token,
+    injectedFunction,
+} from '@deepkit/injector';
 import { Logger } from '@deepkit/logger';
+import { ReceiveType, ReflectionClass, ReflectionKind } from '@deepkit/type';
+
 import { executeCommand, getArgsFromEnvironment, getBinFromEnvironment } from './command.js';
+import { EnvConfiguration } from './configuration.js';
+import { AppModule, RootModuleDefinition } from './module.js';
+import { ConfigLoader, ServiceContainer } from './service-container.js';
 
 /**
  * @internal
  */
-export function setPartialConfig(target: { [name: string]: any }, partial: {
-    [name: string]: any
-}, incomingPath: string = '') {
+export function setPartialConfig(
+    target: { [name: string]: any },
+    partial: {
+        [name: string]: any;
+    },
+    incomingPath: string = '',
+) {
     for (const i in partial) {
         const path = (incomingPath ? incomingPath + '.' : '') + i;
         if (isObject(partial[i])) {
@@ -35,7 +62,7 @@ export function setPartialConfig(target: { [name: string]: any }, partial: {
 }
 
 type EnvNamingStrategy =
-    'same'
+    | 'same'
     | 'upper'
     | 'lower'
     | ((name: string) => string | 'same' | 'upper' | 'lower' | undefined);
@@ -107,12 +134,12 @@ interface EnvConfigOptions {
     /**
      * A path or paths to optional .env files that will be processed and mapped to app/module config
      */
-    envFilePath?: string | string[],
+    envFilePath?: string | string[];
     /**
      * A naming strategy for converting env variables to app/module config. Defaults to 'upper'.
      * For example, allows converting DB_HOST to dbHost
      */
-    namingStrategy?: EnvNamingStrategy,
+    namingStrategy?: EnvNamingStrategy;
     /**
      * A prefix for environment variables that helps to avoid potential collisions
      * By default this will be set to APP_
@@ -122,7 +149,7 @@ interface EnvConfigOptions {
      * naming strategy
      *
      */
-    prefix?: string
+    prefix?: string;
 }
 
 const defaultEnvConfigOptions: Required<EnvConfigOptions> = {
@@ -157,15 +184,22 @@ class EnvConfigLoader {
         const env = Object.assign({}, envConfiguration.getAll());
         Object.assign(env, process.env);
 
-        parseEnv(config, this.prefix, schema, '', convertNameStrategy(this.namingStrategy, module.name), this.namingStrategy, env);
+        parseEnv(
+            config,
+            this.prefix,
+            schema,
+            '',
+            convertNameStrategy(this.namingStrategy, module.name),
+            this.namingStrategy,
+            env,
+        );
     }
 }
 
 /**
  * @internal
  */
-export class RootAppModule<T extends RootModuleDefinition> extends AppModule<T> {
-}
+export class RootAppModule<T extends RootModuleDefinition> extends AppModule<T> {}
 
 interface AppEvent {
     /**
@@ -184,7 +218,6 @@ interface AppEvent {
 interface AppExecutedEvent extends AppEvent {
     exitCode: number;
 }
-
 
 interface AppErrorEvent extends AppEvent {
     error: Error;
@@ -227,12 +260,8 @@ export class App<T extends RootModuleDefinition> {
 
     public appModule: AppModule<ExtractClassType<T['config']>>;
 
-    constructor(
-        appModuleOptions: T,
-        serviceContainer?: ServiceContainer,
-        appModule?: AppModule<any>,
-    ) {
-        this.appModule = appModule || new RootAppModule({}, appModuleOptions) as any;
+    constructor(appModuleOptions: T, serviceContainer?: ServiceContainer, appModule?: AppModule<any>) {
+        this.appModule = appModule || (new RootAppModule({}, appModuleOptions) as any);
         this.serviceContainer = serviceContainer || new ServiceContainer(this.appModule);
     }
 
@@ -248,7 +277,7 @@ export class App<T extends RootModuleDefinition> {
      * At this point no services can be requested as the service container was not built.
      */
     setup(...args: Parameters<this['appModule']['setup']>): this {
-        this.appModule = (this.appModule.setup as any)(...args as any[]);
+        this.appModule = (this.appModule.setup as any)(...(args as any[]));
         return this;
     }
 
@@ -348,7 +377,10 @@ export class App<T extends RootModuleDefinition> {
 
                     setPartialConfig(config, module.name ? jsonConfig[module.name] : jsonConfig);
                 } catch (error) {
-                    throw new Error(`Invalid JSON in env variable ${variableName}. Parse error: ${error}`);
+                    throw new DeepkitError(
+                        'DK-A004',
+                        `Invalid JSON in env variable ${variableName}. Parse error: ${error}`,
+                    );
                 }
             },
         });
@@ -379,7 +411,11 @@ export class App<T extends RootModuleDefinition> {
     /**
      * @see InjectorModule.configureProvider
      */
-    configureProvider<T>(configure: (instance: T, ...args: any[]) => any, options: Partial<ConfigureProviderOptions> = {}, type?: ReceiveType<T>): this {
+    configureProvider<T>(
+        configure: (instance: T, ...args: any[]) => any,
+        options: Partial<ConfigureProviderOptions> = {},
+        type?: ReceiveType<T>,
+    ): this {
         this.appModule.configureProvider<T>(configure, options, type);
         return this;
     }
@@ -407,8 +443,10 @@ export class App<T extends RootModuleDefinition> {
 
         try {
             return await executeCommand(
-                bin, argv || getArgsFromEnvironment(),
-                eventDispatcher, logger,
+                bin,
+                argv || getArgsFromEnvironment(),
+                eventDispatcher,
+                logger,
                 scopedInjectorContext,
                 this.serviceContainer.cliControllerRegistry.controllers,
             );
