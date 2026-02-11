@@ -1,8 +1,9 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, jest, test } from '@jest/globals';
+import { after, before, beforeEach, describe, it, test } from 'node:test';
 
 import { sleep } from '@deepkit/core';
 import { EventDispatcher } from '@deepkit/event';
 import { ConsoleLogger } from '@deepkit/logger';
+import { expect, fn } from '@deepkit/run/expect';
 
 import { MongoClient } from '../../src/client/client.js';
 import { IsMasterCommand } from '../../src/client/command/ismaster.js';
@@ -12,8 +13,6 @@ import { MongoConnectionError } from '../../src/client/error.js';
 import { Host } from '../../src/client/host.js';
 import { mongoBinarySerializer } from '../../src/mongo-serializer.js';
 import { MongoEnv, MongoInstance, createMongoClientFactory } from './env-setup.js';
-
-jest.setTimeout(60 * 1000);
 
 test('nix', () => {});
 
@@ -64,7 +63,7 @@ describe('mongo-env', () => {
     let mongo: MongoInstance;
     const createClient = createMongoClientFactory(mongoEnv);
 
-    beforeAll(async () => {
+    before(async () => {
         mongo = await mongoEnv.addMongo();
     });
 
@@ -72,7 +71,7 @@ describe('mongo-env', () => {
         await mongoEnv.reset();
     });
 
-    afterAll(async () => {
+    after(async () => {
         createClient.closeAll();
         await mongoEnv.closeAll();
     });
@@ -168,7 +167,7 @@ describe('replica set, primary secondary', () => {
     let secondary1: MongoInstance;
     const createClient = createMongoClientFactory(mongoEnv);
 
-    beforeAll(async () => {
+    before(async () => {
         [primary, secondary1] = await Promise.all([mongoEnv.addMongo('primary', 'rs1'), mongoEnv.addMongo('secondary1', 'rs1')]);
 
         const init = await mongoEnv.execute(
@@ -189,7 +188,7 @@ describe('replica set, primary secondary', () => {
         await mongoEnv.reset();
     });
 
-    afterAll(async () => {
+    after(async () => {
         createClient.closeAll();
         await mongoEnv.closeAll();
         await sleep(1);

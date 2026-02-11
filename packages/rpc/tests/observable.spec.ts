@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 import { BehaviorSubject, Observable, Subject, Subscription, defer, switchMap, toArray } from 'rxjs';
 import { first, take } from 'rxjs/operators';
 

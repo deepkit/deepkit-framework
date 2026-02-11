@@ -43,15 +43,5 @@
     "@deepkit/type": "^1.0.19",
     "rxjs": "~7.8.0"
   },
-  "jest": {
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts",
-      "**/tests/**/*.spec.tsx"
-    ]
-  },
   "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
 }

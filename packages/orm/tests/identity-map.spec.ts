@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { getClassTypeFromInstance } from '@deepkit/core';
 import { PrimaryKey, Reference, ReflectionClass, isReferenceInstance, resolveForeignReflectionClass, serializer } from '@deepkit/type';

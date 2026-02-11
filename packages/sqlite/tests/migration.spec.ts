@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { DatabaseEntityRegistry } from '@deepkit/orm';
 import { schemaMigrationRoundTrip } from '@deepkit/sql';

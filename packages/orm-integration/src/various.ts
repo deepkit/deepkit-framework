@@ -1,7 +1,7 @@
-import { expect } from '@jest/globals';
 import { randomBytes } from 'crypto';
 
 import { UniqueConstraintFailure, hydrateEntity, isDatabaseOf } from '@deepkit/orm';
+import { expect } from '@deepkit/run/expect';
 import { SQLDatabaseAdapter, identifier, sql } from '@deepkit/sql';
 import {
     AutoIncrement,

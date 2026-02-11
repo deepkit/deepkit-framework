@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { Stopwatch, StopwatchStore } from '../src/stopwatch.js';
 import { FrameCategory, decodeCompoundKey, encodeCompoundKey } from '../src/types.js';

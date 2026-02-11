@@ -1,4 +1,4 @@
-import { test } from '@jest/globals';
+import { test } from 'node:test';
 import { mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 

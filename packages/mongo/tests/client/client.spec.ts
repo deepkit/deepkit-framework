@@ -1,4 +1,5 @@
-import { expect, jest, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect, fn } from '@deepkit/run/expect';
 import { fail } from 'assert';
 import { createConnection } from 'net';
 
@@ -10,9 +11,6 @@ import { MongoClient } from '../../src/client/client.js';
 import { IsMasterCommand } from '../../src/client/command/ismaster.js';
 import { MongoConnectionError } from '../../src/client/error.js';
 import { ConnectionOptions } from '../../src/client/options.js';
-
-jest.setTimeout(60000);
-
 test('ConnectionOptions', async () => {
     {
         const options = cast<ConnectionOptions>({});

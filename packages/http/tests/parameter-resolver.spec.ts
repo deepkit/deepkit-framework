@@ -1,6 +1,7 @@
-import { expect, jest, test } from '@jest/globals';
+import { test } from 'node:test';
 
 import { App, AppModule } from '@deepkit/app';
+import { expect, fn, spyOn } from '@deepkit/run/expect';
 import { ReflectionClass } from '@deepkit/type';
 
 import { http } from '../src/decorator.js';
@@ -23,8 +24,8 @@ test('parameter resolver by name', async () => {
         route(value: unknown) {}
     }
 
-    jest.spyOn(Resolver.prototype, 'resolve');
-    jest.spyOn(Controller.prototype, 'route');
+    const resolveSpy = spyOn(Resolver.prototype, 'resolve');
+    const routeSpy = spyOn(Controller.prototype, 'route');
 
     const httpKernel = createHttpKernel([Controller], [Resolver]);
     await httpKernel.request(HttpRequest.GET('/'));
@@ -42,8 +43,8 @@ test('parameter resolver by name', async () => {
         parameters: { value: 'value' },
         type: reflectionParameter,
     };
-    expect(Resolver.prototype.resolve).toHaveBeenCalledWith(expectedContext);
-    expect(Controller.prototype.route).toHaveBeenCalledWith('value');
+    expect(resolveSpy).toHaveBeenCalledWith(expectedContext);
+    expect(routeSpy).toHaveBeenCalledWith('value');
 });
 
 test('parameter resolver can be retrieved from parent module', async () => {

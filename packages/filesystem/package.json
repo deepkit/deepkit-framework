@@ -25,29 +25,13 @@
     "access": "public"
   },
   "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json",
+    "test:node": "node --import @deepkit/run --test 'tests/**/*.spec.ts'"
   },
   "peerDependencies": {
     "@deepkit/core": "^1.0.1"
   },
   "devDependencies": {
     "@deepkit/core": "^1.0.19"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts|tsx)$": [
-        "ts-jest",
-        {
-          "tsconfig": "<rootDir>/tsconfig.spec.json"
-        }
-      ]
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ]
   }
 }

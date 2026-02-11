@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { DirectClient } from '../src/client/client-direct.js';
 import { rpc } from '../src/decorators.js';

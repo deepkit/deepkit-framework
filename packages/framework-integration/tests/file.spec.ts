@@ -1,4 +1,5 @@
-// import { expect, test, beforeAll } from '@jest/globals';
+// import { test, beforeAll } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 // import { EntityStorage, FS } from '@deepkit/fs';
 // import { appModuleForControllers, closeAllCreatedServers, createServerClientPair } from './util.js';
 // import { sleep } from '@deepkit/core';

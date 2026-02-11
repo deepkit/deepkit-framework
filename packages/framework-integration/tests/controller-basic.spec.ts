@@ -1,5 +1,5 @@
-import { afterAll, expect, jest, test } from '@jest/globals';
 import { fail } from 'assert';
+import { after, test } from 'node:test';
 import { Observable } from 'rxjs';
 import { bufferCount, first, skip } from 'rxjs/operators';
 import ws from 'ws';
@@ -7,16 +7,14 @@ import ws from 'ws';
 import { isArray } from '@deepkit/core';
 import { ObserverTimer } from '@deepkit/core-rxjs';
 import { ClientProgress, JSONError, rpc } from '@deepkit/rpc';
+import { expect, fn } from '@deepkit/run/expect';
 import { ValidationError, ValidationErrorItem, entity } from '@deepkit/type';
 
 import { appModuleForControllers, closeAllCreatedServers, createServerClientPair, subscribeAndWait } from './util.js';
 
 // @ts-ignore
 global['WebSocket'] = ws;
-
-jest.setTimeout(15_000);
-
-afterAll(async () => {
+after(async () => {
     await closeAllCreatedServers();
 });
 

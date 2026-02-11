@@ -32,6 +32,13 @@ Module._extensions['.ts'] = function (module: any, filename: string) {
     module._compile(output, filename);
 };
 
+// @ts-ignore
+Module._extensions['.tsx'] = function (module: any, filename: string) {
+    const source = readFileSync(filename, 'utf8');
+    const { output } = transpile(source, filename, 'commonjs');
+    module._compile(output, filename);
+};
+
 // ESM loader hooks for import statements
 // @ts-ignore
 register('./hooks.js', import.meta.url);

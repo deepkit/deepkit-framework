@@ -51,22 +51,5 @@
     "lz-string": "^1.4.4",
     "micromatch": "^4.0.5",
     "strip-json-comments": "^3.1.1"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts|tsx)$": [
-        "ts-jest",
-        {
-          "tsconfig": "<rootDir>/tsconfig.spec.json"
-        }
-      ]
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ],
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    }
   }
 }

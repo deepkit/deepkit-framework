@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, jest, test } from '@jest/globals';
+import { afterEach, describe, test } from 'node:test';
+import { expect, fn } from '@deepkit/run/expect';
 import { Subject, skip } from 'rxjs';
 
 import { sleep } from '@deepkit/core';
@@ -9,9 +10,6 @@ import { BrokerCache } from '../src/broker-cache.js';
 import { BrokerKeyValue } from '../src/broker-key-value.js';
 import { AnyAdapter, BrokerBus, BrokerBusChannel, BrokerLock, BrokerQueue, isBrokerAdapterBus, isBrokerAdapterCache, isBrokerAdapterKeyValue, isBrokerAdapterLock, isBrokerAdapterQueue, provideBusChannel, provideBusSubject } from '../src/broker.js';
 import { QueueMessageProcessing } from '../src/model.js';
-
-jest.setTimeout(10000);
-
 let lastAdapter: AnyAdapter | undefined;
 
 export let adapterFactory: () => AnyAdapter = () => (lastAdapter = new BrokerMemoryAdapter());

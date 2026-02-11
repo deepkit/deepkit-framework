@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 import { fail } from 'assert';
 
 import { ArraySort } from '../src/array-sort.js';

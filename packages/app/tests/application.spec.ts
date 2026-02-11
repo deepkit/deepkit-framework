@@ -1,4 +1,5 @@
-import { beforeEach, expect, test } from '@jest/globals';
+import { beforeEach, test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { ClassType, Inject, getCurrentDirName, isClass } from '@deepkit/core';
 import { BaseEvent, DataEvent, DataEventToken, EventDispatcher, EventOfEventToken, EventToken, eventDispatcher } from '@deepkit/event';

@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { Group, User, UserGroup } from '@deepkit/orm-integration';
 import { ReflectionClass, ReflectionKind, ReflectionProperty } from '@deepkit/type';

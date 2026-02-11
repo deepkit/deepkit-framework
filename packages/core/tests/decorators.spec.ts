@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { sleep } from '../src/core.js';
 import { log, stack } from '../src/decorators.js';

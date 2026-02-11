@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 import { createTestingApp } from '@deepkit/framework';
 import { Service } from '../src/app/service';
 import { HelloWorldControllerRpc } from '../src/controller/hello-world.rpc';

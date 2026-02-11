@@ -1,7 +1,8 @@
-import { LogPlugin, LogType, LogQuery, LogSession } from '@deepkit/orm';
-import { AutoIncrement, deserialize, entity, PrimaryKey } from '@deepkit/type';
+import { LogPlugin, LogQuery, LogSession, LogType } from '@deepkit/orm';
+import { expect } from '@deepkit/run/expect';
+import { AutoIncrement, PrimaryKey, deserialize, entity } from '@deepkit/type';
+
 import { DatabaseFactory } from './test.js';
-import { expect } from '@jest/globals';
 
 export const logPluginTests = {
     async query(databaseFactory: DatabaseFactory) {
@@ -9,11 +10,10 @@ export const logPluginTests = {
         class User {
             id: number & PrimaryKey & AutoIncrement = 0;
 
-            constructor(public username: string) {
-            }
+            constructor(public username: string) {}
         }
 
-        const database = await databaseFactory([User], [new LogPlugin]);
+        const database = await databaseFactory([User], [new LogPlugin()]);
 
         const plugin = database.pluginRegistry.getPlugin(LogPlugin);
         const userLogEntity = plugin.getLogEntity(User);
@@ -94,11 +94,10 @@ export const logPluginTests = {
         class User {
             id: number & PrimaryKey & AutoIncrement = 0;
 
-            constructor(public username: string) {
-            }
+            constructor(public username: string) {}
         }
 
-        const database = await databaseFactory([User], [new LogPlugin]);
+        const database = await databaseFactory([User], [new LogPlugin()]);
 
         const session = database.createSession();
         const peter = new User('peter');

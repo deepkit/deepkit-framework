@@ -23,17 +23,5 @@
   },
   "devDependencies": {
     "reflect-metadata": "^0.1.13"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ]
   }
 }

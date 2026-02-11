@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { App } from '@deepkit/app';
 import { decodeFrameData, deserializeFrameData, encodeFrameData } from '@deepkit/framework-debug-api';

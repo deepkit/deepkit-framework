@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 import '../src/optimize-tsx';
 import { isOptimisedHtmlString, parseCode } from '../src/optimize-tsx.js';
 

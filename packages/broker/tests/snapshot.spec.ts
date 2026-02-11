@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { BrokerState } from '../src/kernel.js';
 import { QueueMessageProcessing, QueueMessageState } from '../src/model.js';

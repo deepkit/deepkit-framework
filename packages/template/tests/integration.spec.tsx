@@ -1,4 +1,5 @@
-import { describe, expect, test } from '@jest/globals';
+import { describe, test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 import '../src/optimize-tsx';
 import { html, render } from '../src/template.js';
 import { Injector } from '@deepkit/injector';

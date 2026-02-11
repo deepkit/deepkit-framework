@@ -1,4 +1,5 @@
-import { test, expect } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 import { Service } from '../src/app/service';
 import { Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { createTestingApp } from '@deepkit/framework';

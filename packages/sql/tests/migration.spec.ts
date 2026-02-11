@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { DatabaseEntityRegistry, MigrateOptions } from '@deepkit/orm';
 import { AutoIncrement, DatabaseField, Index, PrimaryKey, Reference, ReflectionClass, ReflectionKind, Unique, entity } from '@deepkit/type';

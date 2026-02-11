@@ -1,4 +1,4 @@
-import { test } from '@jest/globals';
+import { test } from 'node:test';
 
 import { runIntegrationTests } from '@deepkit/orm-integration';
 

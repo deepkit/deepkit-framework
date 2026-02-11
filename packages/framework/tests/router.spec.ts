@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { HttpKernel, HttpRegExp, HttpRequest, JSONResponse, RouteParameterResolverContext, http } from '@deepkit/http';
 

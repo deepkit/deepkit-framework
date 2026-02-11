@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { getInstanceStateFromItem, hydrateEntity } from '@deepkit/orm';
 import { BackReference, Index, PrimaryKey, Reference, ReflectionClass, UUID, entity, resolveForeignReflectionClass, uuid } from '@deepkit/type';

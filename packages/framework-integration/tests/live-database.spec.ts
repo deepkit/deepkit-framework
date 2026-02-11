@@ -5,7 +5,8 @@
 // import { Collection, IdInterface, rpc } from '@deepkit/rpc';
 // import { SQLiteDatabaseAdapter } from '@deepkit/sqlite';
 // import { AutoIncrement, BackReference, entity, PrimaryKey, Reference, uuid, UUID } from '@deepkit/type';
-// import { expect, test } from '@jest/globals';
+// import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 //
 // export function createTestingApp<O extends RootModuleDefinition>(options: O, entities?: (ClassType)[]): TestingFacade<App<O>> {
 //     return createTestingAppOriginal(options, [], (module: AppModule<any>) => {

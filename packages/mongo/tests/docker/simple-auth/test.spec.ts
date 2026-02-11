@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { Database } from '@deepkit/orm';
 import { MongoId, PrimaryKey, entity } from '@deepkit/type';

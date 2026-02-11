@@ -1,4 +1,4 @@
-import { test } from '@jest/globals';
+import { test } from 'node:test';
 import { writeFileSync } from 'fs';
 import { homedir } from 'os';
 

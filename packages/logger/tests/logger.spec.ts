@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 import { JSONTransport, Logger, LoggerLevel, MemoryLogger, ScopedLogger, ScopeFormatter } from '../src/logger.js';
 import { MemoryLoggerTransport } from '../src/memory-logger.js';
 import { Injector, ServiceNotFoundError, TransientInjectionTarget } from '@deepkit/injector';

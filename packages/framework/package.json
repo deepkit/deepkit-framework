@@ -22,7 +22,8 @@
   "scripts": {
     "test": "jest --coverage",
     "tsc": "rm -rf dist && ../../node_modules/.bin/tsc",
-    "tsc-watch": "rm -rf dist && tsc --watch"
+    "tsc-watch": "rm -rf dist && tsc --watch",
+    "test:node": "node --import @deepkit/run --test 'tests/**/*.spec.ts'"
   },
   "peerDependencies": {
     "@deepkit/app": "^1.0.1",
@@ -88,26 +89,6 @@
     "@types/node": "^22.13.1",
     "@types/ws": "^7.4.0",
     "rxjs": "~7.8.0"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts|tsx)$": [
-        "ts-jest",
-        {
-          "tsconfig": "<rootDir>/tsconfig.spec.json"
-        }
-      ]
-    },
-    "moduleNameMapper": {
-      "./xxHash32.js": "./xxHash32.cjs",
-      "(.+)\\.js": "$1"
-    },
-    "resolver": "../../jest-resolver.js",
-    "testMatch": [
-      "**/tests/**/*.spec.ts",
-      "**/tests/**/*.spec.tsx"
-    ]
   },
   "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
 }

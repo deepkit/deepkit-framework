@@ -20,7 +20,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json",
+    "test:node": "node --import @deepkit/run --test 'tests/**/*.spec.ts'"
   },
   "dependencies": {
     "@deepkit/broker": "^1.0.19",
@@ -29,23 +30,5 @@
     "@deepkit/logger": "^1.0.19",
     "@deepkit/type": "^1.0.19",
     "ioredis": "^5.6.1"
-  },
-  "jest": {
-    "runner": "../../jest-serial-runner.js",
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts|tsx)$": [
-        "ts-jest",
-        {
-          "tsconfig": "<rootDir>/tsconfig.spec.json"
-        }
-      ]
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ]
   }
 }

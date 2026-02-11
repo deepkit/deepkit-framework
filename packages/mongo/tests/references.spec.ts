@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { deserializeBSON, serializeBSON } from '@deepkit/bson';
 import { DatabaseQueryModel, Formatter, getInstanceStateFromItem } from '@deepkit/orm';

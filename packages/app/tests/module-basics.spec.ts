@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 import { IsExact, assert } from 'conditional-type-checks';
 
 import { createModuleClass } from '../src/module.js';

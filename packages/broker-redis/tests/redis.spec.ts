@@ -1,4 +1,4 @@
-import { describe } from '@jest/globals';
+import { describe } from 'node:test';
 
 import { setAdapterFactory } from '@deepkit/broker/test';
 import { ConsoleLogger } from '@deepkit/logger';

@@ -1,7 +1,6 @@
-import { expect } from '@jest/globals';
-
 import { isArray } from '@deepkit/core';
 import { DatabaseSession, Query, atomicChange, getInstanceStateFromItem } from '@deepkit/orm';
+import { expect } from '@deepkit/run/expect';
 import {
     AutoIncrement,
     BackReference,

@@ -1,4 +1,4 @@
-import { test } from '@jest/globals';
+import { test } from 'node:test';
 
 import { Database } from '../src/database.js';
 import { MemoryDatabaseAdapter } from '../src/memory-db.js';

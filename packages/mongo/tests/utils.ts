@@ -1,4 +1,4 @@
-import { afterEach } from '@jest/globals';
+import { afterEach } from 'node:test';
 import { performance } from 'perf_hooks';
 
 import { Database } from '@deepkit/orm';

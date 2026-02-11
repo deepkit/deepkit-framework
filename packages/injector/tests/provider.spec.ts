@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { ReceiveType, ReflectionKind, TypeClass, TypeObjectLiteral, assertType, findMember, resolveReceiveType, typeOf } from '@deepkit/type';
 

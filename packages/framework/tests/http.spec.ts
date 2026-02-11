@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { HttpBody, HttpKernel, HttpRequest, HttpRouterRegistry } from '@deepkit/http';
 import { Logger } from '@deepkit/logger';

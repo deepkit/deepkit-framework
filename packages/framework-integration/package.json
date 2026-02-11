@@ -8,7 +8,8 @@
   "private": true,
   "scripts": {
     "tsc": "echo nothing",
-    "tsc-watch": "echo nothing"
+    "tsc-watch": "echo nothing",
+    "test:node": "node --import @deepkit/run --test 'tests/**/*.spec.ts'"
   },
   "dependencies": {
     "@deepkit/app": "^1.0.1",
@@ -42,20 +43,5 @@
     "@types/fs-extra": "^9.0.1",
     "@types/tmp": "^0.0.33",
     "@types/ws": "^7.4.0"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "./xxHash32.js": "./xxHash32.cjs",
-      "(.+)\\.js": "$1"
-    },
-    "resolver": "../../jest-resolver.js",
-    "coverageDirectory": "<rootDir>/coverage/",
-    "testMatch": [
-      "**/tests/**/controller-basic.spec.ts"
-    ]
   }
 }

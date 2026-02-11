@@ -27,7 +27,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json"
+    "build": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json",
+    "test:node": "node --import @deepkit/run --test 'tests/**/*.spec.ts'"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
@@ -56,27 +57,6 @@
     "@deepkit/orm": "^1.0.19",
     "@deepkit/stopwatch": "^1.0.19",
     "@deepkit/type": "^1.0.19"
-  },
-  "jest": {
-    "runner": "../../jest-serial-runner.js",
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.(ts|tsx)$": [
-        "ts-jest",
-        {
-          "tsconfig": "<rootDir>/tsconfig.spec.json"
-        }
-      ]
-    },
-    "moduleNameMapper": {
-      "(.+)\\.js": "$1"
-    },
-    "setupFilesAfterEnv": [
-      "../../jest-setup-timeout.js"
-    ],
-    "testMatch": [
-      "**/tests/**/*.spec.ts"
-    ]
   },
   "gitHead": "56081823b559bb68b77a8781957af5d9c2e019a7"
 }

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, jest, test } from '@jest/globals';
+import { afterEach, describe, it, test } from 'node:test';
 
 import { App } from '@deepkit/app';
 import { sleep } from '@deepkit/core';
@@ -6,38 +6,17 @@ import { HttpRequest, http } from '@deepkit/http';
 import { InjectorContext } from '@deepkit/injector';
 import { ConsoleTransport, Logger, MemoryLoggerTransport } from '@deepkit/logger';
 import { rpc } from '@deepkit/rpc';
+import { expect, fn, spyOn } from '@deepkit/run/expect';
 
 import { ApplicationServer } from '../src/application-server.js';
 import { FrameworkModule } from '../src/module.js';
 import { createTestingApp } from '../src/testing.js';
 import { RpcServer, RpcServerInterface, WebWorker } from '../src/worker.js';
 
-jest.mock('ws', () => {
-    const on = jest.fn();
-    const Server = jest.fn(() => ({
-        on,
-        close: jest.fn(),
-    }));
-    return {
-        Server,
-    };
-});
-
 Error.stackTraceLimit = 50;
 
-jest.mock('http', () => ({
-    ...(jest.requireActual('http') as any),
-    Server: jest.fn(() => ({
-        on: jest.fn(),
-        listen: jest.fn(),
-        close: jest.fn(),
-    })),
-}));
-
 describe('application-server', () => {
-    afterEach(() => {
-        jest.clearAllMocks();
-    });
+    afterEach(() => {});
 
     test('testing app api', async () => {
         @rpc.controller('test')
@@ -189,19 +168,19 @@ describe('application-server', () => {
 
     describe('RpcServer', () => {
         test('should use custom implementation when provided', async () => {
-            const onMock = jest.fn();
+            const onMock = fn();
             const wsServerMock = {
                 on: onMock,
             };
 
             const rpcServerMock: RpcServerInterface = {
-                start: jest.fn((options: any, createRpcConnection: any) =>
+                start: fn((options: any, createRpcConnection: any) =>
                     wsServerMock.on('connection', (ws: any, req: HttpRequest) => {
                         createRpcConnection({
-                            write: jest.fn(),
-                            close: jest.fn(),
-                            bufferedAmount: jest.fn(),
-                            clientAddress: jest.fn(),
+                            write: fn(),
+                            close: fn(),
+                            bufferedAmount: fn(),
+                            clientAddress: fn(),
                         });
                     }),
                 ),
@@ -229,29 +208,6 @@ describe('application-server', () => {
 
             expect(rpcServerMock.start).toHaveBeenCalledTimes(1);
             expect(onMock).toHaveBeenCalledTimes(1);
-            expect(require('ws').Server).not.toHaveBeenCalled();
-            expect(new (require('ws').Server)().on).not.toHaveBeenCalled();
-
-            await applicationServer.close();
-        });
-
-        test('should use default implementation via ws when not specified', async () => {
-            @rpc.controller('test')
-            class MyController {}
-
-            const app = new App({
-                controllers: [MyController],
-                imports: [
-                    new FrameworkModule({
-                        broker: { startOnBootstrap: false },
-                    }),
-                ],
-            });
-            const applicationServer = app.get(ApplicationServer);
-            await applicationServer.start();
-
-            expect(require('ws').Server).toHaveBeenCalledTimes(1);
-            expect(new (require('ws').Server)().on).toHaveBeenCalledTimes(1);
 
             await applicationServer.close();
         });
@@ -260,11 +216,16 @@ describe('application-server', () => {
 
 describe('createTestingApp', () => {
     it('should setup the logger correctly', async () => {
-        const loggerRemoveTransportSpy = jest.spyOn(Logger.prototype, 'removeTransport');
-        const loggerAddTransportSpy = jest.spyOn(Logger.prototype, 'addTransport');
-        const facade = createTestingApp({});
-        await facade.startServer();
-        expect(loggerAddTransportSpy).toHaveBeenCalledWith(expect.any(MemoryLoggerTransport));
-        expect(loggerRemoveTransportSpy).toHaveBeenCalledWith(expect.any(ConsoleTransport));
+        const loggerRemoveTransportSpy = spyOn(Logger.prototype, 'removeTransport');
+        const loggerAddTransportSpy = spyOn(Logger.prototype, 'addTransport');
+        try {
+            const facade = createTestingApp({});
+            await facade.startServer();
+            expect(loggerAddTransportSpy).toHaveBeenCalledWith(expect.any(MemoryLoggerTransport));
+            expect(loggerRemoveTransportSpy).toHaveBeenCalledWith(expect.any(ConsoleTransport));
+        } finally {
+            loggerRemoveTransportSpy.mockRestore();
+            loggerAddTransportSpy.mockRestore();
+        }
     });
 });

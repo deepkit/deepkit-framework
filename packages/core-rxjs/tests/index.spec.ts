@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 import { BehaviorSubject, Observable, ReplaySubject, Subject, Subscription } from 'rxjs';
 import { decoupleSubject, isBehaviorSubject, isSubject, nextValue, Subscriptions, throttleMessages } from '../src/utils.js';
 import { ProgressTracker } from '../src/progress.js';

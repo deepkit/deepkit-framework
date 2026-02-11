@@ -1,9 +1,10 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
 
 import { ApiEntryPoints } from '@deepkit/api-console-gui/src/api';
 import { App } from '@deepkit/app';
 import { serializeBSON } from '@deepkit/bson';
 import { HttpKernel, HttpModule, HttpRequest } from '@deepkit/http';
+import { expect } from '@deepkit/run/expect';
 import { ReflectionKind, TypeObjectLiteral, reflect } from '@deepkit/type';
 
 import { ApiConsoleModule } from '../src/module.js';

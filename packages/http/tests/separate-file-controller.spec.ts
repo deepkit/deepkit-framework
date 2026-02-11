@@ -1,4 +1,5 @@
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { HttpRequest } from '../src/model.js';
 import { SeparateFileController } from './fixtures/body-controller.js';

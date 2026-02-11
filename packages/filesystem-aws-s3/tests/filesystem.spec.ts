@@ -1,5 +1,6 @@
 import { DeleteObjectsCommand, ListObjectsCommand } from '@aws-sdk/client-s3';
-import { expect, test } from '@jest/globals';
+import { test } from 'node:test';
+import { expect } from '@deepkit/run/expect';
 
 import { Filesystem } from '@deepkit/filesystem';
 import { adapterFactory, setAdapterFactory } from '@deepkit/filesystem/test';
