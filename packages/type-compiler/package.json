@@ -31,6 +31,10 @@
     "install": "rm -rf node_modules/typescript && node ./deepkit-type-install.js || exit 0"
   },
   "repository": "https://github.com/deepkit/deepkit-framework",
+  "homepage": "https://github.com/deepkit/deepkit-framework/tree/master/packages/type-compiler#readme",
+  "bugs": {
+    "url": "https://github.com/deepkit/deepkit-framework/issues"
+  },
   "author": "Marc J. Schmidt <marc@marcjschmidt.de>",
   "license": "MIT",
   "peerDependencies": {
